@@ -9,8 +9,16 @@
         </div>
       </div>
       <q-space />
-      <div class="flex items-center gap-4 text-grey-6 text-italic text-sm">
-         Solo vista previa digital
+      <div class="flex items-center gap-4">
+        <q-btn
+          label="Descargar PDF (Carta)"
+          icon="picture_as_pdf"
+          style="background-color: #663399; color: white;"
+          unelevated
+          rounded
+          @click="downloadPDF"
+          :loading="generatingPDF"
+        />
       </div>
     </q-toolbar>
 
@@ -152,29 +160,39 @@
             <table class="merit-table">
               <thead>
                 <tr>
-                  <th v-for="campo in group.tipo?.campos" :key="campo.key">{{ campo.label }}</th>
-                  <template v-for="configArch in group.tipo?.config_archivos" :key="configArch.id">
-                    <th class="w-[40mm]">EVIDENCIA DEL {{ configArch.label }}</th>
-                    <th class="w-[30mm]">VISUALIZACIÓN DEL DOCUMENTO</th>
+                  <template v-for="campo in group.tipo?.campos" :key="campo.key">
+                    <th>{{ campo.label }}</th>
+                    <!-- Insert archivo header right after its related campo -->
+                    <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
+                      <th class="w-[30mm]">{{ configArch.label }}</th>
+                    </template>
+                  </template>
+                  <!-- Archivos without after_campo go at the end -->
+                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
+                    <th class="w-[30mm]">{{ configArch.label }}</th>
                   </template>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="merito in group.items" :key="merito.id">
-                  <!-- Dynamic Fields -->
-                  <td v-for="campo in group.tipo?.campos" :key="campo.key" class="text-center font-bold uppercase text-[10px]">
-                    {{ merito.respuestas[campo.key] || '---' }}
-                  </td>
-                  <!-- Files Fields -->
-                  <template v-for="configArch in group.tipo?.config_archivos" :key="configArch.id">
-                    <td class="text-center">
-                      <div v-if="getMeritoFile(merito, configArch.id)">
-                        <a @click.prevent="previewFile(getMeritoFile(merito, configArch.id))" class="text-blue-8 underline text-[9px] cursor-pointer break-all">
-                          {{ getFileUrl(getMeritoFile(merito, configArch.id)) }}
-                        </a>
-                      </div>
-                      <div v-else class="text-grey-4 italic text-[9px]">NO CARGADO</div>
+                  <template v-for="campo in group.tipo?.campos" :key="campo.key">
+                    <td class="text-center font-bold uppercase text-[10px]">
+                      {{ merito.respuestas[campo.key] || '---' }}
                     </td>
+                    <!-- Insert archivo QR right after its related campo -->
+                    <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
+                      <td class="text-center">
+                        <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
+                          <div class="qr-box-small no-border">
+                            <QrcodeVue :value="getFileUrl(getMeritoFile(merito, configArch.id))" :size="75" level="M" render-as="svg" />
+                          </div>
+                        </div>
+                        <div v-else>—</div>
+                      </td>
+                    </template>
+                  </template>
+                  <!-- Archivos without after_campo go at the end -->
+                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
                     <td class="text-center">
                       <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
                         <div class="qr-box-small no-border">
@@ -200,6 +218,13 @@
           </div>
         </div>
       </div>
+
+      <!-- HIDDEN PDF GENERATOR COMPONENT -->
+      <ExpedientePDF
+        ref="pdfExporter"
+        :postulacion="postulacion"
+        :filtered-meritos="filteredMeritos"
+      />
 
       <!-- RIGHT: DOCUMENT PREVIEWER -->
       <div class="col-12 col-md-5 h-full bg-[#1e1e1e] flex flex-col no-wrap no-print overflow-hidden shadow-2xl">
@@ -239,11 +264,14 @@ import { useRoute } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import QrcodeVue from 'qrcode.vue'
+import ExpedientePDF from 'components/ExpedientePDF.vue'
 
 const $q = useQuasar()
 const route = useRoute()
+const pdfExporter = ref(null)
 const postulacion = ref(null)
 const currentFile = ref(null)
+const generatingPDF = ref(false)
 
 const loadExpediente = async () => {
   try {
@@ -305,6 +333,19 @@ const romanize = (num) => {
   const lookup = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 }
   let roman = ''; for (let i in lookup) { while (num >= lookup[i]) { roman += i; num -= lookup[i] } }
   return roman
+}
+
+const downloadPDF = async () => {
+  if (!pdfExporter.value) return
+  generatingPDF.value = true
+  try {
+    await pdfExporter.value.generatePDF()
+    $q.notify({ type: 'positive', message: 'PDF generado con éxito' })
+  } catch {
+    $q.notify({ type: 'negative', message: 'Error al generar el PDF' })
+  } finally {
+    generatingPDF.value = false
+  }
 }
 
 
