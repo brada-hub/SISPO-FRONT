@@ -1,17 +1,78 @@
 <template>
   <q-page class="p-6">
+    <!-- Header -->
     <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">Postulaciones Recibidas</h1>
-      <q-btn
-        label="Descargar Reporte General"
-        icon="download"
-        color="green-8"
-        unelevated
-        @click="exportGeneralReport"
-      />
+      <div>
+        <h1 class="text-2xl font-bold text-gray-800">
+          {{ selectedConvocatoria ? 'Postulantes: ' + selectedConvocatoria.titulo : 'Postulaciones por Convocatoria' }}
+        </h1>
+        <p v-if="selectedConvocatoria" class="text-gray-500">
+           Gestión de postulantes para esta convocatoria específica.
+        </p>
+      </div>
+
+      <div class="flex gap-2">
+        <q-btn
+          v-if="selectedConvocatoria"
+          label="Volver a Convocatorias"
+          icon="arrow_back"
+          flat
+          color="primary"
+          @click="selectedConvocatoria = null"
+        />
+        <q-btn
+          label="Descargar Reporte General"
+          icon="download"
+          color="green-8"
+          unelevated
+          @click="exportGeneralReport"
+        />
+      </div>
     </div>
 
+    <!-- Convocatorias Table (Initial View) -->
     <q-table
+      v-if="!selectedConvocatoria"
+      :rows="convocatorias"
+      :columns="convocatoriaColumns"
+      row-key="id"
+      :loading="loading"
+      flat
+      bordered
+    >
+      <template v-slot:header="props">
+        <q-tr :props="props" style="background-color: #663399; color: white;">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+            {{ col.label }}
+          </q-th>
+        </q-tr>
+      </template>
+
+      <template v-slot:body-cell-postulaciones_count="props">
+        <q-td :props="props" class="text-center">
+          <q-badge color="primary" class="p-2 text-sm">
+            {{ props.row.postulaciones_count }}
+          </q-badge>
+        </q-td>
+      </template>
+
+      <template v-slot:body-cell-acciones="props">
+        <q-td :props="props" class="text-right">
+          <q-btn
+            label="Ver Postulantes"
+            icon="groups"
+            color="indigo-7"
+            unelevated
+            size="sm"
+            @click="selectConvocatoria(props.row)"
+          />
+        </q-td>
+      </template>
+    </q-table>
+
+    <!-- Postulantes Table (Detailed View) -->
+    <q-table
+      v-else
       :rows="rows"
       :columns="columns"
       row-key="id"
@@ -20,7 +81,7 @@
       bordered
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
+        <q-tr :props="props" style="background-color: #009999; color: white;">
           <q-th v-for="col in props.cols" :key="col.name" :props="props">
             {{ col.label }}
           </q-th>
@@ -98,7 +159,18 @@ import { useRouter } from 'vue-router'
 const $q = useQuasar()
 const router = useRouter()
 const rows = ref([])
+const convocatorias = ref([])
+const selectedConvocatoria = ref(null)
 const loading = ref(false)
+
+const convocatoriaColumns = [
+  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
+  { name: 'titulo', label: 'Convocatoria', field: 'titulo', sortable: true, align: 'left' },
+  { name: 'fecha_inicio', label: 'Fecha Inicio', field: 'fecha_inicio', sortable: true, align: 'left' },
+  { name: 'fecha_cierre', label: 'Fecha Cierre', field: 'fecha_cierre', sortable: true, align: 'left' },
+  { name: 'postulaciones_count', label: 'Total Postulantes', field: 'postulaciones_count', sortable: true, align: 'center' },
+  { name: 'acciones', label: 'Acciones', align: 'right' }
+]
 
 const columns = [
   { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
@@ -124,14 +196,28 @@ const getStatusColor = (status) => {
   }
 }
 
-const loadData = async () => {
+const loadConvocatorias = async () => {
   loading.value = true
   try {
-    const { data } = await api.get('/postulaciones')
+    const { data } = await api.get('/admin/convocatorias-con-postulantes')
+    convocatorias.value = data
+  } catch (error) {
+    console.error(error)
+    $q.notify({ type: 'negative', message: 'Error al cargar las convocatorias' })
+  } finally {
+    loading.value = false
+  }
+}
+
+const selectConvocatoria = async (convocatoria) => {
+  selectedConvocatoria.value = convocatoria
+  loading.value = true
+  try {
+    const { data } = await api.get(`/postulaciones?convocatoria_id=${convocatoria.id}`)
     rows.value = data
   } catch (error) {
     console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al cargar postulaciones' })
+    $q.notify({ type: 'negative', message: 'Error al cargar postulantes' })
   } finally {
     loading.value = false
   }
@@ -153,11 +239,16 @@ const viewExpediente = (row) => {
 
 const exportGeneralReport = async () => {
   try {
-    const response = await api.get('/postulaciones/export', { responseType: 'blob' })
+    const endpoint = selectedConvocatoria.value
+      ? `/postulaciones/export/${selectedConvocatoria.value.id}`
+      : '/postulaciones/export'
+
+    const response = await api.get(endpoint, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', 'postulaciones_general.csv')
+    const fileName = selectedConvocatoria.value ? `postulantes_${selectedConvocatoria.value.id}.csv` : 'postulaciones_general.csv'
+    link.setAttribute('download', fileName)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -167,7 +258,7 @@ const exportGeneralReport = async () => {
   }
 }
 
-onMounted(loadData)
+onMounted(loadConvocatorias)
 </script>
 
 <style scoped>
