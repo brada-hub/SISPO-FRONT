@@ -2,11 +2,11 @@
   <q-page class="p-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Tipos de Documento</h1>
-      <q-btn label="Nuevo Documento" icon="add" style="background-color: #009999; color: white;" @click="openDialog()" />
+      <q-btn label="Nuevo Documento" icon="add" style="background-color: #009999; color: white;" @click="openDialog()" rounded unelevated class="shadow-2" />
     </div>
 
     <div v-if="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <q-card v-for="row in rows" :key="row.id" flat bordered class="rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full border-gray-200">
+      <q-card v-for="row in rows" :key="row.id" flat bordered class="rounded-2xl shadow-lg hover:shadow-xl transition-shadow flex flex-col h-full border-gray-200">
         <q-card-section class="bg-gray-50 border-b p-4">
           <div class="flex justify-between items-start">
             <div class="flex-1">
@@ -179,8 +179,8 @@
             </q-scroll-area>
 
             <div class="bg-white p-4 border-t flex justify-end gap-3 rounded-b-lg mt-2">
-              <q-btn label="Cancelar" color="gray" flat v-close-popup />
-              <q-btn label="Guardar Requisito" style="background-color: #009999; color: white;" icon="save" :loading="saving" @click="save" />
+              <q-btn label="Cancelar" color="gray" flat v-close-popup rounded />
+              <q-btn label="Guardar Requisito" style="background-color: #009999; color: white;" icon="save" :loading="saving" @click="save" rounded unelevated class="q-px-lg shadow-2" />
             </div>
           </div>
 

@@ -2,7 +2,7 @@
   <q-page class="p-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Gestión de Sedes</h1>
-      <q-btn label="Nueva Sede" icon="add" style="background-color: #009999; color: white;" @click="openDialog()" />
+      <q-btn label="Nueva Sede" icon="add" style="background-color: #009999; color: white;" @click="openDialog()" rounded unelevated class="shadow-2" />
     </div>
 
     <q-table
@@ -10,9 +10,7 @@
       :columns="columns"
       row-key="id"
       :loading="loading"
-      flat
-      bordered
-      class="rounded-2xl shadow-sm overflow-hidden"
+      class="rounded-2xl shadow-lg overflow-hidden"
     >
       <template v-slot:header="props">
         <q-tr :props="props" class="bg-primary text-white">
@@ -32,7 +30,7 @@
 
     <!-- Modal Form -->
     <q-dialog v-model="dialog">
-      <q-card class="min-w-[400px]">
+      <q-card class="min-w-[400px] rounded-2xl overflow-hidden">
         <q-card-section style="background-color: #663399; color: white;">
           <div class="text-h6">{{ isEdit ? 'Editar Sede' : 'Nueva Sede' }}</div>
         </q-card-section>
@@ -65,9 +63,9 @@
           </q-form>
         </q-card-section>
 
-        <q-card-actions align="right" class="text-primary">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn flat label="Guardar" @click="save" :loading="saving" />
+        <q-card-actions align="right" class="text-primary q-pb-md q-px-md">
+          <q-btn flat label="Cancelar" v-close-popup rounded />
+          <q-btn label="Guardar Sede" color="primary" @click="save" :loading="saving" rounded unelevated class="q-px-lg shadow-2" />
         </q-card-actions>
       </q-card>
     </q-dialog>

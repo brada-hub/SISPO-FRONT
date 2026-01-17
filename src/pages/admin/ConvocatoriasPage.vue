@@ -2,7 +2,15 @@
   <q-page class="p-6">
     <div class="flex justify-between items-center mb-6">
       <h1 class="text-2xl font-bold text-gray-800">Convocatorias Externas</h1>
-      <q-btn label="Nueva Convocatoria" icon="campaign" style="background-color: #009999; color: white;" @click="openDialog()" />
+      <q-btn
+        label="Nueva Convocatoria"
+        icon="campaign"
+        style="background-color: #009999; color: white;"
+        @click="openDialog()"
+        rounded
+        unelevated
+        class="q-px-md shadow-2"
+      />
     </div>
 
     <!-- Table of existing convocatorias -->
@@ -11,8 +19,8 @@
       :columns="columns"
       row-key="id"
       :loading="loading"
-      flat
       bordered
+      class="rounded-2xl shadow-lg overflow-hidden"
     >
       <template v-slot:header="props">
         <q-tr :props="props" style="background-color: #663399; color: white;">
@@ -45,9 +53,6 @@
           <q-btn flat round color="teal" icon="visibility" size="sm" @click="viewAfiche(props.row)">
              <q-tooltip>Ver Afiche</q-tooltip>
           </q-btn>
-          <q-btn flat round color="green-8" icon="assessment" size="sm" @click="downloadReport(props.row)">
-             <q-tooltip>Descargar Reporte de Postulantes (Excel)</q-tooltip>
-          </q-btn>
           <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
              <q-tooltip>Editar</q-tooltip>
           </q-btn>
@@ -69,9 +74,9 @@
           </q-toolbar-title>
 
           <div class="flex gap-2">
-            <q-btn v-if="isViewMode || isEdit" label="Imagen (HD)" color="teal" unelevated icon="image" @click="downloadImage" />
-            <q-btn v-if="isViewMode || isEdit" label="PDF" color="deep-orange" unelevated icon="picture_as_pdf" @click="downloadPDF" />
-            <q-btn v-if="!isViewMode" label="Publicar / Guardar" color="white" text-color="primary" unelevated icon="rocket_launch" :loading="saving" @click="save" class="q-px-lg shadow-2" />
+            <q-btn v-if="isViewMode || isEdit" label="Imagen (HD)" color="teal" unelevated icon="image" @click="downloadImage" rounded />
+            <q-btn v-if="isViewMode || isEdit" label="PDF" color="deep-orange" unelevated icon="picture_as_pdf" @click="downloadPDF" rounded />
+            <q-btn v-if="!isViewMode" label="Publicar / Guardar" color="white" text-color="primary" unelevated icon="rocket_launch" :loading="saving" @click="save" class="q-px-lg shadow-2" rounded />
           </div>
         </q-toolbar>
 
@@ -117,7 +122,7 @@
                   <q-btn-toggle v-model="builderMode" toggle-color="primary" flat dense spread :options="[{label: 'Sede', value: 'sede', icon: 'location_on'},{label: 'Cargo', value: 'cargo', icon: 'badge'}]" />
                 </div>
 
-                <div class="bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200">
+                <div class="bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-200">
                   <div class="flex flex-col gap-3">
                     <template v-if="builderMode === 'sede'">
                       <div class="flex items-center gap-2">
@@ -139,7 +144,7 @@
                         <q-btn icon="add" color="teal" flat round dense @click="showQuickSede = true" />
                       </div>
                     </template>
-                    <q-btn icon="add_circle" color="primary" class="full-width" label="Añadir a lista" unelevated @click="addOffersFromBuilder" />
+                    <q-btn icon="add_circle" color="primary" class="full-width" label="Añadir a lista" unelevated @click="addOffersFromBuilder" rounded />
                   </div>
                 </div>
 
@@ -162,13 +167,13 @@
                   <q-icon name="list_alt" color="primary" /> Requisitos
                 </div>
                 <div class="space-y-3">
-                  <div v-for="req in catalogRequisitos" :key="req.id" class="border rounded-xl p-3 bg-gray-50/50 hover:bg-gray-50 transition-all border-gray-100 flex flex-col gap-2 shadow-sm">
+                  <div v-for="req in catalogRequisitos" :key="req.id" class="border rounded-2xl p-3 bg-gray-50/50 hover:bg-gray-50 transition-all border-gray-100 flex flex-col gap-2 shadow-sm">
                     <div class="flex items-center gap-2 cursor-pointer" @click="toggleReq(req.id)">
                       <q-checkbox :model-value="form.config_requisitos_ids.includes(req.id)" dense color="primary" />
                       <div class="text-[11px] font-black uppercase text-gray-700 flex-1">{{ req.nombre }}</div>
 
                       <q-btn flat round dense icon="info" color="grey-5" size="xs" @click.stop="() => {}">
-                          <q-menu anchor="top middle" self="bottom middle" class="shadow-2xl rounded-xl border border-gray-100">
+                          <q-menu anchor="top middle" self="bottom middle" class="shadow-2xl rounded-2xl border border-gray-100">
                              <div class="p-4 bg-gray-50 border-b">
                                 <div class="text-xs font-black text-primary uppercase">Estructura del Documento</div>
                                 <div class="text-sm font-bold text-gray-800">{{ req.nombre }}</div>
@@ -269,7 +274,7 @@
 
     <!-- Quick Add Sede Dialog -->
     <q-dialog v-model="showQuickSede" persistent>
-      <q-card style="min-width: 350px" class="rounded-xl p-4">
+      <q-card style="min-width: 350px" class="rounded-2xl p-4">
         <div class="text-h6 text-primary mb-4">Nueva Sede Rápida</div>
         <div class="space-y-4">
           <q-input v-model="quickSede.nombre" label="Nombre Sede" outlined dense />
@@ -284,15 +289,15 @@
           <q-select v-model="quickSede.departamento" :options="['La Paz', 'Cochabamba', 'Santa Cruz', 'Oruro', 'Potosí', 'Chuquisaca', 'Tarija', 'Beni', 'Pando']" label="Departamento" outlined dense />
         </div>
         <q-card-actions align="right" class="mt-4">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn label="Guardar" color="primary" @click="saveQuickSede" :loading="quickSaving" />
+          <q-btn flat label="Cancelar" v-close-popup rounded />
+          <q-btn label="Guardar" color="primary" @click="saveQuickSede" :loading="quickSaving" rounded unelevated />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <!-- Quick Add Cargo Dialog -->
     <q-dialog v-model="showQuickCargo" persistent>
-      <q-card style="min-width: 350px" class="rounded-xl p-4">
+      <q-card style="min-width: 350px" class="rounded-2xl p-4">
         <div class="text-h6 text-primary mb-4">Nuevo Cargo Rápido</div>
         <div class="space-y-4">
           <q-input v-model="quickCargo.nombre" label="Nombre del Cargo" outlined dense />
@@ -306,8 +311,8 @@
           />
         </div>
         <q-card-actions align="right" class="mt-4">
-          <q-btn flat label="Cancelar" v-close-popup />
-          <q-btn label="Guardar" color="primary" @click="saveQuickCargo" :loading="quickSaving" />
+          <q-btn flat label="Cancelar" v-close-popup rounded />
+          <q-btn label="Guardar" color="primary" @click="saveQuickCargo" :loading="quickSaving" rounded unelevated />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -675,21 +680,6 @@ const save = async () => {
   }
 }
 
-const downloadReport = async (item) => {
-  try {
-    const response = await api.get(`/postulaciones/export/${item.id}`, { responseType: 'blob' })
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', `Postulantes_${item.titulo}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-  } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al descargar reporte' })
-  }
-}
 
 const confirmDelete = (item) => {
   $q.dialog({ title: 'Eliminar', message: `¿Estás seguro de eliminar "${item.titulo}"?`, cancel: true }).onOk(async () => {

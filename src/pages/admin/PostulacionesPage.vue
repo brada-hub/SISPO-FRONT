@@ -3,43 +3,21 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-6">
       <div>
-        <h1 class="text-2xl font-bold text-gray-800">
-          {{ selectedConvocatoria ? 'Postulantes: ' + selectedConvocatoria.titulo : 'Postulaciones por Convocatoria' }}
-        </h1>
-        <p v-if="selectedConvocatoria" class="text-gray-500">
-           Gestión de postulantes para esta convocatoria específica.
-        </p>
-      </div>
-
-      <div class="flex gap-2">
-        <q-btn
-          v-if="selectedConvocatoria"
-          label="Volver a Convocatorias"
-          icon="arrow_back"
-          flat
-          color="primary"
-          @click="selectedConvocatoria = null"
-        />
-        <q-btn
-          label="Descargar Reporte General"
-          icon="download"
-          color="green-8"
-          unelevated
-          @click="exportGeneralReport"
-        />
+        <h1 class="text-2xl font-bold text-gray-800">Gestión de Postulaciones</h1>
+        <p class="text-gray-500">Seleccione una convocatoria para ver y gestionar sus postulantes.</p>
       </div>
     </div>
 
-    <!-- Convocatorias Table (Initial View) -->
+    <!-- Convocatorias Table (Always Visible) -->
     <q-table
-      v-if="!selectedConvocatoria"
       :rows="convocatorias"
       :columns="convocatoriaColumns"
       row-key="id"
-      :loading="loading"
+      :loading="loading && !selectedConvocatoria"
       flat
       bordered
-      class="rounded-2xl shadow-sm overflow-hidden"
+      class="rounded-2xl shadow-lg overflow-hidden mb-8"
+      :pagination="{ rowsPerPage: 5 }"
     >
       <template v-slot:header="props">
         <q-tr :props="props" class="bg-primary text-white">
@@ -47,6 +25,18 @@
             {{ col.label }}
           </q-th>
         </q-tr>
+      </template>
+
+      <template v-slot:body-cell-fecha_inicio="props">
+        <q-td :props="props">
+          {{ formatDate(props.row.fecha_inicio) }}
+        </q-td>
+      </template>
+
+      <template v-slot:body-cell-fecha_cierre="props">
+        <q-td :props="props">
+          {{ formatDate(props.row.fecha_cierre) }}
+        </q-td>
       </template>
 
       <template v-slot:body-cell-postulaciones_count="props">
@@ -60,28 +50,137 @@
       <template v-slot:body-cell-acciones="props">
         <q-td :props="props" class="text-right">
           <q-btn
-            label="Ver Postulantes"
-            icon="groups"
-            color="indigo-7"
+            :label="selectedConvocatoria?.id === props.row.id ? 'Viendo Postulantes' : 'Ver Postulantes'"
+            :icon="selectedConvocatoria?.id === props.row.id ? 'check_circle' : 'groups'"
+            :color="selectedConvocatoria?.id === props.row.id ? 'green-7' : 'indigo-7'"
             unelevated
             size="sm"
             @click="selectConvocatoria(props.row)"
+            rounded
+            class="q-px-md"
           />
         </q-td>
       </template>
     </q-table>
 
-    <!-- Postulantes Table (Detailed View) -->
-    <q-table
-      v-else
-      :rows="rows"
-      :columns="columns"
-      row-key="id"
-      :loading="loading"
-      flat
-      bordered
-      class="rounded-2xl shadow-sm overflow-hidden"
-    >
+    <!-- Postulantes Section (Dynamic) -->
+    <div v-if="selectedConvocatoria" class="animate-fade-in">
+      <q-separator class="q-my-lg" />
+
+      <div class="flex justify-between items-end mb-4">
+        <div>
+          <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+            <q-icon name="people" color="teal-7" />
+            Postulantes: <span class="text-teal-7">{{ selectedConvocatoria.titulo }}</span>
+          </h2>
+          <p class="text-gray-500 text-sm">Use los filtros para buscar postulantes específicos en esta lista.</p>
+        </div>
+
+        <q-btn
+          label="Descargar Reporte (Excel)"
+          icon="download"
+          color="green-8"
+          unelevated
+          @click="exportGeneralReport"
+          rounded
+          class="shadow-2"
+        />
+      </div>
+
+      <!-- Postulantes Filter Bar -->
+      <q-card class="mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div class="p-4 row q-col-gutter-md items-center">
+        <!-- Search -->
+        <div class="col-12 col-sm-3">
+          <q-input
+            v-model="filterSearch"
+            placeholder="Buscar por nombre o CI..."
+            dense
+            outlined
+            rounded
+            bg-color="white"
+          >
+            <template v-slot:prepend>
+              <q-icon name="search" />
+            </template>
+          </q-input>
+        </div>
+
+        <!-- Filter Status -->
+        <div class="col-12 col-sm-2">
+          <q-select
+            v-model="filterEstado"
+            :options="['enviada', 'en_revision', 'validada', 'observada', 'rechazada']"
+            label="Estado"
+            dense
+            outlined
+            rounded
+            clearable
+            bg-color="white"
+            emit-value
+            map-options
+            stack-label
+            class="text-uppercase filter-select"
+          />
+        </div>
+
+        <!-- Filter Sede -->
+        <div class="col-12 col-sm-2">
+          <q-select
+            v-model="filterSede"
+            :options="uniqueSedes"
+            label="Sede"
+            dense
+            outlined
+            rounded
+            clearable
+            stack-label
+            bg-color="white"
+            class="filter-select"
+          />
+        </div>
+
+        <!-- Filter Cargo -->
+        <div class="col-12 col-sm-3">
+          <q-select
+            v-model="filterCargo"
+            :options="uniqueCargos"
+            label="Cargo"
+            dense
+            outlined
+            rounded
+            clearable
+            stack-label
+            bg-color="white"
+            class="filter-select"
+          />
+        </div>
+
+        <!-- Reset -->
+        <div class="col-12 col-sm-2 text-right">
+          <q-btn
+            icon="filter_list_off"
+            label="Limpiar"
+            flat
+            color="grey-7"
+            @click="clearFilters"
+            rounded
+            dense
+          />
+        </div>
+      </div>
+    </q-card>
+
+      <!-- Postulantes Table -->
+      <q-table
+        :rows="filteredRows"
+        :columns="columns"
+        row-key="id"
+        :loading="loading"
+        flat
+        bordered
+        class="rounded-2xl shadow-lg overflow-hidden pb-10"
+      >
       <template v-slot:header="props">
         <q-tr :props="props" class="bg-teal-7 text-white">
           <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
@@ -143,17 +242,19 @@
             size="sm"
             style="background-color: #009999; color: white;"
             unelevated
-            class="rounded-lg shadow-sm"
+            class="rounded-xl shadow-lg q-px-md"
             @click="viewExpediente(props.row)"
+            rounded
           />
         </q-td>
       </template>
     </q-table>
+    </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import { useRouter } from 'vue-router'
@@ -164,6 +265,52 @@ const rows = ref([])
 const convocatorias = ref([])
 const selectedConvocatoria = ref(null)
 const loading = ref(false)
+
+// Filters
+const filterSearch = ref('')
+const filterEstado = ref(null)
+const filterSede = ref(null)
+const filterCargo = ref(null)
+
+const clearFilters = () => {
+  filterSearch.value = ''
+  filterEstado.value = null
+  filterSede.value = null
+  filterCargo.value = null
+}
+
+const uniqueSedes = computed(() => {
+  const sedes = rows.value.map(r => r.oferta?.sede?.nombre).filter(Boolean)
+  return [...new Set(sedes)].sort()
+})
+
+const uniqueCargos = computed(() => {
+  const cargos = rows.value.map(r => r.oferta?.cargo?.nombre).filter(Boolean)
+  return [...new Set(cargos)].sort()
+})
+
+const filteredRows = computed(() => {
+  return rows.value.filter(row => {
+    // Search filter
+    if (filterSearch.value) {
+      const search = filterSearch.value.toLowerCase()
+      const fullName = `${row.postulante?.nombres} ${row.postulante?.apellidos}`.toLowerCase()
+      const ci = String(row.postulante?.ci || '').toLowerCase()
+      if (!fullName.includes(search) && !ci.includes(search)) return false
+    }
+
+    // Status filter
+    if (filterEstado.value && row.estado !== filterEstado.value) return false
+
+    // Sede filter
+    if (filterSede.value && row.oferta?.sede?.nombre !== filterSede.value) return false
+
+    // Cargo filter
+    if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
+
+    return true
+  })
+})
 
 const convocatoriaColumns = [
   { name: 'titulo', label: 'Nombre de la Convocatoria', field: 'titulo', sortable: true, align: 'left' },
@@ -247,7 +394,7 @@ const exportGeneralReport = async () => {
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    const fileName = selectedConvocatoria.value ? `postulantes_${selectedConvocatoria.value.id}.csv` : 'postulaciones_general.csv'
+    const fileName = selectedConvocatoria.value ? `Reporte_Postulantes_${selectedConvocatoria.value.titulo}.xls` : 'postulaciones_general.xls'
     link.setAttribute('download', fileName)
     document.body.appendChild(link)
     link.click()
@@ -266,8 +413,17 @@ onMounted(loadConvocatorias)
   width: 140px;
   margin: 0 auto;
 }
-:deep(.q-field__control) {
-  height: 28px !important;
-  min-height: 28px !important;
+.filter-select {
+  font-size: 13px;
+}
+:deep(.status-select .q-field__control) {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+:deep(.filter-select .q-field__native),
+:deep(.filter-select .q-field__prefix),
+:deep(.filter-select .q-field__suffix),
+:deep(.filter-select .q-field__input) {
+  font-weight: 500;
 }
 </style>
