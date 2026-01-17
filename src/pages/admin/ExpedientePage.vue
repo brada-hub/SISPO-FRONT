@@ -45,8 +45,8 @@
               <div class="flex items-center gap-4">
                 <div class="text-right">
                     <div class="text-[11px] font-bold text-[#663399]">FOTOGRAFÍA<br/>PERSONAL:</div>
-                    <a v-if="postulacion?.postulante?.foto_perfil_path" @click="previewFile(postulacion.postulante.foto_perfil_path)" class="text-[9px] text-blue-8 underline cursor-pointer break-all max-w-[200px] inline-block">
-                      {{ getFileUrl(postulacion.postulante.foto_perfil_path) }}
+                    <a v-if="postulacion?.postulante?.foto_perfil_path" @click="previewFile(postulacion.postulante.foto_perfil_path)" class="text-[9px] text-blue-8 underline cursor-pointer font-bold uppercase">
+                      VER AQUÍ
                     </a>
                 </div>
                 <div class="qr-box-header">
@@ -79,8 +79,8 @@
                 <td class="label">CÉDULA DE IDENTIDAD:</td>
                 <td class="value">
                   <div class="row no-wrap items-center gap-4">
-                    <a v-if="postulacion?.postulante?.ci_archivo_path" @click="previewFile(postulacion.postulante.ci_archivo_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1">
-                      {{ getFileUrl(postulacion.postulante.ci_archivo_path) }}
+                    <a v-if="postulacion?.postulante?.ci_archivo_path" @click="previewFile(postulacion.postulante.ci_archivo_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
                     </a>
                     <div class="qr-box-small">
                       <QrcodeVue v-if="postulacion?.postulante?.ci_archivo_path" :value="getFileUrl(postulacion.postulante.ci_archivo_path)" :size="60" level="M" render-as="svg" />
@@ -108,8 +108,8 @@
                 <td class="label">CARTA DE POSTULACIÓN:</td>
                 <td class="value">
                   <div class="row no-wrap items-center gap-4">
-                    <a v-if="postulacion?.postulante?.carta_postulacion_path" @click="previewFile(postulacion.postulante.carta_postulacion_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1">
-                      {{ getFileUrl(postulacion.postulante.carta_postulacion_path) }}
+                    <a v-if="postulacion?.postulante?.carta_postulacion_path" @click="previewFile(postulacion.postulante.carta_postulacion_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
                     </a>
                     <div class="qr-box-small">
                       <QrcodeVue v-if="postulacion?.postulante?.carta_postulacion_path" :value="getFileUrl(postulacion.postulante.carta_postulacion_path)" :size="60" level="M" render-as="svg" />
@@ -121,8 +121,8 @@
                 <td class="label">CURRICULUM VITAE:</td>
                 <td class="value">
                   <div class="row no-wrap items-center gap-4">
-                    <a v-if="postulacion?.postulante?.cv_pdf_path" @click="previewFile(postulacion.postulante.cv_pdf_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1">
-                      {{ getFileUrl(postulacion.postulante.cv_pdf_path) }}
+                    <a v-if="postulacion?.postulante?.cv_pdf_path" @click="previewFile(postulacion.postulante.cv_pdf_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
                     </a>
                     <div class="qr-box-small">
                       <QrcodeVue v-if="postulacion?.postulante?.cv_pdf_path" :value="getFileUrl(postulacion.postulante.cv_pdf_path)" :size="60" level="M" render-as="svg" />
@@ -182,7 +182,13 @@
                     <!-- Insert archivo QR right after its related campo -->
                     <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
                       <td class="text-center">
-                        <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
+                        <div v-if="getMeritoFile(merito, configArch.id)" class="flex flex-col items-center justify-center">
+                          <!-- Link for preview (Only on screen) -->
+                          <div class="no-print mb-1">
+                            <a @click="previewFile(getMeritoFile(merito, configArch.id))" class="text-[9px] text-blue-7 underline cursor-pointer font-bold uppercase tracking-tighter">
+                              VER AQUÍ
+                            </a>
+                          </div>
                           <div class="qr-box-small no-border">
                             <QrcodeVue :value="getFileUrl(getMeritoFile(merito, configArch.id))" :size="75" level="M" render-as="svg" />
                           </div>
@@ -194,7 +200,13 @@
                   <!-- Archivos without after_campo go at the end -->
                   <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
                     <td class="text-center">
-                      <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
+                      <div v-if="getMeritoFile(merito, configArch.id)" class="flex flex-col items-center justify-center">
+                        <!-- Link for preview (Only on screen) -->
+                        <div class="no-print mb-1">
+                          <a @click="previewFile(getMeritoFile(merito, configArch.id))" class="text-[9px] text-blue-7 underline cursor-pointer font-bold uppercase tracking-tighter">
+                            VER AQUÍ
+                          </a>
+                        </div>
                         <div class="qr-box-small no-border">
                           <QrcodeVue :value="getFileUrl(getMeritoFile(merito, configArch.id))" :size="75" level="M" render-as="svg" />
                         </div>
