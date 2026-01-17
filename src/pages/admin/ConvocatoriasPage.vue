@@ -319,7 +319,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import AficheV2 from 'components/AficheV2.vue'
-import html2canvas from 'html2canvas'
+import * as htmlToImage from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 const $q = useQuasar()
@@ -570,36 +570,35 @@ const aficheFontScale = computed(() => {
 const downloadPDF = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Preparando PDF de alta fidelidad...' })
+  $q.loading.show({ message: 'Renderizando PDF Pro...' })
   try {
     await document.fonts.ready
     await new Promise(resolve => setTimeout(resolve, 800))
 
-    const canvas = await html2canvas(el, {
-      scale: 3,
-      useCORS: true,
+    const scale = 3
+    const param = {
+      height: 1123 * scale,
+      width: 794 * scale,
+      style: {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: '794px',
+        height: '1123px',
+        opacity: '1'
+      },
+      quality: 1,
       backgroundColor: '#ffffff',
-      logging: false,
-      width: 794,
-      height: 1123,
-      onclone: (doc) => {
-        const clonedEl = doc.getElementById('afiche-perfect-capture')
-        if (clonedEl) {
-          clonedEl.style.opacity = '1'
-          clonedEl.style.transform = 'none'
-          clonedEl.style.left = '0'
-          clonedEl.style.top = '0'
-        }
-      }
-    })
+      cacheBust: true
+    }
 
-    const imgData = canvas.toDataURL('image/png')
+    const dataUrl = await htmlToImage.toPng(el, param)
+
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     })
-    pdf.addImage(imgData, 'PNG', 0, 0, 210, 297)
+    pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297)
     pdf.save(`Afiche_SISPO_${form.value.titulo || 'Convocatoria'}.pdf`)
   } catch (error) {
     console.error(error)
@@ -612,36 +611,36 @@ const downloadPDF = async () => {
 const downloadImage = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Capturando imagen Ultra-HD (8K)...' })
+  $q.loading.show({ message: 'Generando Imagen Ultra-HD...' })
   try {
     await document.fonts.ready
     await new Promise(resolve => setTimeout(resolve, 800))
 
-    const canvas = await html2canvas(el, {
-      scale: 4, // 8K Quality
-      useCORS: true,
+    const scale = 3
+    const param = {
+      height: 1123 * scale,
+      width: 794 * scale,
+      style: {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: '794px',
+        height: '1123px',
+        opacity: '1'
+      },
+      quality: 1,
       backgroundColor: '#ffffff',
-      logging: false,
-      width: 794,
-      height: 1123,
-      onclone: (doc) => {
-        const clonedEl = doc.getElementById('afiche-perfect-capture')
-        if (clonedEl) {
-          clonedEl.style.opacity = '1'
-          clonedEl.style.transform = 'none'
-          clonedEl.style.left = '0'
-          clonedEl.style.top = '0'
-        }
-      }
-    })
+      cacheBust: true
+    }
+
+    const dataUrl = await htmlToImage.toPng(el, param)
 
     const link = document.createElement('a')
     link.download = `Afiche_SISPO_${form.value.titulo || 'Convocatoria'}.png`
-    link.href = canvas.toDataURL('image/png', 1.0)
+    link.href = dataUrl
     link.click()
   } catch (error) {
     console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al generar imagen 8K' })
+    $q.notify({ type: 'negative', message: 'Error al generar imagen UHD' })
   } finally {
     $q.loading.hide()
   }
@@ -776,6 +775,8 @@ onMounted(loadData)
   flex-direction: column;
   align-items: center;
   margin-top: 5px;
+  width: 100%;
+  justify-content: center;
 }
 
 .sede-banner-line {

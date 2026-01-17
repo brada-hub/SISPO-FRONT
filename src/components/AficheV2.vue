@@ -232,6 +232,8 @@ function formatDateLiteral (dateStr) {
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
   font-variant-ligatures: none;
+  flex-shrink: 0;
+  backface-visibility: hidden;
 }
 
 .afiche-container * {
@@ -281,6 +283,8 @@ function formatDateLiteral (dateStr) {
   flex-direction: column;
   align-items: center;
   margin-top: 5px;
+  width: 100%;
+  justify-content: center;
 }
 
 .sede-banner-line {
