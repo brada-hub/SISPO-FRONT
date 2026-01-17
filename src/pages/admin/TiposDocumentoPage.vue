@@ -5,29 +5,67 @@
       <q-btn label="Nuevo Documento" icon="add" style="background-color: #009999; color: white;" @click="openDialog()" />
     </div>
 
-    <q-table
-      :rows="rows"
-      :columns="columns"
-      row-key="id"
-      :loading="loading"
-      flat
-      bordered
-    >
-      <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
-            {{ col.label }}
-          </q-th>
-        </q-tr>
-      </template>
+    <div v-if="!loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <q-card v-for="row in rows" :key="row.id" flat bordered class="rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col h-full border-gray-200">
+        <q-card-section class="bg-gray-50 border-b p-4">
+          <div class="flex justify-between items-start">
+            <div class="flex-1">
+              <div class="text-caption text-primary font-bold uppercase tracking-wider mb-1">{{ row.categoria || 'Sin Categoría' }}</div>
+              <div class="text-lg font-black text-gray-800 leading-tight">{{ row.nombre }}</div>
+            </div>
+            <div class="flex gap-1">
+              <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(row)">
+                <q-tooltip>Editar Estructura</q-tooltip>
+              </q-btn>
+              <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(row)">
+                <q-tooltip>Eliminar</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </q-card-section>
 
-      <template v-slot:body-cell-acciones="props">
-        <q-td :props="props" class="flex gap-2 justify-end">
-          <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)" />
-          <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)" />
-        </q-td>
-      </template>
-    </q-table>
+        <q-card-section class="flex-1 p-4">
+          <div v-if="row.campos?.length > 0" class="mb-4">
+            <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1">
+              <q-icon name="list" size="14px" /> Información Solicitada
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <q-chip v-for="(f, i) in row.campos" :key="i" dense size="sm" color="indigo-1" text-color="indigo-9" class="font-bold px-2">
+                {{ f.label }}
+              </q-chip>
+            </div>
+          </div>
+
+          <div v-if="row.config_archivos?.length > 0">
+            <div class="text-[10px] font-bold text-gray-400 uppercase mb-2 flex items-center gap-1">
+              <q-icon name="attach_file" size="14px" /> Archivos de Respaldo
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <q-chip v-for="(a, i) in row.config_archivos" :key="i" dense size="sm" color="teal-1" text-color="teal-9" icon="description" class="font-bold px-2">
+                {{ a.label }}
+              </q-chip>
+            </div>
+          </div>
+
+          <div v-if="!row.campos?.length && !row.config_archivos?.length" class="text-center py-4 text-gray-300 italic text-sm">
+            Sin campos configurados
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="p-3 bg-white rounded-b-2xl">
+           <div class="flex items-center gap-2 text-[11px] text-gray-500 font-medium">
+             <q-icon :name="row.permite_multiples ? 'library_add' : 'looks_one'" color="orange-8" size="xs" />
+             {{ row.permite_multiples ? 'Permite múltiples registros (Ej: Varios cursos)' : 'Solo un registro (Ej: Título único)' }}
+           </div>
+        </q-card-section>
+      </q-card>
+    </div>
+
+    <div v-else class="flex justify-center py-20">
+      <q-spinner-dots color="primary" size="40px" />
+    </div>
 
     <!-- Modal Form Refactored with Visual Builder -->
     <q-dialog v-model="dialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
@@ -234,13 +272,6 @@ const form = ref({
   campos: [],
   config_archivos: []
 })
-
-const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-  { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left' },
-  { name: 'categoria', label: 'Categoría', field: 'categoria', align: 'left' },
-  { name: 'acciones', label: 'Acciones', align: 'right' }
-]
 
 const loadData = async () => {
   loading.value = true

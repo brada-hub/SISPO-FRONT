@@ -41,7 +41,7 @@ const routes = [
       {
         path: '',
         name: 'admin_dashboard',
-        component: () => import('pages/admin/ConvocatoriasPage.vue')
+        component: () => import('pages/admin/DashboardHome.vue')
       },
       {
         path: 'sedes',

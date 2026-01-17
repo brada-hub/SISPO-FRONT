@@ -39,10 +39,11 @@
       :loading="loading"
       flat
       bordered
+      class="rounded-2xl shadow-sm overflow-hidden"
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-primary text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -79,10 +80,11 @@
       :loading="loading"
       flat
       bordered
+      class="rounded-2xl shadow-sm overflow-hidden"
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #009999; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-teal-7 text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -164,8 +166,7 @@ const selectedConvocatoria = ref(null)
 const loading = ref(false)
 
 const convocatoriaColumns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-  { name: 'titulo', label: 'Convocatoria', field: 'titulo', sortable: true, align: 'left' },
+  { name: 'titulo', label: 'Nombre de la Convocatoria', field: 'titulo', sortable: true, align: 'left' },
   { name: 'fecha_inicio', label: 'Fecha Inicio', field: 'fecha_inicio', sortable: true, align: 'left' },
   { name: 'fecha_cierre', label: 'Fecha Cierre', field: 'fecha_cierre', sortable: true, align: 'left' },
   { name: 'postulaciones_count', label: 'Total Postulantes', field: 'postulaciones_count', sortable: true, align: 'center' },
@@ -173,11 +174,10 @@ const convocatoriaColumns = [
 ]
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
   { name: 'postulante', label: 'Postulante', field: row => row.postulante?.nombres, sortable: true, align: 'left' },
   { name: 'cargo', label: 'Cargo / Sede', field: row => row.oferta?.cargo?.nombre, sortable: true, align: 'left' },
   { name: 'fecha_postulacion', label: 'Fecha', field: 'fecha_postulacion', sortable: true, align: 'left' },
-  { name: 'estado', label: 'Estado', field: 'estado', sortable: true, align: 'center' },
+  { name: 'estado', label: 'Estado Actual', field: 'estado', sortable: true, align: 'center' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]
 

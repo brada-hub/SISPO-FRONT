@@ -122,12 +122,17 @@
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div v-for="merito in meritos" :key="merito.tipo_documento_id" class="p-3 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
+          <div v-for="merito in meritos" :key="merito.tipo_documento_id" class="p-4 bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-between">
              <div class="flex items-center gap-3">
                 <q-icon name="task_alt" color="teal" />
-                <span class="text-[11px] font-bold text-gray-600 uppercase">{{ merito.nombre }}</span>
+                <div>
+                   <div class="text-[11px] font-bold text-gray-800 uppercase leading-none">{{ merito.nombre }}</div>
+                   <div class="text-[9px] text-gray-400 font-bold uppercase mt-1">
+                     {{ merito.registros.length }} Registro(s) cargados
+                   </div>
+                </div>
              </div>
-             <span class="text-[10px] bg-white px-2 py-0.5 rounded-full border text-gray-400">COMPLETO</span>
+             <span class="text-[10px] bg-white px-3 py-1 rounded-full border text-teal-600 font-black">LISTO</span>
           </div>
         </div>
       </div>

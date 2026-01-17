@@ -174,12 +174,15 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       meritos.value = requisitosUnificados.value.map(req => ({
         tipo_documento_id: req.id,
         nombre: req.nombre,
+        descripcion: req.descripcion,
         campos: req.campos || [],
         config_archivos: req.config_archivos || [],
-        respuestas: {},
-        archivos: {},
         compartido: req.compartido,
         usadoPor: req.usadoPor,
+        permite_multiples: req.permite_multiples || false,
+        registros: [
+          { respuestas: {}, archivos: {} }
+        ]
       }))
 
       return requisitosUnificados.value
@@ -224,28 +227,32 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         }
       })
 
-      // Add merits
+      // Add merits (Step 3) - Flattening records
       if (meritos.value && Array.isArray(meritos.value)) {
-        meritos.value.forEach((merito, index) => {
-          formData.append(`meritos[${index}][tipo_documento_id]`, merito.tipo_documento_id)
+        let globalIndex = 0
+        meritos.value.forEach((merito) => {
+          merito.registros.forEach((reg) => {
+            formData.append(`meritos[${globalIndex}][tipo_documento_id]`, merito.tipo_documento_id)
 
-          // Add responses
-          if (merito.respuestas && typeof merito.respuestas === 'object') {
-            Object.entries(merito.respuestas).forEach(([key, val]) => {
-              if (val !== null && val !== undefined) {
-                formData.append(`meritos[${index}][respuestas][${key}]`, val)
-              }
-            })
-          }
+            // Add responses
+            if (reg.respuestas && typeof reg.respuestas === 'object') {
+              Object.entries(reg.respuestas).forEach(([key, val]) => {
+                if (val !== null && val !== undefined && val !== '') {
+                  formData.append(`meritos[${globalIndex}][respuestas][${key}]`, val)
+                }
+              })
+            }
 
-          // Add merit files
-          if (merito.archivos && typeof merito.archivos === 'object') {
-            Object.entries(merito.archivos).forEach(([configId, file]) => {
-              if (file instanceof File) {
-                formData.append(`meritos[${index}][archivos][${configId}]`, file)
-              }
-            })
-          }
+            // Add merit files
+            if (reg.archivos && typeof reg.archivos === 'object') {
+              Object.entries(reg.archivos).forEach(([configId, file]) => {
+                if (file instanceof File) {
+                  formData.append(`meritos[${globalIndex}][archivos][${configId}]`, file)
+                }
+              })
+            }
+            globalIndex++
+          })
         })
       }
 
@@ -302,6 +309,40 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   }
 
   /**
+   * Add a new empty record to a merit type
+   */
+  function agregarRegistroMerito(tipoDocumentoId) {
+    const merito = meritos.value.find(m => m.tipo_documento_id == tipoDocumentoId)
+    if (merito && merito.permite_multiples) {
+      merito.registros.push({ respuestas: {}, archivos: {} })
+    }
+  }
+
+  /**
+   * Duplicate a record with its text data (not files)
+   */
+  function duplicarRegistroMerito(tipoDocumentoId, index) {
+    const merito = meritos.value.find(m => m.tipo_documento_id == tipoDocumentoId)
+    if (merito && merito.permite_multiples) {
+      const original = merito.registros[index]
+      merito.registros.push({
+        respuestas: { ...original.respuestas },
+        archivos: {} // Files cannot be duplicated easily for security/logic
+      })
+    }
+  }
+
+  /**
+   * Remove a record from a merit type
+   */
+  function eliminarRegistroMerito(tipoDocumentoId, index) {
+    const merito = meritos.value.find(m => m.tipo_documento_id == tipoDocumentoId)
+    if (merito && merito.registros.length > 1) {
+      merito.registros.splice(index, 1)
+    }
+  }
+
+  /**
    * Get cargos for specific sede
    */
   function getCargosForSede(sedeId) {
@@ -337,5 +378,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     resetPostulacion,
     setSedeActiva,
     getCargosForSede,
+    agregarRegistroMerito,
+    duplicarRegistroMerito,
+    eliminarRegistroMerito,
   }
 })

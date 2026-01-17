@@ -94,9 +94,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from 'stores/auth-store'
+import { useAuthStore } from 'src/stores/auth-store'
+import { useInactivity } from 'src/composables/useInactivity'
 
 const authStore = useAuthStore()
+useInactivity(600000) // 10 minutos de inactividad
 
 const leftDrawerOpen = ref(false)
 const route = useRoute()

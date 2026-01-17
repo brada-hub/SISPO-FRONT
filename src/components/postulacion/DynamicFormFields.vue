@@ -1,125 +1,148 @@
 <template>
-  <div class="space-y-4">
-    <!-- DYNAMIC FIELDS -->
-    <div v-if="hasCampos" class="mb-6">
-      <div class="text-sm font-bold text-gray-600 uppercase mb-3 flex items-center gap-2">
-        <q-icon name="edit_note" size="xs" /> Información a Completar
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <template v-for="(campo, idx) in normalizedCampos" :key="idx">
-          <!-- TEXT -->
-          <q-input
-            v-if="campo.tipo === 'text' || campo.tipo === 'string'"
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            outlined
-            dense
-            bg-color="white"
-          />
-
-          <!-- NUMBER -->
-          <q-input
-            v-else-if="campo.tipo === 'number'"
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            type="number"
-            outlined
-            dense
-            bg-color="white"
-          />
-
-          <!-- DATE -->
-          <q-input
-            v-else-if="campo.tipo === 'date'"
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            type="date"
-            outlined
-            dense
-            stack-label
-            bg-color="white"
-          />
-
-          <!-- TEXTAREA -->
-          <q-input
-            v-else-if="campo.tipo === 'textarea'"
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            type="textarea"
-            rows="3"
-            outlined
-            dense
-            bg-color="white"
-            class="md:col-span-2"
-          />
-
-          <!-- SELECT -->
-          <q-select
-            v-else-if="campo.tipo === 'select'"
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            :options="campo.opciones || []"
-            outlined
-            dense
-            bg-color="white"
-            emit-value
-            map-options
-          />
-
-          <!-- DEFAULT: TEXT (fallback) -->
-          <q-input
-            v-else
-            :model-value="getRespuesta(campo.key)"
-            @update:model-value="updateRespuesta(campo.key, $event)"
-            :label="campo.label + (campo.required ? ' *' : '')"
-            outlined
-            dense
-            bg-color="white"
-          />
-        </template>
-      </div>
+  <div class="space-y-10 relative">
+    <!-- MULTIPLE INDICATOR BADGE -->
+    <div v-if="merito.permite_multiples" class="absolute -top-12 right-0">
+       <q-badge color="indigo-1" text-color="indigo-9" class="q-pa-sm rounded-lg border border-indigo-200">
+         <q-icon name="layers" class="mr-1" /> Múltiplos Permitidos
+       </q-badge>
     </div>
 
-    <!-- FILE UPLOADS -->
-    <div v-if="hasArchivos">
-      <div class="text-sm font-bold text-gray-600 uppercase mb-3 flex items-center gap-2">
-        <q-icon name="attach_file" size="xs" /> Archivos de Respaldo
+    <div v-if="merito.descripcion" class="text-xs text-gray-500 bg-blue-50/50 p-4 rounded-2xl italic border border-blue-100 flex items-start gap-2">
+      <q-icon name="help_outline" class="mt-1" color="blue" />
+      <span>{{ merito.descripcion }}</span>
+    </div>
+
+    <!-- ITERATE OVER RECORDS (Instances) -->
+    <div
+      v-for="(reg, rIdx) in merito.registros"
+      :key="rIdx"
+      class="record-card bg-white rounded-3xl border-2 border-gray-100 shadow-sm overflow-hidden relative"
+    >
+      <!-- RECORD HEADER / ACTIONS -->
+      <div class="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-100">
+         <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-lg">
+              {{ rIdx + 1 }}
+            </div>
+            <div class="text-xs font-black text-gray-600 uppercase tracking-widest">
+               Instancia de Mérito
+            </div>
+         </div>
+
+         <div class="flex items-center gap-2">
+            <!-- DUPLICATE BUTTON -->
+            <q-btn
+              v-if="merito.permite_multiples"
+              flat round dense color="teal" icon="content_copy" size="sm"
+              @click="store.duplicarRegistroMerito(merito.tipo_documento_id, rIdx)"
+            >
+              <q-tooltip>Duplicar datos de este registro</q-tooltip>
+            </q-btn>
+
+            <!-- DELETE BUTTON -->
+            <q-btn
+              v-if="merito.registros.length > 1"
+              flat round dense color="negative" icon="delete_sweep" size="sm"
+              @click="store.eliminarRegistroMerito(merito.tipo_documento_id, rIdx)"
+            >
+              <q-tooltip>Eliminar este bloque</q-tooltip>
+            </q-btn>
+         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div v-for="(archivo, idx) in normalizedArchivos" :key="idx" class="bg-white p-4 rounded-lg border">
-          <div class="text-sm font-medium text-gray-700 mb-2">
-            {{ archivo.label }}
-            <q-badge v-if="archivo.required" color="red" class="ml-2">Obligatorio</q-badge>
+      <div class="p-8 space-y-8">
+        <!-- 1. DYNAMIC TEXT FIELDS -->
+        <div v-if="normalizedCampos.length > 0">
+          <div class="text-[11px] font-black text-indigo-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
+            <q-icon name="history_edu" size="xs" /> Información Requerida
           </div>
-          <q-file
-            :model-value="getArchivo(archivo.key)"
-            @update:model-value="updateArchivo(archivo.key, $event)"
-            :label="'Subir ' + archivo.label"
-            outlined
-            dense
-            accept=".pdf,.jpg,.jpeg,.png"
-            max-file-size="10485760"
-          >
-            <template v-slot:prepend>
-              <q-icon name="cloud_upload" />
-            </template>
-          </q-file>
-          <div class="text-xs text-gray-400 mt-1">PDF, JPG o PNG. Máx 10MB</div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+            <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx">
+              <!-- SELECT -->
+              <q-select
+                v-if="campo.tipo === 'select'"
+                v-model="reg.respuestas[campo.key]"
+                :label="campo.label"
+                :options="campo.opciones || []"
+                outlined dense bg-color="white" emit-value map-options
+                :placeholder="campo.required ? 'Obligatorio' : ''"
+                class="custom-field"
+              />
+              <!-- DATE -->
+              <q-input
+                v-else-if="campo.tipo === 'date'"
+                v-model="reg.respuestas[campo.key]"
+                :label="campo.label"
+                type="date" outlined dense stack-label bg-color="white"
+                class="custom-field"
+              />
+              <!-- TEXTAREA -->
+              <q-input
+                v-else-if="campo.tipo === 'textarea'"
+                v-model="reg.respuestas[campo.key]"
+                :label="campo.label"
+                type="textarea" rows="3" outlined dense bg-color="white" class="md:col-span-2 custom-field"
+              />
+              <!-- DEFAULT (TEXT/NUMBER) -->
+              <q-input
+                v-else
+                v-model="reg.respuestas[campo.key]"
+                :label="campo.label"
+                :type="campo.tipo === 'number' ? 'number' : 'text'"
+                outlined dense bg-color="white"
+                class="custom-field"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. DYNAMIC FILE FIELDS -->
+        <div v-if="normalizedArchivos.length > 0">
+          <div class="text-[11px] font-black text-teal-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
+            <q-icon name="auto_awesome_motion" size="xs" /> Documentos de Respaldo
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div v-for="(archivo, aIdx) in normalizedArchivos" :key="aIdx" class="file-dropzone p-5 rounded-2xl border-2 border-dashed border-teal-100 bg-teal-50/20">
+              <div class="text-[10px] font-black text-teal-800 mb-3 flex justify-between uppercase tracking-wider">
+                {{ archivo.label }}
+                <q-badge v-if="archivo.required" color="red" class="q-px-sm" label="EXIGIDO" />
+              </div>
+              <q-file
+                v-model="reg.archivos[archivo.key]"
+                :label="'Pinche para subir ' + archivo.label"
+                outlined dense bg-color="white"
+                accept=".pdf,.jpg,.jpeg,.png"
+                max-file-size="10485760"
+                class="bg-white rounded-xl shadow-sm"
+              >
+                <template v-slot:prepend>
+                  <q-icon name="file_upload" color="teal-7" />
+                </template>
+                <template v-slot:file="{ file }">
+                  <div class="text-teal-900 text-[11px] font-black italic truncate">{{ file.name }}</div>
+                </template>
+              </q-file>
+              <div class="text-[9px] text-teal-400 mt-2 font-bold uppercase tracking-tighter">Formato: PDF/JPG/PNG • Máximo: 10MB</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Empty State -->
-    <div v-if="!hasCampos && !hasArchivos" class="text-center py-8 text-gray-400">
-      <q-icon name="check_circle" size="lg" color="green" />
-      <div class="mt-2">Este requisito no requiere información adicional.</div>
+    <!-- ADD ANOTHER BUTTON (PROMINENT) -->
+    <div v-if="merito.permite_multiples" class="flex flex-col items-center gap-3 pt-6">
+       <q-btn
+         unelevated
+         color="indigo-7"
+         icon="add_circle"
+         label="AÑADIR OTRO REGISTRO"
+         size="lg"
+         class="rounded-2xl px-12 font-black shadow-xl shadow-indigo-200 animate-bounce-slow"
+         @click="store.agregarRegistroMerito(merito.tipo_documento_id)"
+       />
+       <div class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest italic">
+         Puedes añadir cuántos registros sean necesarios para este mérito.
+       </div>
     </div>
   </div>
 </template>
@@ -139,86 +162,60 @@ const store = usePostulacionStore()
 
 // Normalize campos to handle different data structures
 const normalizedCampos = computed(() => {
-  const campos = props.merito.campos
-  if (!campos) return []
-
-  // If it's an array
+  const campos = props.merito.campos || []
   if (Array.isArray(campos)) {
     return campos.map((c, i) => ({
-      key: c.key || c.label || c.nombre || c.name || c.id || `campo_${i}`,
+      key: c.key || c.id || c.name || `campo_${i}`,
       label: c.label || c.nombre || c.name || `Campo ${i + 1}`,
       tipo: c.tipo || c.type || 'text',
       required: c.requerido || c.required || false,
       opciones: c.opciones || c.options || [],
     }))
   }
-
-  // If it's an object, convert to array
-  if (typeof campos === 'object') {
-    return Object.keys(campos).map(key => ({
-      key: key,
-      label: campos[key].label || campos[key].nombre || key,
-      tipo: campos[key].tipo || campos[key].type || 'text',
-      required: campos[key].requerido || campos[key].required || false,
-      opciones: campos[key].opciones || campos[key].options || [],
-    }))
-  }
-
   return []
 })
 
-// Normalize archivos to handle different data structures
+// Normalize archivos to handle multiple file inputs per merit
 const normalizedArchivos = computed(() => {
-  const archivos = props.merito.config_archivos
-  if (!archivos) return []
-
-  // If it's an array
+  const archivos = props.merito.config_archivos || []
   if (Array.isArray(archivos)) {
     return archivos.map((a, i) => ({
-      key: a.id || a.nombre || a.name || `archivo_${i}`,
-      label: a.nombre || a.label || a.name || `Archivo ${i + 1}`,
-      required: a.obligatorio || a.required || false,
+      key: a.id || a.key || `archivo_${i}`,
+      label: a.label || a.nombre || a.name || `Archivo ${i + 1}`,
+      required: a.requerido || a.obligatorio || a.required || false,
     }))
   }
-
-  // If it's an object, convert to array
-  if (typeof archivos === 'object') {
-    return Object.keys(archivos).map(key => ({
-      key: key,
-      label: archivos[key].nombre || archivos[key].label || key,
-      required: archivos[key].obligatorio || archivos[key].required || false,
-    }))
-  }
-
   return []
 })
-
-const hasCampos = computed(() => normalizedCampos.value.length > 0)
-const hasArchivos = computed(() => normalizedArchivos.value.length > 0)
-
-// Get respuesta value
-const getRespuesta = (key) => {
-  return props.merito.respuestas?.[key] || ''
-}
-
-// Get archivo value
-const getArchivo = (key) => {
-  return props.merito.archivos?.[key] || null
-}
-
-// Update respuesta via store mutation
-const updateRespuesta = (key, value) => {
-  const meritoInStore = store.meritos.find(m => m.tipo_documento_id === props.merito.tipo_documento_id)
-  if (meritoInStore) {
-    meritoInStore.respuestas[key] = value
-  }
-}
-
-// Update archivo via store mutation
-const updateArchivo = (key, file) => {
-  const meritoInStore = store.meritos.find(m => m.tipo_documento_id === props.merito.tipo_documento_id)
-  if (meritoInStore) {
-    meritoInStore.archivos[key] = file
-  }
-}
 </script>
+
+<style scoped>
+.record-card {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.record-card:hover {
+  border-color: #66339922;
+  box-shadow: 0 20px 40px -15px rgba(102, 51, 153, 0.1);
+}
+
+.custom-field :deep(.q-field__inner) {
+  border-radius: 14px;
+}
+
+.file-dropzone {
+  transition: all 0.3s ease;
+}
+.file-dropzone:hover {
+  background: rgba(0, 153, 153, 0.08);
+  border-color: #00999944;
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s infinite;
+}
+
+@keyframes bounce-slow {
+  0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+  50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+</style>

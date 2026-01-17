@@ -12,10 +12,11 @@
       :loading="loading"
       flat
       bordered
+      class="rounded-2xl shadow-sm overflow-hidden"
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-primary text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -53,6 +54,14 @@
               map-options
               :rules="[val => !!val || 'El departamento es requerido']"
             />
+            <q-input
+              v-model="form.sigla"
+              label="Sigla (Ej: CBBA, LPZ, MULT)"
+              outlined
+              hint="Se usará para generar el código de convocatoria"
+              class="text-uppercase"
+              @update:model-value="manualSigla = true"
+            />
           </q-form>
         </q-card-section>
 
@@ -76,16 +85,31 @@ const loading = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
 const isEdit = ref(false)
-const form = ref({ id: null, nombre: '', departamento: '' })
-const departamentos = [
-  'La Paz', 'Cochabamba', 'Santa Cruz', 'Oruro', 'Potosí',
-  'Chuquisaca', 'Tarija', 'Beni', 'Pando', 'Nacional'
-]
+const manualSigla = ref(false)
+const form = ref({ id: null, nombre: '', departamento: '', sigla: '' })
+
+const helperGenerarSigla = (val) => {
+  if (!val) return ''
+  const words = val.toUpperCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9\s]/g, "")
+    .split(/\s+/)
+    .filter(w => w.length > 3)
+  if (words.length === 0) return val.substring(0, 3).toUpperCase()
+  if (words.length === 1) return words[0].substring(0, 3)
+  return words.slice(0, 3).map(w => w.substring(0, 3)).join('-')
+}
+
+import { watch } from 'vue'
+watch(() => form.value.nombre, (newVal) => {
+  if (!manualSigla.value && !isEdit.value) form.value.sigla = helperGenerarSigla(newVal)
+})
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
   { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left' },
-  { name: 'departamento', label: 'Departamento', field: 'departamento', sortable: true, align: 'left' },
+  { name: 'sigla', label: 'Sigla', field: 'sigla', sortable: true, align: 'left' },
+  { name: 'departamento', label: 'Departamento / Sede', field: 'departamento', sortable: true, align: 'left' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]
 
@@ -107,9 +131,10 @@ const openDialog = (item = null) => {
     form.value = { ...item }
   } else {
     isEdit.value = false
-    form.value = { id: null, nombre: '', departamento: '' }
+    form.value = { id: null, nombre: '', departamento: '', sigla: '' }
   }
   dialog.value = true
+  manualSigla.value = false
 }
 
 const save = async () => {

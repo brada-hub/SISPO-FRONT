@@ -12,10 +12,11 @@
       :loading="loading"
       flat
       bordered
+      class="rounded-2xl shadow-sm overflow-hidden"
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-primary text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -86,9 +87,8 @@ const isEdit = ref(false)
 const form = ref({ id: null, nombre: '', descripcion: '', activo: true })
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-  { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left' },
-  { name: 'descripcion', label: 'Descripción', field: 'descripcion', align: 'left' },
+  { name: 'nombre', label: 'Nombre del Rol', field: 'nombre', sortable: true, align: 'left' },
+  { name: 'descripcion', label: 'Descripción de Acceso', field: 'descripcion', align: 'left' },
   { name: 'activo', label: 'Estado', field: 'activo', align: 'center' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]

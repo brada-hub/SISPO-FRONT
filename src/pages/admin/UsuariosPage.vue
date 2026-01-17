@@ -12,10 +12,11 @@
       :loading="loading"
       flat
       bordered
+      class="rounded-2xl shadow-sm overflow-hidden"
     >
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-primary text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -145,9 +146,8 @@ const form = ref({
 })
 
 const columns = [
-  { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-  { name: 'nombre_completo', label: 'Funcionario', align: 'left' },
-  { name: 'rol', label: 'Rol / Permisos', align: 'left' },
+  { name: 'nombre_completo', label: 'Funcionario / Usuario', align: 'left' },
+  { name: 'rol', label: 'Rol Asignado', align: 'left' },
   { name: 'activo', label: 'Estado', align: 'center' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]
