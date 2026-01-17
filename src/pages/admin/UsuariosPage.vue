@@ -95,17 +95,11 @@
               />
             </div>
 
-            <q-input
-              v-model="form.password"
-              :label="isEdit ? 'Nueva Contraseña (dejar vacío para no cambiar)' : 'Contraseña'"
-              type="password"
-              outlined
-              :rules="isEdit ? [] : [val => !!val || 'Requerido']"
-            />
-
-            <div class="flex gap-4">
-              <q-toggle v-model="form.activo" label="Usuario Activo" />
-              <q-toggle v-model="form.must_change_password" label="Forzar cambio de contraseña" />
+            <div class="flex gap-4 items-center">
+              <q-toggle v-show="isEdit" v-model="form.activo" label="Usuario Activo" />
+              <div v-if="!isEdit" class="text-caption text-gray-500 italic">
+                La contraseña inicial será el número de CI por defecto.
+              </div>
             </div>
           </q-form>
         </q-card-section>
