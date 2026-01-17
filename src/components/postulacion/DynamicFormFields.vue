@@ -82,6 +82,8 @@
                 v-model="reg.respuestas[campo.key]"
                 :label="campo.label"
                 type="textarea" rows="3" outlined dense bg-color="white" class="md:col-span-2 custom-field"
+                style="text-transform: uppercase"
+                @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
               />
               <!-- DEFAULT (TEXT/NUMBER) -->
               <q-input
@@ -91,6 +93,8 @@
                 :type="campo.tipo === 'number' ? 'number' : 'text'"
                 outlined dense bg-color="white"
                 class="custom-field"
+                style="text-transform: uppercase"
+                @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
               />
             </div>
           </div>

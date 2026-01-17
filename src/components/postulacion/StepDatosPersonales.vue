@@ -61,19 +61,23 @@
             <q-input
               v-model="form.nombres"
               label="NOMBRES *"
-              placeholder="Juan"
+              placeholder="JUAN"
               outlined
               stack-label
               bg-color="gray-1"
+              style="text-transform: uppercase"
+              @update:model-value="val => form.nombres = val.toUpperCase()"
               :rules="[val => !!val || 'El nombre es obligatorio']"
             />
             <q-input
               v-model="form.apellidos"
               label="APELLIDOS *"
-              placeholder="Pérez García"
+              placeholder="PÉREZ GARCÍA"
               outlined
               stack-label
               bg-color="gray-1"
+              style="text-transform: uppercase"
+              @update:model-value="val => form.apellidos = val.toUpperCase()"
               :rules="[val => !!val || 'Los apellidos son obligatorios']"
             />
 
@@ -85,6 +89,8 @@
                  borderless
                  stack-label
                  class="col-span-2 px-3 border-r"
+                 style="text-transform: uppercase"
+                 @update:model-value="val => form.ci = val.toUpperCase()"
                  :rules="[val => !!val || 'CI requerido']"
                />
                <q-select
@@ -105,16 +111,20 @@
               outlined
               stack-label
               accept=".pdf,image/*"
+              max-file-size="2097152"
               class="modern-file-input"
-              :rules="[val => !!val || 'Adjunto requerido']"
+              :rules="[
+                val => !!val || 'Adjunto requerido',
+                val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
+              ]"
             >
               <template v-slot:prepend>
                 <q-icon name="cloud_upload" color="primary" />
               </template>
             </q-file>
 
-            <q-input v-model="form.nacionalidad" label="NACIONALIDAD" outlined stack-label placeholder="Boliviana" />
-            <q-input v-model="form.direccion_domicilio" label="DIRECCIÓN DE DOMICILIO" outlined stack-label placeholder="Calle, Av, Zona..." />
+            <q-input v-model="form.nacionalidad" label="NACIONALIDAD" outlined stack-label placeholder="BOLIVIANA" style="text-transform: uppercase" @update:model-value="val => form.nacionalidad = val.toUpperCase()" />
+            <q-input v-model="form.direccion_domicilio" label="DIRECCIÓN DE DOMICILIO" outlined stack-label placeholder="CALLE, AV, ZONA..." style="text-transform: uppercase" @update:model-value="val => form.direccion_domicilio = val.toUpperCase()" />
 
             <q-input
                v-model="form.celular"
@@ -148,7 +158,7 @@
                  <div class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Referencia Personal</div>
               </div>
               <q-input v-model="form.ref_personal_celular" label="NÚMERO CELULAR" outlined dense stack-label bg-color="white" />
-              <q-input v-model="form.ref_personal_parentesco" label="PARENTESCO" outlined dense stack-label bg-color="white" placeholder="Ej: Hermano, Amigo..." />
+              <q-input v-model="form.ref_personal_parentesco" label="PARENTESCO" outlined dense stack-label bg-color="white" placeholder="EJ: HERMANO, AMIGO..." style="text-transform: uppercase" @update:model-value="val => form.ref_personal_parentesco = val.toUpperCase()" />
             </div>
 
             <div class="bg-gray-50/50 p-6 rounded-3xl border border-dashed border-gray-200 space-y-4">
@@ -160,13 +170,15 @@
               <q-input
                 v-model="form.ref_laboral_detalle"
                 label="EMPRESA / RELACIÓN"
-                placeholder="Ej: Ex-Jefe en Banco Unión"
+                placeholder="EJ: EX-JEFE EN BANCO UNIÓN"
                 type="textarea"
                 rows="2"
                 outlined
                 dense
                 stack-label
                 bg-color="white"
+                style="text-transform: uppercase"
+                @update:model-value="val => form.ref_laboral_detalle = val.toUpperCase()"
               />
             </div>
           </div>
@@ -192,14 +204,18 @@
                 outlined
                 stack-label
                 accept=".pdf"
+                max-file-size="2097152"
                 class="现代-file"
-                :rules="[val => !!val || 'El CV es obligatorio']"
+                :rules="[
+                  val => !!val || 'El CV es obligatorio',
+                  val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
+                ]"
               >
                 <template v-slot:prepend>
                   <q-icon name="description" color="primary" />
                 </template>
               </q-file>
-              <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 10 MB</div>
+              <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 2 MB</div>
             </div>
 
             <div class="modern-upload-group">
@@ -209,13 +225,17 @@
                 outlined
                 stack-label
                 accept=".pdf"
-                :rules="[val => !!val || 'La carta es obligatoria']"
+                max-file-size="2097152"
+                :rules="[
+                  val => !!val || 'La carta es obligatoria',
+                  val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
+                ]"
               >
                 <template v-slot:prepend>
                   <q-icon name="mail" color="primary" />
                 </template>
               </q-file>
-              <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 5 MB</div>
+              <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 2 MB</div>
             </div>
           </div>
         </section>

@@ -172,11 +172,23 @@ const handleSubmit = async () => {
     codigoSeguimiento.value = result.data.codigo_seguimiento
     cantidadCargos.value = result.data.cantidad_cargos || 1
     showSuccess.value = true
-  } catch {
-    $q.notify({
-      type: 'negative',
-      message: 'Error al enviar la postulación. Por favor, intenta de nuevo.',
-    })
+  } catch (error) {
+    if (error.response?.status === 422 && error.response.data?.errors) {
+      const errors = error.response.data.errors
+      const messages = Object.values(errors).flat().join('<br>')
+      $q.notify({
+        type: 'negative',
+        message: '<strong>Errores de Validación:</strong><br>' + messages,
+        html: true,
+        multiLine: true,
+        timeout: 10000
+      })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'Error al enviar la postulación. Por favor, intenta de nuevo.',
+      })
+    }
   }
 }
 
