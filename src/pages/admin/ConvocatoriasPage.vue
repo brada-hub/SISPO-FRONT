@@ -67,16 +67,20 @@
     <q-dialog v-model="dialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
       <q-card class="bg-gray-100 flex flex-col no-wrap">
         <!-- HEADER FIXED -->
-        <q-toolbar style="background-color: #663399; color: white;" class="q-py-md">
-          <q-btn flat round dense icon="close" v-close-popup />
-          <q-toolbar-title class="text-weight-bold">
-            {{ isViewMode ? 'VISTA DE AFICHE' : (isEdit ? 'EDITANDO CONVOCATORIA' : 'NUEVA CONVOCATORIA DE PERSONAL') }}
-          </q-toolbar-title>
+        <q-toolbar style="background-color: #663399; color: white;" class="q-py-md shadow-2 relative" :class="$q.screen.lt.md ? 'flex-col items-center gap-4' : ''">
+          <div class="flex items-center gap-2">
+            <q-btn flat round dense icon="close" v-close-popup />
+            <q-toolbar-title class="text-weight-bold text-subtitle1">
+              {{ isViewMode ? 'VISTA DE AFICHE' : (isEdit ? 'EDITANDO CONVOCATORIA' : 'NUEVA CONVOCATORIA') }}
+            </q-toolbar-title>
+          </div>
 
-          <div class="flex gap-2">
-            <q-btn v-if="isViewMode || isEdit" label="Imagen (HD)" color="teal" unelevated icon="image" @click="downloadImage" rounded />
-            <q-btn v-if="isViewMode || isEdit" label="PDF" color="deep-orange" unelevated icon="picture_as_pdf" @click="downloadPDF" rounded />
-            <q-btn v-if="!isViewMode" label="Publicar / Guardar" color="white" text-color="primary" unelevated icon="rocket_launch" :loading="saving" @click="save" class="q-px-lg shadow-2" rounded />
+          <q-space v-if="!$q.screen.lt.md" />
+
+          <div class="flex gap-2" :class="$q.screen.lt.md ? 'w-full justify-around' : ''">
+            <q-btn v-if="isViewMode || isEdit" :label="$q.screen.lt.sm ? '' : 'Imagen (HD)'" color="teal" unelevated icon="image" @click="downloadImage" rounded />
+            <q-btn v-if="isViewMode || isEdit" :label="$q.screen.lt.sm ? '' : 'PDF'" color="deep-orange" unelevated icon="picture_as_pdf" @click="downloadPDF" rounded />
+            <q-btn v-if="!isViewMode" label="Publicar" color="white" text-color="primary" unelevated icon="rocket_launch" :loading="saving" @click="save" rounded />
           </div>
         </q-toolbar>
 
@@ -206,6 +210,8 @@
                           placeholder="Ejem: en Ciencias de la Ingeniería..."
                           dense
                           outlined
+                          type="textarea"
+                          autogrow
                           bg-color="white"
                           class="rounded-lg shadow-inner"
                           input-class="text-[10px] font-bold text-primary"
@@ -222,31 +228,31 @@
           </div>
 
           <!-- RIGHT: OFFICIAL POSTER PREVIEW (AFICHE) -->
-          <div :class="isViewMode ? 'col-12 flex justify-center' : 'col-12 col-md-8 flex flex-col'">
-              <div class="afiche-preview-wrapper" :class="isViewMode ? '' : 'sticky top-0'">
-                <div v-if="!isViewMode" class="bg-teal-700 p-2 flex items-center justify-between text-white rounded-t-lg" style="width: 794px;">
-                   <div class="flex items-center gap-2">
-                      <q-icon name="visibility" size="xs" />
-                      <span class="font-bold text-[10px] uppercase tracking-widest">Vista Previa Afiche Oficial</span>
-                   </div>
-                   <q-badge color="white" text-color="teal-9" class="q-px-sm text-[9px] font-black">CARTA / LETTER</q-badge>
+          <div :class="isViewMode ? 'col-12 flex flex-col items-center bg-gray-800' : 'col-12 col-md-8 flex flex-col'"
+               :style="isViewMode ? 'min-height: calc(100vh - 80px)' : ''">
+              <div
+                ref="previewContainer"
+                class="afiche-preview-wrapper p-4 md:p-10"
+                :class="isViewMode ? 'w-full flex justify-center' : 'sticky top-0'"
+              >
+                <!-- Scaling wrap -->
+                <div :style="previewStyle">
+                  <AficheV2
+                    id="afiche-capture"
+                    :titulo="form.titulo"
+                    :descripcion="form.descripcion"
+                    :ofertas="form.ofertas"
+                    :requisitos-ids="form.config_requisitos_ids"
+                    :requisitos-afiche="form.requisitos_afiche"
+                    :fecha-cierre="form.fecha_cierre"
+                    :hora-limite="form.hora_limite"
+                    :catalog-sedes="catalogSedes"
+                    :catalog-cargos="catalogCargos"
+                    :catalog-requisitos="catalogRequisitos"
+                    :font-size-scale="aficheFontScale"
+                    :qr-value="qrValue"
+                  />
                 </div>
-
-                <AficheV2
-                  id="afiche-capture"
-                  :titulo="form.titulo"
-                  :descripcion="form.descripcion"
-                  :ofertas="form.ofertas"
-                  :requisitos-ids="form.config_requisitos_ids"
-                  :requisitos-afiche="form.requisitos_afiche"
-                  :fecha-cierre="form.fecha_cierre"
-                  :hora-limite="form.hora_limite"
-                  :catalog-sedes="catalogSedes"
-                  :catalog-cargos="catalogCargos"
-                  :catalog-requisitos="catalogRequisitos"
-                  :font-size-scale="aficheFontScale"
-                  :qr-value="qrValue"
-                />
             </div>
           </div>
         </q-card-section>
@@ -337,6 +343,31 @@ const dialog = ref(false)
 const saving = ref(false)
 const isEdit = ref(false)
 const isViewMode = ref(false)
+const previewContainer = ref(null)
+const containerWidth = ref(800)
+
+const previewStyle = computed(() => {
+  // 794 is the base width of AficheV2
+  // We add some margin and padding in our calculation (target ~850px)
+  const scale = containerWidth.value < 850 ? (containerWidth.value / 850) : 1
+  return {
+    transform: `scale(${scale})`,
+    transformOrigin: 'top center',
+    width: '794px',
+    margin: '0 auto',
+    height: 'auto'
+  }
+})
+
+const updateWidth = () => {
+  if (previewContainer.value) {
+    containerWidth.value = previewContainer.value.offsetWidth
+  }
+}
+
+watch(dialog, (val) => {
+  if (val) setTimeout(updateWidth, 100)
+})
 
 const builderMode = ref('sede')
 const buildOne = ref(null)
@@ -389,7 +420,7 @@ const formatDate = (dateStr) => {
 }
 
 
-const qrValue = computed(() => form.value.id ? `https://unitepc.edu.bo/sispo/postular/${form.value.id}` : 'https://unitepc.edu.bo/sispo/postular')
+const qrValue = computed(() => form.value.id ? `https://postulacionesunitepc.xpertiaplus.com/#/postular/${form.value.id}` : 'https://postulacionesunitepc.xpertiaplus.com/#/postular')
 
 const columns = [
   { name: 'codigo_interno', label: 'Código Interno', field: 'codigo_interno', sortable: true, align: 'left' },
@@ -687,7 +718,10 @@ const confirmDelete = (item) => {
   })
 }
 
-onMounted(loadData)
+onMounted(() => {
+  window.addEventListener('resize', updateWidth)
+  loadData()
+})
 </script>
 
 <style scoped>

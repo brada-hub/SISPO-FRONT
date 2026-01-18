@@ -224,10 +224,10 @@ const adminMenuItems = computed(() => {
   const items = [
     { label: 'Dashboard', icon: 'dashboard', to: '/admin' },
     { label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
+    { label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
     { label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
     { label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
     { label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
-    { label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
   ]
 
   // Solo Administradores ven Usuarios y Roles

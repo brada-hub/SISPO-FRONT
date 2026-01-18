@@ -10,7 +10,7 @@ const routes = [
         component: () => import('pages/PortalPage.vue')
       },
       {
-        path: 'postular',
+        path: 'postular/:id?',
         name: 'postular',
         component: () => import('pages/PortalPostulacion.vue')
       },

@@ -145,6 +145,18 @@
                   Detalle: {{ postulacion?.postulante?.ref_laboral_detalle }}
                 </td>
               </tr>
+              <tr>
+                <td class="label">PRETENSIÓN SALARIAL:</td>
+                <td class="value font-bold text-teal-8">
+                  {{ postulacion?.pretension_salarial ? `${Number(postulacion.pretension_salarial).toLocaleString('es-BO', { minimumFractionDigits: 2 })} Bs.` : '---' }}
+                </td>
+              </tr>
+              <tr>
+                <td class="label">POR QUÉ EL CARGO:</td>
+                <td class="value italic">
+                  {{ postulacion?.porque_cargo || '---' }}
+                </td>
+              </tr>
             </table>
           </div>
 
@@ -321,7 +333,8 @@ const filteredMeritos = computed(() => {
 
 const getFileUrl = (path) => {
   if (!path) return ''
-  const baseUrl = api.defaults.baseURL.replace('/api', '')
+  // Usamos regex para asegurar que solo borramos el /api del final
+  const baseUrl = api.defaults.baseURL.replace(/\/api$/, '')
   return `${baseUrl}/storage/${path}`
 }
 

@@ -1,15 +1,20 @@
 <template>
   <div class="space-y-10 relative">
-    <!-- MULTIPLE INDICATOR BADGE -->
-    <div v-if="merito.permite_multiples" class="absolute -top-12 right-0">
+    <div v-if="merito.descripcion" class="text-xs text-gray-500 bg-blue-50/50 p-4 rounded-2xl italic border border-blue-100 flex items-center justify-between gap-4">
+      <div class="flex items-center gap-2">
+        <q-icon name="help_outline" color="blue" />
+        <span>{{ merito.descripcion }}</span>
+      </div>
+      <q-badge v-if="merito.permite_multiples" color="indigo-1" text-color="indigo-9" class="q-pa-sm rounded-lg border border-indigo-200 shrink-0">
+        <q-icon name="layers" class="mr-1" /> Múltiplos Permitidos
+      </q-badge>
+    </div>
+
+    <!-- Si no hay descripción pero sí permite múltiples, mostramos solo el badge elegantemente -->
+    <div v-else-if="merito.permite_multiples" class="flex justify-end">
        <q-badge color="indigo-1" text-color="indigo-9" class="q-pa-sm rounded-lg border border-indigo-200">
          <q-icon name="layers" class="mr-1" /> Múltiplos Permitidos
        </q-badge>
-    </div>
-
-    <div v-if="merito.descripcion" class="text-xs text-gray-500 bg-blue-50/50 p-4 rounded-2xl italic border border-blue-100 flex items-start gap-2">
-      <q-icon name="help_outline" class="mt-1" color="blue" />
-      <span>{{ merito.descripcion }}</span>
     </div>
 
     <!-- ITERATE OVER RECORDS (Instances) -->
@@ -56,7 +61,7 @@
           <div class="text-[11px] font-black text-indigo-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
             <q-icon name="history_edu" size="xs" /> Información Requerida
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx">
               <!-- SELECT -->
               <q-select
@@ -105,7 +110,7 @@
           <div class="text-[11px] font-black text-teal-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
             <q-icon name="auto_awesome_motion" size="xs" /> Documentos de Respaldo
           </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div v-for="(archivo, aIdx) in normalizedArchivos" :key="aIdx" class="file-dropzone p-5 rounded-2xl border-2 border-dashed border-teal-100 bg-teal-50/20">
               <div class="text-[10px] font-black text-teal-800 mb-3 flex justify-between uppercase tracking-wider">
                 {{ archivo.label }}

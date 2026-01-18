@@ -104,6 +104,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         sede_nombre: sede.nombre,
         vacantes: cargo.vacantes,
         fecha_cierre: cargo.convocatoria?.fecha_cierre || '',
+        pretension_salarial: null,
+        porque_cargo: '',
       })
     }
   }
@@ -219,12 +221,15 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       Object.keys(datosPersonales.value).forEach(key => {
         const value = datosPersonales.value[key]
         if (value !== null && value !== '') {
-          if (value instanceof File) {
-            formData.append(key, value)
-          } else {
-            formData.append(key, value)
-          }
+          formData.append(key, value)
         }
+      })
+
+      // Add per-cargo details
+      cargosSeleccionados.value.forEach((cargo, idx) => {
+        formData.append(`ofertas_detalle[${idx}][oferta_id]`, cargo.oferta_id)
+        formData.append(`ofertas_detalle[${idx}][pretension_salarial]`, cargo.pretension_salarial || 0)
+        formData.append(`ofertas_detalle[${idx}][porque_cargo]`, cargo.porque_cargo || '')
       })
 
       // Add merits (Step 3) - Flattening records

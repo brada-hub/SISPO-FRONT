@@ -1,45 +1,51 @@
 <template>
-  <q-page class="portal-root min-h-screen pb-10">
+  <q-page class="portal-root min-h-screen">
     <!-- BACKGROUND PATTERN -->
     <div class="portal-bg-pattern"></div>
 
     <!-- HEADER SECTION -->
-    <header class="portal-header shadow-2xl relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-br from-[#4a2371] via-[#663399] to-[#007a7a]"></div>
+    <header class="portal-header shadow-lg relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-r from-[#4a2371] via-[#2c4e91] to-[#009b9b]"></div>
 
       <!-- DECORATIVE ELEMENTS -->
-      <div class="absolute -top-24 -left-24 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse"></div>
-      <div class="absolute -bottom-24 -right-24 w-80 h-80 bg-teal-400/10 rounded-full blur-2xl animate-pulse" style="animation-delay: 1s;"></div>
+      <div class="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/5 to-transparent"></div>
+      <div class="absolute -top-24 -left-24 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl"></div>
 
-      <div class="relative z-10 py-10 px-6 max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-        <div class="text-center md:text-left">
-          <img src="~assets/logo_unitepc.png" class="logo-animation mb-4" style="width: 220px;" />
-          <h1 class="text-3xl lg:text-4xl font-black text-white tracking-tighter uppercase mb-2">
-            Sistema de <span class="text-teal-300">Postulación</span>
-          </h1>
-          <p class="text-white/70 font-medium tracking-widest text-sm">UNITEPC - Convocatorias de Personal</p>
-        </div>
-
-        <div class="hidden lg:flex glass-info-card p-5 rounded-2xl border border-white/10 backdrop-blur-md items-center gap-4">
-          <div class="p-3 bg-teal-400/20 rounded-xl">
-            <q-icon name="stars" color="teal-2" size="md" />
+      <div class="relative z-10 py-12 px-6 max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+          <div class="text-center md:text-left">
+            <div class="flex items-center gap-3 mb-4 justify-center md:justify-start">
+               <q-icon name="verified" color="teal-3" size="sm" class="opacity-80" />
+               <span class="text-white/60 text-[10px] font-black uppercase tracking-[.3em]">Proceso Oficial</span>
+            </div>
+            <h1 class="text-4xl lg:text-5xl font-black text-white tracking-tighter uppercase mb-4 leading-none">
+              Formulario de <span class="text-teal-300">Postulación</span>
+            </h1>
+            <p class="text-white/70 font-bold max-w-xl text-sm leading-relaxed">
+              Complete la información requerida de manera clara y precisa para participar en nuestras convocatorias vigentes.
+            </p>
           </div>
-          <div class="text-white">
-            <div class="font-bold text-sm">Talento UNITEPC</div>
-            <div class="text-[11px] text-white/60">Únete a nuestra prestigiosa comunidad académica.</div>
+
+          <div class="hidden lg:flex glass-info-card p-6 rounded-3xl border border-white/20 backdrop-blur-xl items-center gap-5 shadow-2xl">
+            <div class="p-4 bg-teal-400/20 rounded-2xl shadow-inner">
+              <q-icon name="auto_awesome" color="teal-2" size="md" />
+            </div>
+            <div class="text-white">
+              <div class="font-black text-lg leading-tight">Talento UNITEPC</div>
+              <div class="text-[10px] text-teal-200/60 font-medium uppercase tracking-widest mt-1">Convocatoria de Personal</div>
+            </div>
           </div>
         </div>
       </div>
     </header>
 
     <!-- PROGRESS STEPPER -->
-    <main class="max-w-7xl mx-auto px-4 -mt-8 relative z-20">
-      <div class="glass-stepper-container rounded-3xl shadow-3xl bg-white/95 backdrop-blur-xl border border-white/20">
+    <main class="relative z-10 w-full bg-white min-h-[calc(100vh-200px)] pb-20">
+      <div class="glass-stepper-container w-full border-t border-gray-200">
         <q-stepper
           v-model="currentStep"
           flat
           animated
-          header-nav
           alternative-labels
           color="primary"
           active-color="primary"
@@ -214,8 +220,7 @@ const resetAndStart = () => {
 }
 
 .portal-header {
-  border-bottom-left-radius: 40px;
-  border-bottom-right-radius: 40px;
+  border-radius: 0;
 }
 
 .logo-animation {
@@ -228,7 +233,12 @@ const resetAndStart = () => {
 }
 
 .glass-stepper-container {
-  box-shadow: 0 30px 60px -12px rgba(0,0,0,0.1);
+  /* Sombre sutil */
+  box-shadow: 0 -5px 20px rgba(0,0,0,0.02);
+}
+
+:deep(.q-stepper) {
+  width: 100%;
 }
 
 :deep(.q-stepper__header) {

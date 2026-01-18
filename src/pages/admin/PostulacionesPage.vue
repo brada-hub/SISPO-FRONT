@@ -110,7 +110,7 @@
         <div class="col-12 col-sm-2">
           <q-select
             v-model="filterEstado"
-            :options="['enviada', 'en_revision', 'validada', 'observada', 'rechazada']"
+            :options="statusOptions"
             label="Estado"
             dense
             outlined
@@ -141,7 +141,7 @@
         </div>
 
         <!-- Filter Cargo -->
-        <div class="col-12 col-sm-3">
+        <div class="col-12 col-sm-2">
           <q-select
             v-model="filterCargo"
             :options="uniqueCargos"
@@ -153,6 +153,32 @@
             stack-label
             bg-color="white"
             class="filter-select"
+          />
+        </div>
+
+        <!-- Filter Salary Range -->
+        <div class="col-12 col-sm-3 flex items-center gap-2">
+          <q-input
+            v-model.number="filterSalarioMin"
+            label="Sueldo Mín."
+            type="number"
+            dense
+            outlined
+            rounded
+            bg-color="white"
+            stack-label
+            class="filter-select flex-1"
+          />
+          <q-input
+            v-model.number="filterSalarioMax"
+            label="Sueldo Máx."
+            type="number"
+            dense
+            outlined
+            rounded
+            bg-color="white"
+            stack-label
+            class="filter-select flex-1"
           />
         </div>
 
@@ -209,11 +235,17 @@
         </q-td>
       </template>
 
+      <template v-slot:body-cell-pretension_salarial="props">
+        <q-td :props="props" class="text-center font-bold text-teal-9">
+          {{ props.row.pretension_salarial ? 'Bs. ' + Number(props.row.pretension_salarial).toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '-' }}
+        </q-td>
+      </template>
+
       <template v-slot:body-cell-estado="props">
          <q-td :props="props" class="text-center">
             <q-select
               v-model="props.row.estado"
-              :options="['enviada', 'en_revision', 'validada', 'observada', 'rechazada']"
+              :options="statusOptions"
               dense
               borderless
               emit-value
@@ -227,7 +259,7 @@
             >
               <template v-slot:selected>
                 <div class="text-[10px] font-black uppercase text-white px-2">
-                  {{ props.row.estado }}
+                  {{ statusLabels[props.row.estado] || props.row.estado }}
                 </div>
               </template>
             </q-select>
@@ -265,18 +297,33 @@ const rows = ref([])
 const convocatorias = ref([])
 const selectedConvocatoria = ref(null)
 const loading = ref(false)
+const statusLabels = {
+  enviada: 'Postulado',
+  en_revision: 'En Evaluación',
+  validada: 'Pre-seleccionado',
+  observada: 'Con Observación',
+  rechazada: 'No Seleccionado'
+}
+const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
+  label,
+  value
+}))
 
 // Filters
 const filterSearch = ref('')
 const filterEstado = ref(null)
 const filterSede = ref(null)
 const filterCargo = ref(null)
+const filterSalarioMin = ref(null)
+const filterSalarioMax = ref(null)
 
 const clearFilters = () => {
   filterSearch.value = ''
   filterEstado.value = null
   filterSede.value = null
   filterCargo.value = null
+  filterSalarioMin.value = null
+  filterSalarioMax.value = null
 }
 
 const uniqueSedes = computed(() => {
@@ -308,6 +355,12 @@ const filteredRows = computed(() => {
     // Cargo filter
     if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
 
+    // Salary Min filter
+    if (filterSalarioMin.value !== null && filterSalarioMin.value !== '' && (row.pretension_salarial || 0) < filterSalarioMin.value) return false
+
+    // Salary Max filter
+    if (filterSalarioMax.value !== null && filterSalarioMax.value !== '' && (row.pretension_salarial || 0) > filterSalarioMax.value) return false
+
     return true
   })
 })
@@ -324,6 +377,7 @@ const columns = [
   { name: 'postulante', label: 'Postulante', field: row => row.postulante?.nombres, sortable: true, align: 'left' },
   { name: 'cargo', label: 'Cargo / Sede', field: row => row.oferta?.cargo?.nombre, sortable: true, align: 'left' },
   { name: 'fecha_postulacion', label: 'Fecha', field: 'fecha_postulacion', sortable: true, align: 'left' },
+  { name: 'pretension_salarial', label: 'Pretensión (Bs)', field: 'pretension_salarial', sortable: true, align: 'center' },
   { name: 'estado', label: 'Estado Actual', field: 'estado', sortable: true, align: 'center' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]
@@ -394,7 +448,7 @@ const exportGeneralReport = async () => {
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    const fileName = selectedConvocatoria.value ? `Reporte_Postulantes_${selectedConvocatoria.value.titulo}.xls` : 'postulaciones_general.xls'
+    const fileName = selectedConvocatoria.value ? `Reporte_Postulantes_${selectedConvocatoria.value.titulo}.xlsx` : 'postulaciones_general.xlsx'
     link.setAttribute('download', fileName)
     document.body.appendChild(link)
     link.click()

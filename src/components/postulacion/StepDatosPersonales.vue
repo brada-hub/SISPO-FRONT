@@ -1,17 +1,9 @@
 <template>
-  <div class="px-6 py-8">
-    <div class="flex flex-col items-center mb-10">
-      <div class="p-2 bg-primary/10 rounded-full mb-3">
-        <q-icon name="assignment_ind" color="primary" size="lg" />
-      </div>
-      <h2 class="text-3xl font-black text-gray-800 tracking-tighter uppercase">Tu Perfil Particular</h2>
-      <p class="text-gray-500 mt-1 font-medium">Ingresa tus datos base para el expediente oficial</p>
-    </div>
-
-    <div class="bg-white rounded-3xl shadow-xl border border-gray-100 max-w-4xl mx-auto overflow-hidden">
-      <!-- HEADER INDICATOR -->
+  <div class="px-2 py-6 md:px-6">
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 w-full mx-auto overflow-hidden">
+      <!-- HEADER INDICATOR (Visual simple para separar secciones) -->
       <div class="bg-gradient-to-r from-gray-50 to-white px-8 py-4 border-b border-gray-100 flex items-center justify-between">
-         <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Información Requerida</div>
+         <div class="text-[10px] font-black text-gray-400 uppercase tracking-widest">Información del Postulante</div>
          <div class="flex gap-1">
             <div class="w-10 h-1 bg-primary rounded-full"></div>
             <div class="w-10 h-1 bg-gray-200 rounded-full"></div>
@@ -19,7 +11,13 @@
          </div>
       </div>
 
-      <q-form @submit.prevent="handleNext" class="p-8 space-y-10">
+      <q-form
+        ref="myForm"
+        @submit.prevent="handleNext"
+        @validation-error="onValidationError"
+        scroll-to-first-error
+        class="p-8 space-y-10"
+      >
 
         <!-- 1. IDENTIFICACIÓN -->
         <section>
@@ -33,13 +31,14 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-            <div class="col-12 flex justify-center mb-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+            <div class="md:col-span-2 lg:col-span-3 flex justify-center mb-4">
               <div class="text-center">
-                <q-avatar size="120px" font-size="52px" color="teal-1" text-color="teal-7" icon="person" class="shadow-lg border-4 border-white">
-                   <img v-if="fotoPreview" :src="fotoPreview" />
+                <q-avatar size="140px" font-size="52px" color="teal-1" text-color="teal-7" class="shadow-xl border-4 border-white overflow-hidden">
+                   <img v-if="fotoPreview" :src="fotoPreview" style="object-fit: cover; width: 100%; height: 100%;" />
+                   <q-icon v-else name="person" />
                 </q-avatar>
-                <div class="mt-3">
+                <div class="mt-4 w-full max-w-xs mx-auto">
                   <q-file
                     v-model="form.foto_perfil"
                     label="FOTOGRAFÍA PERSONAL *"
@@ -48,6 +47,7 @@
                     stack-label
                     accept="image/*"
                     @update:model-value="onFotoChange"
+                    class="rounded-xl shadow-sm"
                     :rules="[val => !!val || 'Foto requerida']"
                   >
                     <template v-slot:prepend>
@@ -151,13 +151,20 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div class="bg-gray-50/50 p-6 rounded-3xl border border-dashed border-gray-200 space-y-4">
               <div class="flex items-center gap-2 mb-2">
                  <div class="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
                  <div class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Referencia Personal</div>
               </div>
-              <q-input v-model="form.ref_personal_celular" label="NÚMERO CELULAR" outlined dense stack-label bg-color="white" />
+              <q-input
+                v-model="form.ref_personal_celular"
+                label="NÚMERO CELULAR *"
+                mask="########"
+                unmasked-value
+                outlined dense stack-label bg-color="white"
+                :rules="[val => !!val || 'Celular requerido', val => val.length >= 7 || 'Mínimo 7 dígitos']"
+              />
               <q-input v-model="form.ref_personal_parentesco" label="PARENTESCO" outlined dense stack-label bg-color="white" placeholder="EJ: HERMANO, AMIGO..." style="text-transform: uppercase" @update:model-value="val => form.ref_personal_parentesco = val.toUpperCase()" />
             </div>
 
@@ -166,7 +173,14 @@
                  <div class="w-1.5 h-1.5 rounded-full bg-teal-500"></div>
                  <div class="text-[10px] font-black text-teal-500 uppercase tracking-widest">Referencia Laboral</div>
               </div>
-              <q-input v-model="form.ref_laboral_celular" label="NÚMERO CELULAR" outlined dense stack-label bg-color="white" />
+              <q-input
+                v-model="form.ref_laboral_celular"
+                label="NÚMERO CELULAR *"
+                mask="########"
+                unmasked-value
+                outlined dense stack-label bg-color="white"
+                :rules="[val => !!val || 'Celular requerido', val => val.length >= 7 || 'Mínimo 7 dígitos']"
+              />
               <q-input
                 v-model="form.ref_laboral_detalle"
                 label="EMPRESA / RELACIÓN"
@@ -196,7 +210,7 @@
             </div>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <div class="modern-upload-group">
               <q-file
                 v-model="form.cv_pdf"
@@ -260,6 +274,7 @@
 <script setup>
 import { reactive, watch, ref } from 'vue'
 import { usePostulacionStore } from 'stores/postulacion'
+import { useQuasar } from 'quasar'
 
 const emit = defineEmits(['next', 'back'])
 const store = usePostulacionStore()
@@ -297,9 +312,28 @@ watch(form, (newVal) => {
   store.updateDatosPersonales(newVal)
 }, { deep: true })
 
+const $q = useQuasar()
+const myForm = ref(null)
+
 const handleNext = () => {
+  // El evento submit solo se dispara si la validación de Quasar pasa
   store.updateDatosPersonales(form)
   emit('next')
+}
+
+const onValidationError = () => {
+  $q.notify({
+    type: 'negative',
+    message: 'Por favor, revise los campos marcados en rojo',
+    position: 'top'
+  })
+
+  setTimeout(() => {
+    const el = document.querySelector('.q-field--error')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, 100)
 }
 </script>
 

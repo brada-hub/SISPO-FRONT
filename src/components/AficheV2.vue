@@ -425,6 +425,7 @@ function formatDateLiteral (dateStr) {
   font-size: calc(0.95 * var(--base-fs));
   color: #4a5568;
   display: inline;
+  white-space: pre-wrap;
 }
 
 .afiche-footer {
