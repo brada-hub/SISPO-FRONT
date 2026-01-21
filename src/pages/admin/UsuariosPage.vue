@@ -59,7 +59,7 @@
         </q-card-section>
 
         <q-card-section class="q-pt-lg">
-          <q-form @submit="save" class="space-y-4">
+            <q-form ref="userForm" @submit="save" class="space-y-4">
             <div class="grid grid-cols-2 gap-4">
               <q-input
                 v-model="form.nombres"
@@ -125,6 +125,7 @@ const loading = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
 const isEdit = ref(false)
+const userForm = ref(null)
 
 const form = ref({
   id: null,
@@ -181,22 +182,37 @@ const openDialog = (item = null) => {
 }
 
 const save = async () => {
-  if (!form.value.nombres || !form.value.rol_id) return
+  const valid = await userForm.value.validate()
+  if (!valid) return
 
   saving.value = true
   try {
+    // Limpiamos el objeto para no enviar el objeto 'rol' completo que viene de la relación
+    const dataToSend = {
+        rol_id: form.value.rol_id,
+        nombres: form.value.nombres,
+        apellidos: form.value.apellidos,
+        ci: form.value.ci,
+        activo: form.value.activo
+    }
+
     if (isEdit.value) {
-      await api.put(`/usuarios/${form.value.id}`, form.value)
-      $q.notify({ type: 'positive', message: 'Usuario actualizado' })
+      await api.put(`/usuarios/${form.value.id}`, dataToSend)
+      $q.notify({ type: 'positive', message: 'Usuario actualizado correctamente' })
     } else {
-      await api.post('/usuarios', form.value)
-      $q.notify({ type: 'positive', message: 'Usuario creado' })
+      await api.post('/usuarios', dataToSend)
+      $q.notify({ type: 'positive', message: 'Usuario creado correctamente' })
     }
     dialog.value = false
     loadData()
   } catch (error) {
+    console.error(error)
     const msg = error.response?.data?.message || 'Error al guardar datos'
-    $q.notify({ type: 'negative', message: msg })
+    $q.notify({
+        type: 'negative',
+        message: msg,
+        caption: error.response?.data?.errors ? Object.values(error.response.data.errors).flat().join(', ') : ''
+    })
   } finally {
     saving.value = false
   }
