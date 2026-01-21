@@ -59,9 +59,9 @@
                       stack-label
                       bg-color="white"
                       class="custom-input"
-                      placeholder="0.00"
+                      placeholder="0"
                       min="0"
-                      step="0.01"
+                      step="1"
                       @keydown="e => ['-','+','e','E'].includes(e.key) && e.preventDefault()"
                       :rules="[
                         val => (val !== null && val !== undefined && val !== '') || 'Requerido',
@@ -244,8 +244,8 @@ const datos = computed(() => store.datosPersonales)
 const meritos = computed(() => store.meritos)
 
 const formatMoney = (val) => {
-  if (!val) return 'Bs. 0.00'
-  return 'Bs. ' + Number(val).toLocaleString('es-BO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  if (!val) return 'Bs. 0'
+  return 'Bs. ' + Number(val).toLocaleString('es-BO', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
 
 const goToStep = (step) => {

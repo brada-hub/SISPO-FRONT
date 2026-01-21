@@ -11,7 +11,7 @@
          </div>
       </div>
 
-      <q-form @submit.prevent="$emit('next')" scroll-to-first-error @validation-error="onValidationError" class="p-8">
+      <q-form ref="myForm" @submit.prevent="handleNext" scroll-to-first-error @validation-error="onValidationError" class="p-8">
 
         <!-- SUMMARY OF SELECTED CARGOS -->
         <div class="mb-10 overflow-hidden rounded-2xl border border-gray-100 bg-gray-50/50 p-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -160,15 +160,62 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { usePostulacionStore } from 'stores/postulacion'
 import DynamicFormFields from './DynamicFormFields.vue'
 
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
-defineEmits(['next', 'back'])
+const emit = defineEmits(['next', 'back'])
 const store = usePostulacionStore()
+const myForm = ref(null)
+
+const handleNext = async () => {
+  const success = await myForm.value.validate()
+
+  if (!success) {
+    onValidationError()
+    return
+  }
+
+  // Validación manual de seguridad extra
+  const faltyMerit = store.meritos.find(m =>
+    m.registros.some(r => {
+      // Función espejo de la lógica de DynamicFormFields.vue para detectar campos requeridos
+      const isFieldRequired = (c) => c.required !== false && c.requerido !== false && c.obligatorio !== false && c.config?.required !== false && c.config?.requerido !== false
+
+      // Verificar campos de texto / select
+      const camposFaltantes = (m.campos || []).filter(isFieldRequired)
+        .some((c, i) => {
+           const key = c.key || c.id || c.name || `campo_${i}`
+           const val = r.respuestas[key]
+           return !val || (typeof val === 'string' && val.trim() === '')
+        })
+
+      // Verificar archivos
+      const archivosFaltantes = (m.config_archivos || []).filter(isFieldRequired)
+        .some((a, i) => {
+           const key = a.id || a.key || `archivo_${i}`
+           return !r.archivos[key]
+        })
+
+      return camposFaltantes || archivosFaltantes
+    })
+  )
+
+  if (faltyMerit) {
+    $q.notify({
+      type: 'negative',
+      message: `Debe completar la "Información Requerida" y los "Documentos de Respaldo" para: ${faltyMerit.nombre}`,
+      position: 'top',
+      icon: 'warning'
+    })
+    return
+  }
+
+  emit('next')
+}
 
 const onValidationError = () => {
   $q.notify({

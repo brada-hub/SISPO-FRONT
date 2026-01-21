@@ -62,45 +62,85 @@
             <q-icon name="history_edu" size="xs" /> Información Requerida
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
-            <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx">
+            <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx" class="relative">
+              <!-- BADGE EXIGIDO (Único por campo) -->
+              <div v-if="campo.required" class="absolute -top-3 right-0 z-10">
+                <q-badge color="red" label="EXIGIDO" class="text-[8px] font-black q-px-xs" />
+              </div>
+
               <!-- SELECT -->
               <q-select
                 v-if="campo.tipo === 'select'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label"
+                :label="campo.label + (campo.required ? ' *' : '')"
                 :options="campo.opciones || []"
-                outlined dense bg-color="white" emit-value map-options
+                outlined dense emit-value map-options
                 :placeholder="campo.required ? 'Obligatorio' : ''"
-                class="custom-field"
-              />
+                class="custom-field transition-all"
+                :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
+                :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
+                :rules="campo.required ? [val => !!val || 'Este campo es obligatorio'] : []"
+                lazy-rules="ondemand"
+              >
+                <template v-slot:append v-if="reg.respuestas[campo.key]">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-select>
+
               <!-- DATE -->
               <q-input
                 v-else-if="campo.tipo === 'date'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label"
-                type="date" outlined dense stack-label bg-color="white"
-                class="custom-field"
-              />
+                :label="campo.label + (campo.required ? ' *' : '')"
+                type="date" outlined dense stack-label
+                class="custom-field transition-all"
+                :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
+                :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
+                :rules="campo.required ? [val => !!val || 'Fecha requerida'] : []"
+                lazy-rules="ondemand"
+              >
+                <template v-slot:append v-if="reg.respuestas[campo.key]">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
+
               <!-- TEXTAREA -->
               <q-input
                 v-else-if="campo.tipo === 'textarea'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label"
-                type="textarea" rows="3" outlined dense bg-color="white" class="md:col-span-2 custom-field"
+                :label="campo.label + (campo.required ? ' *' : '')"
+                type="textarea" rows="3" outlined dense class="md:col-span-2 custom-field transition-all"
+                :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
+                :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
                 style="text-transform: uppercase"
                 @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
-              />
+                :rules="campo.required ? [val => !!val || 'Detalle obligatorio'] : []"
+                lazy-rules="ondemand"
+              >
+                <template v-slot:append v-if="reg.respuestas[campo.key]">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
+
               <!-- DEFAULT (TEXT/NUMBER) -->
               <q-input
                 v-else
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label"
+                :label="campo.label + (campo.required ? ' *' : '')"
                 :type="campo.tipo === 'number' ? 'number' : 'text'"
-                outlined dense bg-color="white"
-                class="custom-field"
+                outlined dense
+                class="custom-field transition-all"
+                :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
+                :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
                 style="text-transform: uppercase"
                 @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
-              />
+                :rules="campo.required ? [val => !!val || 'Campo obligatorio'] : []"
+                lazy-rules="ondemand"
+              >
+                <template v-slot:append v-if="reg.respuestas[campo.key]">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
             </div>
           </div>
         </div>
@@ -118,20 +158,25 @@
               </div>
               <q-file
                 v-model="reg.archivos[archivo.key]"
-                :label="'Pinche para subir ' + archivo.label"
-                outlined dense bg-color="white"
+                :label="'Subir ' + archivo.label + (archivo.required ? ' *' : '')"
+                outlined dense
                 accept=".pdf,.jpg,.jpeg,.png"
-                max-file-size="10485760"
-                class="bg-white rounded-xl shadow-sm"
+                max-file-size="2097152"
+                @rejected="onRejected"
+                class="rounded-xl shadow-sm transition-all"
+                :color="reg.archivos[archivo.key] ? 'teal' : 'primary'"
+                :bg-color="reg.archivos[archivo.key] ? 'teal-50' : 'white'"
+                :rules="archivo.required ? [val => !!val || 'El archivo es obligatorio'] : []"
+                lazy-rules="ondemand"
               >
                 <template v-slot:prepend>
-                  <q-icon name="file_upload" color="teal-7" />
+                  <q-icon :name="reg.archivos[archivo.key] ? 'verified' : 'file_upload'" :color="reg.archivos[archivo.key] ? 'teal-7' : 'teal-7'" />
                 </template>
                 <template v-slot:file="{ file }">
                   <div class="text-teal-900 text-[11px] font-black italic truncate">{{ file.name }}</div>
                 </template>
               </q-file>
-              <div class="text-[9px] text-teal-400 mt-2 font-bold uppercase tracking-tighter">Formato: PDF/JPG/PNG • Máximo: 10MB</div>
+              <div class="text-[9px] text-teal-400 mt-2 font-bold uppercase tracking-tighter">Formato: PDF/JPG/PNG • Máximo: 2MB</div>
             </div>
           </div>
         </div>
@@ -159,6 +204,7 @@
 <script setup>
 import { computed } from 'vue'
 import { usePostulacionStore } from 'stores/postulacion'
+import { useQuasar } from 'quasar'
 
 const props = defineProps({
   merito: {
@@ -168,6 +214,27 @@ const props = defineProps({
 })
 
 const store = usePostulacionStore()
+const $q = useQuasar()
+
+const onRejected = (rejectedEntries) => {
+  rejectedEntries.forEach(entry => {
+    if (entry.failedPropValidation === 'max-file-size') {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo de mérito excede el límite de 2MB.',
+        caption: `Archivo: ${entry.file.name}`,
+        position: 'top',
+        timeout: 5000
+      })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo no cumple con los requisitos del sistema.',
+        position: 'top'
+      })
+    }
+  })
+}
 
 // Normalize campos to handle different data structures
 const normalizedCampos = computed(() => {
@@ -177,7 +244,7 @@ const normalizedCampos = computed(() => {
       key: c.key || c.id || c.name || `campo_${i}`,
       label: c.label || c.nombre || c.name || `Campo ${i + 1}`,
       tipo: c.tipo || c.type || 'text',
-      required: c.requerido || c.required || false,
+      required: c.required !== false && c.requerido !== false && c.obligatorio !== false,
       opciones: c.opciones || c.options || [],
     }))
   }
@@ -191,7 +258,12 @@ const normalizedArchivos = computed(() => {
     return archivos.map((a, i) => ({
       key: a.id || a.key || `archivo_${i}`,
       label: a.label || a.nombre || a.name || `Archivo ${i + 1}`,
-      required: a.requerido || a.obligatorio || a.required || false,
+      required: !!(
+        a.requerido || a.obligatorio || a.required || a.es_obligatorio ||
+        a.config?.required || a.config?.requerido || a.config?.obligatorio ||
+        a.requerido == 1 || a.requerido == '1' ||
+        a.obligatorio == 1 || a.obligatorio == '1'
+      ),
     }))
   }
   return []

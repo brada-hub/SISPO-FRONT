@@ -1,37 +1,40 @@
 <template>
   <div class="px-6 py-8">
-    <div class="flex flex-col items-center mb-10">
-      <div class="p-2 bg-primary/10 rounded-full mb-3">
-        <q-icon name="map" color="primary" size="lg" />
-      </div>
-      <h2 class="text-3xl font-black text-gray-800 tracking-tighter uppercase">Selecciona tu Ubicación</h2>
-      <p class="text-gray-500 mt-1 font-medium">Explora las sedes disponibles en el mapa interactivo</p>
-    </div>
-
     <div v-if="loading" class="flex flex-col items-center justify-center py-24">
       <q-spinner-puff size="80px" color="primary" />
       <div class="mt-6 text-primary font-black uppercase tracking-widest animate-pulse">Cargando Convocatorias...</div>
     </div>
 
     <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
       <!-- LEFT: MAP CONTAINER -->
       <div class="lg:col-span-4">
-        <div class="modern-card p-6 h-full border border-gray-100">
-          <div class="flex items-center gap-3 mb-6">
-            <div class="w-1 h-6 bg-primary rounded-full"></div>
-            <div class="text-lg font-black text-gray-700 uppercase tracking-tight">Mapa de Bolivia</div>
+        <div class="modern-card h-full border border-gray-100 flex flex-col overflow-hidden">
+          <div class="p-6 bg-gradient-to-r from-[#4a2371] to-[#663399] text-white">
+            <div class="flex items-center gap-3">
+              <q-icon name="map" size="sm" />
+              <div class="text-lg font-black uppercase tracking-tighter">Mapa de Bolivia</div>
+            </div>
           </div>
-          <BoliviaMap @select-sede="handleSedeClick" />
+          <div class="p-6 flex-grow flex flex-col justify-center">
+            <BoliviaMap @select-sede="handleSedeClick" />
+          </div>
 
-          <div class="mt-8 flex flex-col gap-2">
-             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div class="w-4 h-4 rounded-md bg-[#663399]"></div>
-                <span class="text-xs font-bold text-gray-600 uppercase">Sedes con ofertas</span>
+          <!-- LEYENDA MEJORADA -->
+          <div class="px-6 pb-8 space-y-3">
+             <div class="flex items-center gap-3 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50">
+                <div class="w-2 h-6 rounded-full bg-[#663399]"></div>
+                <div>
+                  <div class="text-[10px] font-black text-indigo-900 uppercase tracking-wider">Sedes con Ofertas</div>
+                  <div class="text-[9px] text-indigo-400 font-bold uppercase">Disponibles para postular</div>
+                </div>
              </div>
-             <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <div class="w-4 h-4 rounded-md bg-[#009999]"></div>
-                <span class="text-xs font-bold text-gray-600 uppercase">Seleccionada</span>
+
+             <div class="flex items-center gap-3 p-3 bg-teal-50/50 rounded-2xl border border-teal-100/50">
+                <div class="w-2 h-6 rounded-full bg-[#14b8a6]"></div>
+                <div>
+                  <div class="text-[10px] font-black text-teal-900 uppercase tracking-wider">Sede Seleccionada</div>
+                  <div class="text-[9px] text-teal-400 font-bold uppercase">Viendo cargos actuales</div>
+                </div>
              </div>
           </div>
         </div>
@@ -39,53 +42,62 @@
 
       <!-- CENTER: CARGOS LIST -->
       <div class="lg:col-span-5">
-        <div class="modern-card p-6 min-h-[500px] border border-gray-100">
-          <div v-if="!departamentoActivo" class="flex flex-col items-center justify-center h-full py-20 opacity-40">
-            <div class="p-6 bg-gray-100 rounded-full mb-4">
-               <q-icon name="touch_app" size="64px" color="gray-5" />
+        <div class="modern-card h-full border border-gray-100 flex flex-col overflow-hidden">
+          <div class="p-6 bg-gradient-to-r from-[#4a2371] to-[#663399] text-white">
+            <div class="flex items-center gap-3">
+              <q-icon name="work" size="sm" />
+              <div class="text-lg font-black uppercase tracking-tighter">Puestos Disponibles</div>
             </div>
-            <div class="text-xl font-black text-gray-400 uppercase tracking-widest">Selecciona una Sede</div>
-            <p class="text-sm">Interactúa con el mapa para ver los puestos</p>
           </div>
 
-          <div v-else>
-            <div class="flex items-center justify-between mb-8 pb-4 border-b">
-              <div class="flex items-center gap-3">
-                 <div class="p-2 bg-primary/10 rounded-lg">
-                    <q-icon name="location_on" color="primary" />
-                 </div>
-                 <div class="text-xl font-black text-gray-800 uppercase tracking-tighter">{{ departamentoActivo }}</div>
+          <div class="p-6 flex-grow flex flex-col">
+            <div v-if="!departamentoActivo" class="flex flex-col items-center justify-center flex-grow py-20 opacity-40">
+              <div class="p-6 bg-gray-100 rounded-full mb-4">
+                <q-icon name="touch_app" size="64px" color="gray-5" />
               </div>
-              <q-badge color="teal-7" class="px-3 py-1 font-bold rounded-lg">
-                {{ totalCargosVisibles }} CARGOS
-              </q-badge>
+              <div class="text-xl font-black text-gray-400 uppercase tracking-widest">Selecciona una Sede</div>
+              <p class="text-sm">Interactúa con el mapa para ver los puestos</p>
             </div>
 
-            <div v-for="sede in sedesDelDepartamento" :key="sede.id" class="mb-8">
-              <div v-if="sedesDelDepartamento.length > 1" class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                <span>UBICACIÓN: {{ sede.nombre }}</span>
-                <div class="h-[1px] bg-primary/20 flex-grow"></div>
+            <div v-else>
+              <div class="flex items-center justify-between mb-8 pb-4 border-b">
+                <div class="flex items-center gap-3">
+                   <div class="p-2 bg-primary/10 rounded-lg">
+                      <q-icon name="location_on" color="primary" />
+                   </div>
+                   <div class="text-xl font-black text-gray-800 uppercase tracking-tighter">{{ departamentoActivo }}</div>
+                </div>
+                <q-badge color="teal-7" class="px-3 py-1 font-bold rounded-lg">
+                  {{ totalCargosVisibles }} CARGOS
+                </q-badge>
               </div>
 
-              <div class="grid grid-cols-1 gap-4">
-                <div
-                  v-for="cargo in sede.cargos"
-                  :key="cargo.oferta_id"
-                  class="cargo-item-card transition-all"
-                  :class="isSelected(cargo.oferta_id) ? 'is-selected' : ''"
-                  @click="toggleCargo(cargo, sede)"
-                >
-                  <div class="flex items-center gap-4">
-                    <div class="cargo-check-indicator">
-                       <q-icon :name="isSelected(cargo.oferta_id) ? 'check_circle' : 'circle'" :color="isSelected(cargo.oferta_id) ? 'teal' : 'grey-4'" size="sm" />
-                    </div>
-                    <div class="flex-grow">
-                      <div class="font-black text-gray-800 uppercase leading-none mb-1">{{ cargo.cargo_nombre }}</div>
-                      <div class="text-[11px] text-gray-400 font-bold uppercase tracking-tight flex items-center gap-2">
-                        <q-icon name="group" size="xs" /> {{ cargo.vacantes }} vacante(s)
+              <div v-for="sede in sedesDelDepartamento" :key="sede.id" class="mb-8">
+                <div v-if="sedesDelDepartamento.length > 1" class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  <span>UBICACIÓN: {{ sede.nombre }}</span>
+                  <div class="h-[1px] bg-primary/20 flex-grow"></div>
+                </div>
+
+                <div class="grid grid-cols-1 gap-4">
+                  <div
+                    v-for="cargo in sede.cargos"
+                    :key="cargo.oferta_id"
+                    class="cargo-item-card transition-all"
+                    :class="isSelected(cargo.oferta_id) ? 'is-selected' : ''"
+                    @click="toggleCargo(cargo, sede)"
+                  >
+                    <div class="flex items-center gap-4">
+                      <div class="cargo-check-indicator">
+                         <q-icon :name="isSelected(cargo.oferta_id) ? 'check_circle' : 'circle'" :color="isSelected(cargo.oferta_id) ? 'teal' : 'grey-4'" size="sm" />
                       </div>
+                      <div class="flex-grow">
+                        <div class="font-black text-gray-800 uppercase leading-none mb-1">{{ cargo.cargo_nombre }}</div>
+                        <div class="text-[11px] text-gray-400 font-bold uppercase tracking-tight flex items-center gap-2">
+                          <q-icon name="group" size="xs" /> {{ cargo.vacantes }} vacante(s)
+                        </div>
+                      </div>
+                      <q-btn flat round color="primary" icon="chevron_right" dense />
                     </div>
-                    <q-btn flat round color="primary" icon="chevron_right" dense />
                   </div>
                 </div>
               </div>
@@ -96,10 +108,10 @@
 
       <!-- RIGHT: SUMMARY CART -->
       <div class="lg:col-span-3">
-        <div class="summary-card sticky top-4 overflow-hidden border border-white/20">
+        <div class="summary-card h-full overflow-hidden border border-white/20 flex flex-col">
           <div class="summary-header p-6 bg-gradient-to-br from-[#4a2371] to-[#663399] text-white">
             <div class="flex items-center gap-3 mb-2">
-              <q-icon name="shopping_basket" size="md" />
+              <q-icon name="how_to_reg" size="md" />
               <div class="text-lg font-black uppercase tracking-tighter">Tu Postulación</div>
             </div>
             <div class="text-xs text-white/60 font-medium">Resumen de cargos seleccionados</div>

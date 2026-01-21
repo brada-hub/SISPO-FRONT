@@ -148,7 +148,7 @@
               <tr>
                 <td class="label">PRETENSIÓN SALARIAL:</td>
                 <td class="value font-bold text-teal-8">
-                  {{ postulacion?.pretension_salarial ? `${Number(postulacion.pretension_salarial).toLocaleString('es-BO', { minimumFractionDigits: 2 })} Bs.` : '---' }}
+                  {{ postulacion?.pretension_salarial ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.` : '---' }}
                 </td>
               </tr>
               <tr>
@@ -237,7 +237,7 @@
               SISTEMA DE GESTIÓN DE CONVOCATORIAS UNITEPC
             </div>
             <div class="text-[9px] text-gray-500 mt-1">
-              Documento generado digitalmente por el panel administrativo. ID #{{ postulacion?.id }} - {{ new Date().toLocaleString() }}
+              Documento generado digitalmente por el panel administrativo. ID #{{ postulacion?.id }} - {{ new Date().getDate().toString().padStart(2, '0') }}-{{ (new Date().getMonth() + 1).toString().padStart(2, '0') }}-{{ new Date().getFullYear() }} {{ new Date().getHours().toString().padStart(2, '0') }}:{{ new Date().getMinutes().toString().padStart(2, '0') }}
             </div>
           </div>
         </div>

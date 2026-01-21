@@ -242,6 +242,7 @@ const adminMenuItems = computed(() => {
 
 const setAdminSection = (path) => {
   router.push(path)
+  leftDrawerOpen.value = false
 }
 
 const logout = async () => {

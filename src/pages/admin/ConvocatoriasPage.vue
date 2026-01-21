@@ -21,7 +21,15 @@
       :loading="loading"
       bordered
       class="rounded-2xl shadow-lg overflow-hidden"
+      :filter="filter"
     >
+      <template v-slot:top-right>
+        <q-input borderless dense debounce="300" v-model="filter" placeholder="Buscar convocatoria...">
+          <template v-slot:append>
+            <q-icon name="search" />
+          </template>
+        </q-input>
+      </template>
       <template v-slot:header="props">
         <q-tr :props="props" style="background-color: #663399; color: white;">
           <q-th v-for="col in props.cols" :key="col.name" :props="props">
@@ -41,24 +49,53 @@
         </q-td>
       </template>
 
-      <template v-slot:body-cell-fecha="props">
+      <template v-slot:body-cell-fecha_inicio="props">
+        <q-td :props="props" class="text-center font-bold text-xs uppercase">
+          {{ formatDate(props.row.fecha_inicio) }}
+        </q-td>
+      </template>
+
+      <template v-slot:body-cell-fecha_cierre="props">
+        <q-td :props="props" class="text-center font-bold text-xs text-negative uppercase">
+          {{ formatDate(props.row.fecha_cierre) }}
+        </q-td>
+      </template>
+
+      <template v-slot:body-cell-hora_limite="props">
         <q-td :props="props" class="text-center">
-          <div class="font-bold text-xs">{{ formatDate(props.row.fecha_inicio) }}</div>
-          <div class="text-red-600 font-bold text-xs">al {{ formatDate(props.row.fecha_cierre) }}</div>
+          <q-badge outline color="grey-8" class="font-bold">
+            {{ props.row.hora_limite || '23:59' }}
+          </q-badge>
+        </q-td>
+      </template>
+
+      <template v-slot:body-cell-status="props">
+        <q-td :props="props" class="text-center">
+          <q-chip
+            :color="getStatus(props.row).color"
+            text-color="white"
+            size="sm"
+            class="text-weight-bolder"
+            :icon="getStatus(props.row).icon"
+          >
+            {{ getStatus(props.row).label }}
+          </q-chip>
         </q-td>
       </template>
 
       <template v-slot:body-cell-acciones="props">
-        <q-td :props="props" class="flex gap-1 justify-end">
-          <q-btn flat round color="teal" icon="visibility" size="sm" @click="viewAfiche(props.row)">
-             <q-tooltip>Ver Afiche</q-tooltip>
-          </q-btn>
-          <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
-             <q-tooltip>Editar</q-tooltip>
-          </q-btn>
-          <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
-             <q-tooltip>Eliminar</q-tooltip>
-          </q-btn>
+        <q-td :props="props">
+          <div class="flex no-wrap items-center justify-center gap-1">
+            <q-btn flat round color="teal" icon="visibility" size="sm" @click="viewAfiche(props.row)">
+               <q-tooltip>Ver Afiche</q-tooltip>
+            </q-btn>
+            <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
+               <q-tooltip>Editar</q-tooltip>
+            </q-btn>
+            <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
+               <q-tooltip>Eliminar</q-tooltip>
+            </q-btn>
+          </div>
         </q-td>
       </template>
     </q-table>
@@ -108,9 +145,9 @@
                   outlined
                   dense
                   class="mt-4 text-weight-bold"
-                  bg-color="blue-1"
                   color="primary"
-                  hint="Se autogenera según los cargos seleccionados."
+                  hint="Se autogenera, pero puedes editarlo si ya existe."
+                  @update:model-value="manualCodigoInterno = true"
                 >
                   <template v-slot:prepend>
                     <q-icon name="pin" />
@@ -343,6 +380,7 @@ const dialog = ref(false)
 const saving = ref(false)
 const isEdit = ref(false)
 const isViewMode = ref(false)
+const filter = ref('')
 const previewContainer = ref(null)
 const containerWidth = ref(800)
 
@@ -381,6 +419,7 @@ const quickSede = ref({ nombre: '', sigla: '', departamento: '' })
 const quickCargo = ref({ nombre: '', sigla: '' })
 const manualSiglaSede = ref(false)
 const manualSiglaCargo = ref(false)
+const manualCodigoInterno = ref(false)
 
 const helperGenerarSigla = (val) => {
   if (!val) return ''
@@ -419,6 +458,16 @@ const formatDate = (dateStr) => {
   return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : dateStr
 }
 
+const getStatus = (row) => {
+  const hoy = new Date().toISOString().split('T')[0]
+  const inicio = row.fecha_inicio.split('T')[0]
+  const cierre = row.fecha_cierre.split('T')[0]
+
+  if (hoy < inicio) return { label: 'PROGRAMADA', color: 'blue', icon: 'schedule' }
+  if (hoy > cierre) return { label: 'CERRADA', color: 'red', icon: 'block' }
+  return { label: 'ABIERTA', color: 'positive', icon: 'check_circle' }
+}
+
 
 const qrValue = computed(() => form.value.id ? `https://postulacionesunitepc.xpertiaplus.com/#/postular/${form.value.id}` : 'https://postulacionesunitepc.xpertiaplus.com/#/postular')
 
@@ -426,13 +475,17 @@ const columns = [
   { name: 'codigo_interno', label: 'Código Interno', field: 'codigo_interno', sortable: true, align: 'left' },
   { name: 'titulo', label: 'Descripción de Convocatoria', field: 'titulo', sortable: true, align: 'left' },
   { name: 'ofertas', label: 'Cargos / Sedes', align: 'left' },
-  { name: 'fecha', label: 'Plazo', align: 'center' },
-  { name: 'acciones', label: 'Acciones', align: 'right' }
+  { name: 'fecha_inicio', label: 'Inicio', field: 'fecha_inicio', sortable: true, align: 'center' },
+  { name: 'fecha_cierre', label: 'Fin', field: 'fecha_cierre', sortable: true, align: 'center' },
+  { name: 'hora_limite', label: 'Cierre', field: 'hora_limite', align: 'center' },
+  { name: 'status', label: 'Estado', align: 'center' },
+  { name: 'acciones', label: 'Acciones', align: 'center', style: 'width: 140px' }
 ]
 
 // Logic for automatic internal code generation
 watch(() => form.value.ofertas, (newOffers) => {
-  if (isEdit.value && form.value.codigo_interno) return // Don't overwrite on edit if it already has one
+  if (isEdit.value && form.value.codigo_interno) return
+  if (manualCodigoInterno.value) return // Don't overwrite if user typed something manually
 
   if (!newOffers || newOffers.length === 0) {
     form.value.codigo_interno = ''
@@ -443,19 +496,21 @@ watch(() => form.value.ofertas, (newOffers) => {
   const uniqueSedeIds = [...new Set(newOffers.map(o => o.sede_id))]
   const year = new Date().getFullYear()
 
-  let suffix = 'MULT'
-
-  if (uniqueSedeIds.length === 1 && uniqueCargoIds.length > 1) {
-    // Caso: Una sede, varios cargos -> Salir con Sigla de Sede
-    const sede = catalogSedes.value.find(s => s.id === uniqueSedeIds[0])
-    suffix = sede?.sigla || 'SEDE'
-  } else if (uniqueCargoIds.length === 1) {
-    // Caso: Un cargo (una o varias sedes) -> Salir con Sigla de Cargo
-    const cargo = catalogCargos.value.find(c => c.id === uniqueCargoIds[0])
-    suffix = cargo?.sigla || 'CARGO'
+  // Sede Sigla (Use NAC for Multiple)
+  let sSigla = 'NAC'
+  if (uniqueSedeIds.length === 1) {
+    const sedeEncontrada = catalogSedes.value.find(s => s.id == uniqueSedeIds[0])
+    sSigla = sedeEncontrada?.sigla || 'SEDE'
   }
 
-  form.value.codigo_interno = `CONV-${year}-${suffix}`.toUpperCase()
+  // Cargo Sigla
+  let cSigla = 'MULT'
+  if (uniqueCargoIds.length === 1) {
+    const cargo = catalogCargos.value.find(c => c.id === uniqueCargoIds[0])
+    cSigla = cargo?.sigla || 'CARGO'
+  }
+
+  form.value.codigo_interno = `CONV-${year}-${cSigla}-${sSigla}`.toUpperCase()
 }, { deep: true, immediate: true }) // Added immediate to generate on open if already has offers
 
 const loadData = async () => {
@@ -479,6 +534,8 @@ const openDialog = (item = null) => {
     isEdit.value = true
     form.value = {
       ...item,
+      fecha_inicio: item.fecha_inicio ? item.fecha_inicio.split('T')[0] : '',
+      fecha_cierre: item.fecha_cierre ? item.fecha_cierre.split('T')[0] : '',
       config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
       requisitos_afiche: item.requisitos_afiche || {},
       ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []
@@ -487,6 +544,7 @@ const openDialog = (item = null) => {
     isEdit.value = false
     form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_afiche: {} }
   }
+  manualCodigoInterno.value = false
   buildOne.value = null; buildMany.value = []; dialog.value = true
 }
 
@@ -494,6 +552,8 @@ const viewAfiche = (item) => {
   isViewMode.value = true
   form.value = {
     ...item,
+    fecha_inicio: item.fecha_inicio ? item.fecha_inicio.split('T')[0] : '',
+    fecha_cierre: item.fecha_cierre ? item.fecha_cierre.split('T')[0] : '',
     config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
     requisitos_afiche: item.requisitos_afiche || {},
     ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []

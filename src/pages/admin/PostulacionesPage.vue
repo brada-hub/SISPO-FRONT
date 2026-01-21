@@ -237,7 +237,7 @@
 
       <template v-slot:body-cell-pretension_salarial="props">
         <q-td :props="props" class="text-center font-bold text-teal-9">
-          {{ props.row.pretension_salarial ? 'Bs. ' + Number(props.row.pretension_salarial).toLocaleString('es-BO', { minimumFractionDigits: 2 }) : '-' }}
+          {{ props.row.pretension_salarial ? 'Bs. ' + Math.round(Number(props.row.pretension_salarial)).toLocaleString('de-DE') : '-' }}
         </q-td>
       </template>
 

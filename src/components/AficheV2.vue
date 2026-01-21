@@ -15,7 +15,7 @@
         <!-- SEDE BANNER -->
         <div v-if="singleSede" class="sede-banner-container animate-fade-in">
           <div class="sede-banner-line"></div>
-          <div class="sede-banner-text">SEDE {{ singleSede }}</div>
+          <div class="sede-banner-text">{{ isNacional ? 'NACIONAL' : `SEDE ${singleSede}` }}</div>
           <div class="sede-banner-line"></div>
         </div>
       </div>
@@ -150,6 +150,12 @@ const singleSede = computed(() => {
   return null
 })
 
+const isNacional = computed(() => {
+  if (!singleSede.value) return false
+  const upper = singleSede.value.toUpperCase()
+  return upper.includes('NACIONAL') || upper.includes('BOLIVIA') || upper.includes('CENTRAL')
+})
+
 // LOGIC: Use 2 columns if list is too long
 const totalCargoItems = computed(() => props.ofertas.length + Object.keys(groupedOfertas.value).length)
 const useGridForCargos = computed(() => totalCargoItems.value > 8)
@@ -197,17 +203,20 @@ function formatDateLiteral (dateStr) {
   if (!dateStr || dateStr === 'null' || dateStr === 'undefined') return '...'
 
   try {
-    const safeDate = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`
-    const date = new Date(safeDate)
+    // If it comes as ISO (2026-01-23T00:00:00.000...Z), we only want the date part
+    const onlyDate = dateStr.split('T')[0]
+    const parts = onlyDate.split('-')
 
-    if (isNaN(date.getTime())) return '...'
+    if (parts.length !== 3) return '...'
 
-    const day = date.getDate()
+    const year = parseInt(parts[0])
+    const monthIdx = parseInt(parts[1]) - 1
+    const day = parseInt(parts[2])
+
+    if (isNaN(year) || isNaN(monthIdx) || isNaN(day)) return '...'
+
     const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
-    const month = months[date.getMonth()]
-    const year = date.getFullYear()
-
-    if (!day || !month || !year) return '...'
+    const month = months[monthIdx]
 
     return `${day} de ${month} de ${year}`
   } catch {

@@ -2,8 +2,14 @@
   <div class="bolivia-map-container">
     <!-- Opción Nacional (Banner Superior) -->
     <div
-      class="nacional-banner cursor-pointer transition-all q-pa-sm rounded-lg flex items-center justify-center gap-3 q-mb-md"
-      :class="(store.sedeActiva?.toLowerCase().includes('central') || store.sedeActiva?.toLowerCase().includes('nacional') || store.sedeActiva?.toLowerCase().includes('bolivia')) ? 'selected bg-teal-500 text-white shadow-lg' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+      class="nacional-banner cursor-pointer transition-all q-pa-sm rounded-lg flex items-center justify-center gap-3 q-mb-md border-2"
+      :class="[
+        (store.sedeActiva?.toLowerCase().includes('central') || store.sedeActiva?.toLowerCase().includes('nacional') || store.sedeActiva?.toLowerCase().includes('bolivia'))
+          ? 'selected bg-teal-500 text-white shadow-lg border-teal-300'
+          : (nacionalOffersCount > 0)
+            ? 'bg-[#7c3aed] text-white shadow-md border-purple-400 animate-pulse-slow'
+            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border-transparent'
+      ]"
       @click="selectNacional"
     >
       <q-icon name="public" size="sm" />
@@ -68,20 +74,7 @@
     </div>
 
     <!-- Legend -->
-    <div class="map-legend q-mt-md">
-      <div class="legend-item">
-        <span class="legend-dot active"></span>
-        <span>Con ofertas</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot inactive"></span>
-        <span>Sin ofertas</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-dot selected"></span>
-        <span>Seleccionada</span>
-      </div>
-    </div>
+
   </div>
 </template>
 
@@ -142,7 +135,7 @@ const sedesConOfertas = computed(() => {
 
 const nacionalOffersCount = computed(() => {
   const central = store.ofertasActivas.find((s) =>
-    s.departamento === 'Nacional'
+    s.departamento?.toLowerCase() === 'nacional'
   )
   return central?.cargos?.length || 0
 })
@@ -178,7 +171,7 @@ const selectSede = (name) => {
 }
 
 const selectNacional = () => {
-  const hasNacionalOffers = store.ofertasActivas.some(s => s.departamento === 'Nacional')
+  const hasNacionalOffers = store.ofertasActivas.some(s => s.departamento?.toLowerCase() === 'nacional')
   if (hasNacionalOffers) {
     store.setSedeActiva('Nacional')
     emit('select-sede', 'Nacional')
@@ -205,6 +198,7 @@ const selectNacional = () => {
 
 .bolivia-map {
   width: 100%;
+  max-height: 400px; /* Evita que crezca demasiado y tape la leyenda */
   height: auto;
   filter: drop-shadow(0 10px 15px rgba(0, 0, 0, 0.1));
 }
@@ -281,5 +275,15 @@ const selectNacional = () => {
   .map-label {
     font-size: 8px;
   }
+}
+
+@keyframes pulse-slow {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.9; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 3s infinite ease-in-out;
 }
 </style>

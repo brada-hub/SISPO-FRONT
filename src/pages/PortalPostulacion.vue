@@ -178,21 +178,42 @@ const handleSubmit = async () => {
     codigoSeguimiento.value = result.data.codigo_seguimiento
     cantidadCargos.value = result.data.cantidad_cargos || 1
     showSuccess.value = true
+
+    $q.notify({
+      type: 'positive',
+      message: 'Postulación enviada correctamente',
+      position: 'top'
+    })
   } catch (error) {
-    if (error.response?.status === 422 && error.response.data?.errors) {
-      const errors = error.response.data.errors
-      const messages = Object.values(errors).flat().join('<br>')
-      $q.notify({
-        type: 'negative',
-        message: '<strong>Errores de Validación:</strong><br>' + messages,
+    console.error('Submission technical details:', error)
+
+    if (error.type === 'validation' && error.details) {
+      // Formatear errores de validación de Laravel de forma amigable
+      const errorList = Object.entries(error.details)
+        .map(([field, messages]) => {
+          // Limpiar el nombre del campo (ej: meritos.0.respuestas.nombre -> nombre)
+          const fieldParts = field.split('.')
+          const rawName = fieldParts[fieldParts.length - 1]
+          const humanName = rawName.replace('_', ' ').toUpperCase()
+          return `<li><b>${humanName}:</b> ${messages.join('. ')}</li>`
+        })
+        .join('')
+
+      $q.dialog({
+        title: '<div class="text-negative flex items-center gap-2"><q-icon name="report_problem" size="sm" /> Errores de Validación</div>',
+        message: `Se encontraron algunos problemas en su información:<br><ul class="q-mt-sm" style="list-style: disc; padding-left: 20px;">${errorList}</ul>`,
         html: true,
-        multiLine: true,
-        timeout: 10000
+        ok: { color: 'primary', label: 'Corregir ahora', flat: true },
+        class: 'rounded-2xl'
       })
     } else {
+      // Error general o mensaje directo del backend (ej: "Usted ya tiene una postulación...")
       $q.notify({
         type: 'negative',
-        message: 'Error al enviar la postulación. Por favor, intenta de nuevo.',
+        message: error.message || 'Error inesperado al enviar la postulación. Intente de nuevo.',
+        position: 'top',
+        timeout: 15000,
+        actions: [{ icon: 'close', color: 'white', round: true }]
       })
     }
   }

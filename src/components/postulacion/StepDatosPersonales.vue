@@ -46,12 +46,19 @@
                     dense
                     stack-label
                     accept="image/*"
+                    max-file-size="2097152"
                     @update:model-value="onFotoChange"
-                    class="rounded-xl shadow-sm"
-                    :rules="[val => !!val || 'Foto requerida']"
+                    @rejected="onRejected"
+                    class="rounded-xl shadow-sm transition-all"
+                    :color="form.foto_perfil ? 'teal' : 'primary'"
+                    :bg-color="form.foto_perfil ? 'teal-50' : 'white'"
+                    :rules="[
+                      val => !!val || 'Foto requerida',
+                      val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
+                    ]"
                   >
                     <template v-slot:prepend>
-                      <q-icon name="photo_camera" color="primary" />
+                      <q-icon :name="form.foto_perfil ? 'verified' : 'photo_camera'" :color="form.foto_perfil ? 'teal' : 'primary'" />
                     </template>
                   </q-file>
                 </div>
@@ -64,24 +71,36 @@
               placeholder="JUAN"
               outlined
               stack-label
-              bg-color="gray-1"
+              :bg-color="form.nombres ? 'teal-50' : 'gray-1'"
+              :color="form.nombres ? 'teal' : 'primary'"
+              class="transition-all"
               style="text-transform: uppercase"
               @update:model-value="val => form.nombres = val.toUpperCase()"
               :rules="[val => !!val || 'El nombre es obligatorio']"
-            />
+            >
+              <template v-slot:append v-if="form.nombres">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
             <q-input
               v-model="form.apellidos"
               label="APELLIDOS *"
               placeholder="PÉREZ GARCÍA"
               outlined
               stack-label
-              bg-color="gray-1"
+              :bg-color="form.apellidos ? 'teal-50' : 'gray-1'"
+              :color="form.apellidos ? 'teal' : 'primary'"
+              class="transition-all"
               style="text-transform: uppercase"
               @update:model-value="val => form.apellidos = val.toUpperCase()"
               :rules="[val => !!val || 'Los apellidos son obligatorios']"
-            />
+            >
+              <template v-slot:append v-if="form.apellidos">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
 
-            <div class="grid grid-cols-3 gap-0 border rounded-lg overflow-hidden border-gray-200">
+            <div class="grid grid-cols-3 gap-0 border rounded-lg overflow-hidden border-gray-200 transition-all" :class="form.ci && form.ci_expedido ? 'bg-teal-50 border-teal-200' : 'bg-white'">
                <q-input
                  v-model="form.ci"
                  label="NÚMERO CI *"
@@ -89,6 +108,7 @@
                  borderless
                  stack-label
                  class="col-span-2 px-3 border-r"
+                 :color="form.ci ? 'teal' : 'primary'"
                  style="text-transform: uppercase"
                  @update:model-value="val => form.ci = val.toUpperCase()"
                  :rules="[val => !!val || 'CI requerido']"
@@ -96,13 +116,19 @@
                <q-select
                  v-model="form.ci_expedido"
                  :options="expedidoOptions"
-                 label="DEP."
+                 label="DEP. *"
                  borderless
                  stack-label
                  emit-value
                  map-options
                  class="px-2"
-               />
+                 :color="form.ci_expedido ? 'teal' : 'primary'"
+                 :rules="[val => !!val || 'Seleccione departamento']"
+               >
+                 <template v-slot:append v-if="form.ci && form.ci_expedido">
+                   <q-icon name="verified" color="teal" size="xs" />
+                 </template>
+               </q-select>
             </div>
 
             <q-file
@@ -112,19 +138,54 @@
               stack-label
               accept=".pdf,image/*"
               max-file-size="2097152"
-              class="modern-file-input"
+              @rejected="onRejected"
+              class="modern-file-input transition-all"
+              :color="form.ci_archivo ? 'teal' : 'primary'"
+              :bg-color="form.ci_archivo ? 'teal-50' : 'white'"
               :rules="[
                 val => !!val || 'Adjunto requerido',
                 val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
               ]"
             >
               <template v-slot:prepend>
-                <q-icon name="cloud_upload" color="primary" />
+                <q-icon :name="form.ci_archivo ? 'verified' : 'cloud_upload'" :color="form.ci_archivo ? 'teal' : 'primary'" />
               </template>
             </q-file>
 
-            <q-input v-model="form.nacionalidad" label="NACIONALIDAD" outlined stack-label placeholder="BOLIVIANA" style="text-transform: uppercase" @update:model-value="val => form.nacionalidad = val.toUpperCase()" />
-            <q-input v-model="form.direccion_domicilio" label="DIRECCIÓN DE DOMICILIO" outlined stack-label placeholder="CALLE, AV, ZONA..." style="text-transform: uppercase" @update:model-value="val => form.direccion_domicilio = val.toUpperCase()" />
+            <q-input
+              v-model="form.nacionalidad"
+              label="NACIONALIDAD *"
+              outlined
+              stack-label
+              placeholder="BOLIVIANA"
+              :bg-color="form.nacionalidad ? 'teal-50' : 'gray-1'"
+              :color="form.nacionalidad ? 'teal' : 'primary'"
+              class="transition-all"
+              style="text-transform: uppercase"
+              @update:model-value="val => form.nacionalidad = val.toUpperCase()"
+              :rules="[val => !!val || 'Campo obligatorio']"
+            >
+              <template v-slot:append v-if="form.nacionalidad">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
+            <q-input
+              v-model="form.direccion_domicilio"
+              label="DIRECCIÓN DE DOMICILIO *"
+              outlined
+              stack-label
+              placeholder="CALLE, AV, ZONA..."
+              :bg-color="form.direccion_domicilio ? 'teal-50' : 'gray-1'"
+              :color="form.direccion_domicilio ? 'teal' : 'primary'"
+              class="transition-all"
+              style="text-transform: uppercase"
+              @update:model-value="val => form.direccion_domicilio = val.toUpperCase()"
+              :rules="[val => !!val || 'La dirección es obligatoria']"
+            >
+              <template v-slot:append v-if="form.direccion_domicilio">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
 
             <q-input
                v-model="form.celular"
@@ -133,9 +194,34 @@
                stack-label
                placeholder="70000000"
                mask="########"
-               :rules="[val => !!val || 'Contacto requerido']"
-            />
-            <q-input v-model="form.email" label="CORREO ELECTRÓNICO" type="email" outlined stack-label placeholder="usuario@ejemplo.com" />
+               :bg-color="form.celular.length >= 7 ? 'teal-50' : 'gray-1'"
+               :color="form.celular.length >= 7 ? 'teal' : 'primary'"
+               class="transition-all"
+               :rules="[val => !!val || 'Contacto requerido', val => val.length >= 7 || 'Mínimo 7 dígitos']"
+            >
+              <template v-slot:append v-if="form.celular.length >= 7">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
+            <q-input
+              v-model="form.email"
+              label="CORREO ELECTRÓNICO *"
+              type="email"
+              outlined
+              stack-label
+              placeholder="usuario@ejemplo.com"
+              :bg-color="/.+@.+\..+/.test(form.email) ? 'teal-50' : 'gray-1'"
+              :color="/.+@.+\..+/.test(form.email) ? 'teal' : 'primary'"
+              class="transition-all"
+              :rules="[
+                val => !!val || 'El correo es obligatorio',
+                val => /.+@.+\..+/.test(val) || 'El formato del correo es inválido'
+              ]"
+            >
+              <template v-slot:append v-if="/.+@.+\..+/.test(form.email)">
+                <q-icon name="verified" color="teal" size="xs" />
+              </template>
+            </q-input>
           </div>
         </section>
 
@@ -162,10 +248,34 @@
                 label="NÚMERO CELULAR *"
                 mask="########"
                 unmasked-value
-                outlined dense stack-label bg-color="white"
+                outlined dense stack-label
+                :bg-color="form.ref_personal_celular.length >= 7 ? 'teal-50' : 'white'"
+                :color="form.ref_personal_celular.length >= 7 ? 'teal' : 'primary'"
+                class="transition-all"
                 :rules="[val => !!val || 'Celular requerido', val => val.length >= 7 || 'Mínimo 7 dígitos']"
-              />
-              <q-input v-model="form.ref_personal_parentesco" label="PARENTESCO" outlined dense stack-label bg-color="white" placeholder="EJ: HERMANO, AMIGO..." style="text-transform: uppercase" @update:model-value="val => form.ref_personal_parentesco = val.toUpperCase()" />
+              >
+                <template v-slot:append v-if="form.ref_personal_celular.length >= 7">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
+              <q-input
+                v-model="form.ref_personal_parentesco"
+                label="PARENTESCO *"
+                outlined
+                dense
+                stack-label
+                :bg-color="form.ref_personal_parentesco ? 'teal-50' : 'white'"
+                :color="form.ref_personal_parentesco ? 'teal' : 'primary'"
+                class="transition-all"
+                placeholder="EJ: HERMANO, AMIGO..."
+                style="text-transform: uppercase"
+                @update:model-value="val => form.ref_personal_parentesco = val.toUpperCase()"
+                :rules="[val => !!val || 'Indique relación']"
+              >
+                <template v-slot:append v-if="form.ref_personal_parentesco">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
             </div>
 
             <div class="bg-gray-50/50 p-6 rounded-3xl border border-dashed border-gray-200 space-y-4">
@@ -178,22 +288,36 @@
                 label="NÚMERO CELULAR *"
                 mask="########"
                 unmasked-value
-                outlined dense stack-label bg-color="white"
+                outlined dense stack-label
+                :bg-color="form.ref_laboral_celular.length >= 7 ? 'teal-50' : 'white'"
+                :color="form.ref_laboral_celular.length >= 7 ? 'teal' : 'primary'"
+                class="transition-all"
                 :rules="[val => !!val || 'Celular requerido', val => val.length >= 7 || 'Mínimo 7 dígitos']"
-              />
+              >
+                <template v-slot:append v-if="form.ref_laboral_celular.length >= 7">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
               <q-input
                 v-model="form.ref_laboral_detalle"
-                label="EMPRESA / RELACIÓN"
+                label="EMPRESA / RELACIÓN *"
                 placeholder="EJ: EX-JEFE EN BANCO UNIÓN"
                 type="textarea"
                 rows="2"
                 outlined
                 dense
                 stack-label
-                bg-color="white"
+                :bg-color="form.ref_laboral_detalle ? 'teal-50' : 'white'"
+                :color="form.ref_laboral_detalle ? 'teal' : 'primary'"
+                class="transition-all"
                 style="text-transform: uppercase"
                 @update:model-value="val => form.ref_laboral_detalle = val.toUpperCase()"
-              />
+                :rules="[val => !!val || 'Indique empresa o cargo']"
+              >
+                <template v-slot:append v-if="form.ref_laboral_detalle">
+                  <q-icon name="verified" color="teal" size="xs" />
+                </template>
+              </q-input>
             </div>
           </div>
         </section>
@@ -219,14 +343,17 @@
                 stack-label
                 accept=".pdf"
                 max-file-size="2097152"
-                class="现代-file"
+                @rejected="onRejected"
+                class="现代-file transition-all"
+                :color="form.cv_pdf ? 'teal' : 'primary'"
+                :bg-color="form.cv_pdf ? 'teal-50' : 'white'"
                 :rules="[
                   val => !!val || 'El CV es obligatorio',
                   val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
                 ]"
               >
                 <template v-slot:prepend>
-                  <q-icon name="description" color="primary" />
+                  <q-icon :name="form.cv_pdf ? 'verified' : 'description'" :color="form.cv_pdf ? 'teal' : 'primary'" />
                 </template>
               </q-file>
               <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 2 MB</div>
@@ -240,13 +367,17 @@
                 stack-label
                 accept=".pdf"
                 max-file-size="2097152"
+                @rejected="onRejected"
+                class="transition-all"
+                :color="form.carta_postulacion ? 'teal' : 'primary'"
+                :bg-color="form.carta_postulacion ? 'teal-50' : 'white'"
                 :rules="[
                   val => !!val || 'La carta es obligatoria',
                   val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
                 ]"
               >
                 <template v-slot:prepend>
-                  <q-icon name="mail" color="primary" />
+                  <q-icon :name="form.carta_postulacion ? 'verified' : 'mail'" :color="form.carta_postulacion ? 'teal' : 'primary'" />
                 </template>
               </q-file>
               <div class="text-[10px] text-gray-400 font-bold mt-2 uppercase">Formato PDF • Máx 2 MB</div>
@@ -300,6 +431,26 @@ const onFotoChange = (val) => {
   } else {
     fotoPreview.value = null
   }
+}
+
+const onRejected = (rejectedEntries) => {
+  rejectedEntries.forEach(entry => {
+    if (entry.failedPropValidation === 'max-file-size') {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo excede el límite de 2MB.',
+        caption: `Archivo: ${entry.file.name}`,
+        position: 'top',
+        timeout: 5000
+      })
+    } else {
+      $q.notify({
+        type: 'negative',
+        message: 'El archivo no cumple con los requisitos del sistema.',
+        position: 'top'
+      })
+    }
+  })
 }
 
 // Initialize preview if store already has a file (unlikely to have URL, but for safety)

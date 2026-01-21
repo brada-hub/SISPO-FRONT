@@ -211,6 +211,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
 
     try {
       const formData = new FormData()
+      const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
 
       // Add ALL selected offer IDs
       cargosSeleccionados.value.forEach((cargo, idx) => {
@@ -221,6 +222,10 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       Object.keys(datosPersonales.value).forEach(key => {
         const value = datosPersonales.value[key]
         if (value !== null && value !== '') {
+          // Check file size for personal docs
+          if (value instanceof File && value.size > MAX_FILE_SIZE) {
+            throw new Error(`El archivo ${key.replace('_', ' ')} excede el límite de 2MB.`)
+          }
           formData.append(key, value)
         }
       })
@@ -252,6 +257,9 @@ export const usePostulacionStore = defineStore('postulacion', () => {
             if (reg.archivos && typeof reg.archivos === 'object') {
               Object.entries(reg.archivos).forEach(([configId, file]) => {
                 if (file instanceof File) {
+                  if (file.size > MAX_FILE_SIZE) {
+                    throw new Error(`El archivo adjunto para "${merito.nombre}" excede el límite de 2MB.`)
+                  }
                   formData.append(`meritos[${globalIndex}][archivos][${configId}]`, file)
                 }
               })
@@ -267,11 +275,30 @@ export const usePostulacionStore = defineStore('postulacion', () => {
 
       return data
     } catch (error) {
-      if (error.response && error.response.status === 422) {
-        console.error('Validation errors:', error.response.data.errors)
+      // Manejo estructurado de errores
+      let customError = {
+        message: 'Error desconocido al procesar la postulación.',
+        details: null,
+        type: 'error'
       }
-      console.error('Error submitting postulacion:', error)
-      throw error
+
+      if (error.response) {
+        // El servidor respondió con un error (4xx, 5xx)
+        if (error.response.status === 422) {
+          customError.message = 'Existen errores de validación en su información.'
+          customError.details = error.response.data.errors
+          customError.type = 'validation'
+        } else if (error.response.status === 413) {
+          customError.message = 'Los archivos seleccionados son demasiado pesados para el servidor.'
+        } else if (error.response.data && error.response.data.message) {
+          customError.message = error.response.data.message
+        }
+      } else if (error.message) {
+        // Error local (como el de tamaño de archivo lanzado arriba) o de red
+        customError.message = error.message
+      }
+
+      throw customError
     } finally {
       submitting.value = false
     }

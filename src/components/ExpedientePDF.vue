@@ -113,7 +113,7 @@
             <tr>
               <td class="label">PRETENSIÓN SALARIAL:</td>
               <td class="value font-bold" style="color: #663399;">
-                {{ postulacion?.pretension_salarial ? `${Number(postulacion.pretension_salarial).toLocaleString('es-BO', { minimumFractionDigits: 2 })} Bs.` : '---' }}
+                {{ postulacion?.pretension_salarial ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.` : '---' }}
               </td>
             </tr>
             <tr>
@@ -319,7 +319,13 @@ const generatePDF = async () => {
 
       pdf.setFontSize(7)
       pdf.setTextColor(100)
-      const footerInfo = `Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Generado: ${new Date().toLocaleString()}`
+      const now = new Date()
+      const d = now.getDate().toString().padStart(2, '0')
+      const m = (now.getMonth() + 1).toString().padStart(2, '0')
+      const y = now.getFullYear()
+      const hh = now.getHours().toString().padStart(2, '0')
+      const mm = now.getMinutes().toString().padStart(2, '0')
+      const footerInfo = `Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Generado: ${d}-${m}-${y} ${hh}:${mm}`
       pdf.text(footerInfo, pdfWidth / 2, pdfHeight - 6, { align: 'center' })
     }
 

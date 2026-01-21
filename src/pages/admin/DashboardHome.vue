@@ -346,14 +346,22 @@ const loadStats = async () => {
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '---'
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+  // Using a robust parser to avoid timezone shifts
+  const d = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr
+  const parts = d.split('-')
+  if (parts.length === 3) return `${parts[2]}-${parts[1]}-${parts[0]}`
+  return d
 }
 
 const formatDateTime = (dateStr) => {
   if (!dateStr) return '---'
   const date = new Date(dateStr)
-  return date.toLocaleString('es-ES', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const d = date.getDate().toString().padStart(2, '0')
+  const m = (date.getMonth() + 1).toString().padStart(2, '0')
+  const y = date.getFullYear()
+  const hh = date.getHours().toString().padStart(2, '0')
+  const mm = date.getMinutes().toString().padStart(2, '0')
+  return `${d}-${m}-${y} ${hh}:${mm}`
 }
 
 const getDaysRemaining = (dateStr) => {
