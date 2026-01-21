@@ -8,6 +8,17 @@
           Seleccione una convocatoria para ver y gestionar sus postulantes.
         </p>
       </div>
+      <div>
+        <q-btn
+          label="Importar desde Excel"
+          icon="upload_file"
+          color="deep-purple-8"
+          unelevated
+          rounded
+          class="shadow-lg"
+          @click="showImportDialog = true"
+        />
+      </div>
     </div>
 
     <!-- Convocatorias Table (Always Visible) -->
@@ -348,6 +359,59 @@
       :postulation="selectedPostulacionForEval"
       @saved="refreshData"
     />
+
+    <!-- Import Dialog -->
+    <q-dialog v-model="showImportDialog" persistent>
+      <q-card style="width: 500px; max-width: 90vw; border-radius: 1.5rem">
+        <q-card-section class="bg-deep-purple-8 text-white row items-center q-pb-md">
+          <div class="text-h6 font-bold">Importar Datos (Google Forms)</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-lg">
+          <div class="bg-blue-50 p-4 rounded-xl mb-4 text-blue-900 border border-blue-100">
+            <p class="text-sm q-mb-xs font-bold flex items-center gap-2">
+              <q-icon name="info" />
+              Instrucciones del Archivo:
+            </p>
+            <ul class="text-xs q-pl-md q-ma-none">
+              <li>El archivo debe ser .xlsx o .csv</li>
+              <li>Debe contener columnas: Sede, Carrera, Nombre Completo, Profesión, Fecha Título.</li>
+              <li>Los datos se asignarán a la convocatoria "MIGRACIÓN DATA EXTERNA".</li>
+            </ul>
+          </div>
+
+          <q-file
+            v-model="importFile"
+            label="Seleccione el archivo Excel"
+            outlined
+            rounded
+            use-chips
+            accept=".xlsx, .xls, .csv"
+            class="q-mt-md"
+          >
+            <template v-slot:prepend>
+              <q-icon name="attach_file" />
+            </template>
+          </q-file>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn label="Cancelar" flat color="grey-7" v-close-popup rounded />
+          <q-btn
+            label="Iniciar Importación"
+            color="deep-purple-8"
+            unelevated
+            rounded
+            :loading="importing"
+            :disable="!importFile"
+            @click="processImport"
+            class="q-px-lg shadow-2"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -369,6 +433,11 @@ const loading = ref(false)
 // Modals state
 const showEvalModal = ref(false)
 const selectedPostulacionForEval = ref(null)
+
+// Import state
+const showImportDialog = ref(false)
+const importFile = ref(null)
+const importing = ref(false)
 
 const openEvalModal = (row) => {
   selectedPostulacionForEval.value = row
@@ -649,6 +718,49 @@ const exportGeneralReport = async () => {
     $q.notify({ type: 'negative', message: 'Error al descargar reporte' })
   } finally {
     $q.loading.hide()
+  }
+}
+
+const processImport = async () => {
+  if (!importFile.value) return
+
+  importing.value = true
+  const formData = new FormData()
+  formData.append('file', importFile.value)
+
+  try {
+    const { data } = await api.post('/importar-excel', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+
+    $q.notify({
+      type: 'positive',
+      message: `¡Importación completada! ${data.imported} registros procesados.`,
+      position: 'top',
+    })
+
+    if (data.errors && data.errors.length > 0) {
+      console.warn('Errores en importación:', data.errors)
+      $q.notify({
+        type: 'warning',
+        message: `Hubo ${data.errors.length} errores. Revise la consola.`,
+        position: 'top',
+      })
+    }
+
+    showImportDialog.value = false
+    importFile.value = null
+    loadConvocatorias() // Refresh convocatorias list
+  } catch (error) {
+    console.error(error)
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Error al importar los datos',
+    })
+  } finally {
+    importing.value = false
   }
 }
 
