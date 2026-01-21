@@ -24,6 +24,27 @@ api.interceptors.request.use(config => {
   return Promise.reject(error)
 })
 
+// Response Interceptor to handle expired tokens (401)
+api.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401) {
+      console.error('Sesión expirada o no autorizada. Redirigiendo al login...')
+
+      // Limpiar datos locales
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+
+      // Redirigir al login y recargar para limpiar estado de Pinia
+      if (!window.location.hash.includes('/login')) {
+         window.location.href = '#/login'
+         window.location.reload()
+      }
+    }
+    return Promise.reject(error)
+  }
+)
+
 export default defineBoot(({ app }) => {
   app.config.globalProperties.$axios = axios
   app.config.globalProperties.$api = api

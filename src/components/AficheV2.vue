@@ -55,7 +55,7 @@
           <span class="label-box">II.</span> REQUISITOS MÍNIMOS:
         </div>
         <div class="docs-list" :class="{ 'multi-column': useGridForReqs }">
-          <div v-for="rid in requisitosIds" :key="rid" class="doc-item">
+          <div v-for="rid in visibleRequisitosIds" :key="rid" class="doc-item">
             <span class="bullet"></span>
             <div class="doc-text">
               <span class="item-main-text text-uppercase">{{ getReqName(rid) }}:</span>
@@ -159,7 +159,16 @@ const isNacional = computed(() => {
 // LOGIC: Use 2 columns if list is too long
 const totalCargoItems = computed(() => props.ofertas.length + Object.keys(groupedOfertas.value).length)
 const useGridForCargos = computed(() => totalCargoItems.value > 8)
-const useGridForReqs = computed(() => props.requisitosIds.length > 6)
+const visibleRequisitosIds = computed(() => {
+  return props.requisitosIds.filter(rid => {
+    const text = props.requisitosAfiche[rid]
+    // Solo ocultamos si es EXPLÍCITAMENTE la palabra mágica OCULTAR
+    // Si está vacío o tiene texto, se muestra.
+    return text !== 'OCULTAR'
+  })
+})
+
+const useGridForReqs = computed(() => visibleRequisitosIds.value.length > 6)
 
 // LOGIC: Dynamic Scaling for spacing
 const totalContentScore = computed(() => {

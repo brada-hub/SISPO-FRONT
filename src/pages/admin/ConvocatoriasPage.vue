@@ -130,13 +130,13 @@
                 <div class="text-h6 text-gray-700 mb-4 flex items-center gap-2">
                   <q-icon name="info" color="primary" /> Información de Encabezado
                 </div>
-                <q-input v-model="form.titulo" label="Título (Eje: MARKETING Y VENTAS)" outlined dense class="mb-4 text-uppercase" placeholder="MARKETING Y VENTAS" />
-                <q-input v-model="form.descripcion" label="Descripción / Invitación" type="textarea" outlined dense rows="3" placeholder="La Universidad Técnica Privada Cosmos invita a profesionales..." />
+                <q-input v-model="form.titulo" label="Título (Eje: MARKETING Y VENTAS)" outlined dense class="mb-4 text-uppercase" placeholder="MARKETING Y VENTAS" :rules="[val => !!val || 'El título es obligatorio']" />
+                <q-input v-model="form.descripcion" label="Descripción / Invitación" type="textarea" outlined dense rows="3" placeholder="La Universidad Técnica Privada Cosmos invita a profesionales..." :rules="[val => !!val || 'La descripción es obligatoria']" />
 
                 <div class="grid grid-cols-1 gap-3 mt-4">
-                  <q-input v-model="form.fecha_inicio" label="Inicia recepción" type="date" outlined dense stack-label />
-                  <q-input v-model="form.fecha_cierre" label="Plazo de postulación" type="date" outlined dense stack-label />
-                  <q-input v-model="form.hora_limite" label="Hora de Cierre" type="time" outlined dense stack-label hint="Hora límite de recepción" />
+                  <q-input v-model="form.fecha_inicio" label="Inicia recepción" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
+                  <q-input v-model="form.fecha_cierre" label="Plazo de postulación" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
+                  <q-input v-model="form.hora_limite" label="Hora de Cierre" type="time" outlined dense stack-label hint="Hora límite de recepción" :rules="[val => !!val || 'Hora obligatoria']" />
                 </div>
 
                 <q-input
@@ -241,7 +241,7 @@
                       </q-btn>
                     </div>
 
-                    <div v-if="form.config_requisitos_ids.includes(req.id)" class="ml-7 animate-fade-in">
+                    <div v-if="form.config_requisitos_ids.includes(req.id)" class="ml-7 animate-fade-in space-y-2">
                        <q-input
                           v-model="form.requisitos_afiche[req.id]"
                           placeholder="Ejem: en Ciencias de la Ingeniería..."
@@ -252,11 +252,23 @@
                           bg-color="white"
                           class="rounded-lg shadow-inner"
                           input-class="text-[10px] font-bold text-primary"
+                          :disable="form.requisitos_afiche[req.id] === 'OCULTAR'"
                         >
                           <template v-slot:prepend>
                              <q-icon name="edit" size="xs" color="grey-4" />
                           </template>
                        </q-input>
+
+                       <q-btn
+                         :label="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'Mostrar en Afiche' : 'Ocultar en Afiche'"
+                         :icon="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'visibility' : 'visibility_off'"
+                         size="xs"
+                         flat
+                         dense
+                         :color="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'positive' : 'grey-7'"
+                         class="opacity-70 hover:opacity-100"
+                         @click="form.requisitos_afiche[req.id] === 'OCULTAR' ? form.requisitos_afiche[req.id] = '' : form.requisitos_afiche[req.id] = 'OCULTAR'"
+                       />
                     </div>
                   </div>
                 </div>
@@ -668,18 +680,23 @@ const downloadPDF = async () => {
   if (!el) return
   $q.loading.show({ message: 'Renderizando PDF Pro...' })
   try {
+    // Asegurar que las fuentes y el DOM estén listos
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    // Forzar el redibujado
+    el.style.display = 'flex'
+    el.style.visibility = 'visible'
 
     const scale = 3
     const param = {
-      height: 1123 * scale,
+      height: el.scrollHeight * scale, // Usar la altura real del contenido
       width: 794 * scale,
       style: {
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
         width: '794px',
-        height: '1123px',
+        height: `${el.scrollHeight}px`,
         opacity: '1'
       },
       quality: 1,
@@ -694,12 +711,20 @@ const downloadPDF = async () => {
       unit: 'mm',
       format: 'a4'
     })
-    pdf.addImage(dataUrl, 'PNG', 0, 0, 210, 297)
+
+    // Si la imagen es más alta que un A4, ajustar manteniendo proporción
+    const imgProps = pdf.getImageProperties(dataUrl)
+    const pdfWidth = pdf.internal.pageSize.getWidth()
+    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
+
+    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
     pdf.save(`Afiche_SISPO_${form.value.titulo || 'Convocatoria'}.pdf`)
   } catch (error) {
     console.error(error)
     $q.notify({ type: 'negative', message: 'Error al generar PDF' })
   } finally {
+    const el = document.getElementById('afiche-perfect-capture')
+    if (el) el.style.visibility = 'hidden'
     $q.loading.hide()
   }
 }
@@ -709,18 +734,25 @@ const downloadImage = async () => {
   if (!el) return
   $q.loading.show({ message: 'Generando Imagen Ultra-HD...' })
   try {
+    // Asegurar que las fuentes y activos estén listos
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 800))
+    await new Promise(resolve => setTimeout(resolve, 1500))
+
+    // Asegurar visibilidad para la captura
+    el.style.display = 'flex'
+    el.style.visibility = 'visible'
 
     const scale = 3
+    const actualHeight = el.scrollHeight
+
     const param = {
-      height: 1123 * scale,
+      height: actualHeight * scale,
       width: 794 * scale,
       style: {
         transform: `scale(${scale})`,
         transformOrigin: 'top left',
         width: '794px',
-        height: '1123px',
+        height: `${actualHeight}px`,
         opacity: '1'
       },
       quality: 1,
@@ -738,15 +770,32 @@ const downloadImage = async () => {
     console.error(error)
     $q.notify({ type: 'negative', message: 'Error al generar imagen UHD' })
   } finally {
+    const el = document.getElementById('afiche-perfect-capture')
+    if (el) el.style.visibility = 'hidden'
     $q.loading.hide()
   }
 }
 
 const save = async () => {
-  if (!form.value.titulo || form.value.ofertas.length === 0 || !form.value.fecha_cierre || !form.value.fecha_inicio) {
-    $q.notify({ message: 'Completa todos los campos obligatorios (Título, Ofertas, Inicio y Cierre)', color: 'negative' })
+  // Validación manual más estricta
+  const errors = []
+  if (!form.value.titulo) errors.push('Título')
+  if (!form.value.descripcion) errors.push('Descripción')
+  if (!form.value.fecha_inicio) errors.push('Fecha Inicio')
+  if (!form.value.fecha_cierre) errors.push('Fecha Cierre')
+  if (form.value.ofertas.length === 0) errors.push('Al menos una Oferta (Cargo/Sede)')
+
+  if (errors.length > 0) {
+    $q.notify({
+      type: 'negative',
+      message: 'Faltan campos obligatorios',
+      caption: `Verifique: ${errors.join(', ')}`,
+      position: 'top',
+      icon: 'warning'
+    })
     return
   }
+
   saving.value = true
   try {
     if (isEdit.value) {
@@ -760,8 +809,8 @@ const save = async () => {
   } catch (error) {
     console.error(error)
     if (error.response?.status === 422 && error.response.data?.errors) {
-      const errors = error.response.data.errors
-      const messages = Object.values(errors).flat().join('<br>')
+      const serverErrors = error.response.data.errors
+      const messages = Object.values(serverErrors).flat().join('<br>')
       $q.notify({ type: 'negative', message: messages, html: true, multiLine: true })
     } else {
       $q.notify({ type: 'negative', message: 'Error al procesar la solicitud. Verifica los datos.' })

@@ -201,7 +201,7 @@ import { useQuasar } from 'quasar'
 const $q = useQuasar()
 
 const authStore = useAuthStore()
-useInactivity(600000) // 10 minutos de inactividad
+useInactivity() // Ahora usa el default de 30 minutos definido en el composable
 
 const leftDrawerOpen = ref(false)
 const route = useRoute()

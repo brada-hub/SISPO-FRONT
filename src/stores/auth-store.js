@@ -38,18 +38,22 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async logout() {
+      // Guardamos el token para la petición antes de borrarlo
+      const token = this.token
+
+      // Limpiar estado local inmediatamente
+      this.token = null
+      this.user = null
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      delete api.defaults.headers.common['Authorization']
+
       try {
-        if (this.token) {
+        if (token) {
            await api.post('/logout')
         }
       } catch (e) {
-        console.error('Logout error', e)
-      } finally {
-        this.token = null
-        this.user = null
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        delete api.defaults.headers.common['Authorization']
+        console.warn('Servidor ya había invalidado la sesión o error de red:', e.message)
       }
     },
 
