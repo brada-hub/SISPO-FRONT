@@ -348,6 +348,17 @@
               @click="viewExpediente(props.row)"
               rounded
             />
+            <q-btn
+              v-if="isAdmin"
+              icon="delete"
+              size="sm"
+              color="negative"
+              flat
+              round
+              @click="deletePostulante(props.row)"
+            >
+              <q-tooltip>Eliminar Postulante</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
       </q-table>
@@ -423,12 +434,17 @@ import { useRouter } from 'vue-router'
 
 import EvaluacionMeritosModal from 'components/admin/EvaluacionMeritosModal.vue'
 
+import { useAuthStore } from 'src/stores/auth-store'
+
 const $q = useQuasar()
+const authStore = useAuthStore()
 const router = useRouter()
 const rows = ref([])
 const convocatorias = ref([])
 const selectedConvocatoria = ref(null)
 const loading = ref(false)
+
+const isAdmin = computed(() => authStore.user?.rol?.nombre === 'ADMINISTRADOR')
 
 // Modals state
 const showEvalModal = ref(false)
@@ -686,6 +702,46 @@ const updateStatus = async (row) => {
 
 const viewExpediente = (row) => {
   router.push(`/admin/expediente/${row.id}`)
+}
+
+const deletePostulante = (row) => {
+  $q.dialog({
+    title: 'Confirmar Eliminación',
+    message: `¿Está seguro de eliminar a ${row.postulante.nombres} ${row.postulante.apellidos}? Esta acción no se puede deshacer.`,
+    persistent: true,
+    ok: {
+      label: 'Eliminar',
+      color: 'negative',
+      unelevated: true,
+      rounded: true
+    },
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+      rounded: true
+    }
+  }).onOk(async () => {
+    try {
+      await api.delete(`/postulaciones/${row.id}`)
+      $q.notify({
+        type: 'positive',
+        message: 'Postulante eliminado correctamente',
+        position: 'top'
+      })
+      // Refresh both lists
+      loadConvocatorias()
+      if (selectedConvocatoria.value) {
+        selectConvocatoria(selectedConvocatoria.value)
+      }
+    } catch (error) {
+      console.error(error)
+      $q.notify({
+        type: 'negative',
+        message: error.response?.data?.message || 'Error al eliminar postulante'
+      })
+    }
+  })
 }
 
 const exportGeneralReport = async () => {
