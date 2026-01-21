@@ -172,7 +172,20 @@
 
                     <td class="text-center bg-grey-1 text-[9px] font-bold" style="width: 80px; word-break: break-all;">{{ row.extraInfo.area }}</td>
                     <td class="text-center bg-grey-1 font-bold">{{ row.extraInfo.anio }}</td>
-                    <td class="text-center bg-teal-1 font-bold text-teal-10">Bs. <br>{{ Math.round(row.pretension_salarial || 0) }}</td>
+                    <td class="text-center bg-teal-1 font-bold text-teal-10 cursor-pointer">
+                      Bs. <br>{{ Math.round(row.pretension_salarial || 0) }}
+                      <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope">
+                        <q-input
+                          v-model.number="scope.value"
+                          dense
+                          autofocus
+                          counter
+                          prefix="Bs."
+                          type="number"
+                          @keyup.enter="scope.set"
+                        />
+                      </q-popup-edit>
+                    </td>
 
                     <td v-for="field in meritFields" :key="field" class="score-cell">
                       <div class="cell-val" :class="getFieldColorClass(field)">{{ row.evalData[field] }}</div>
@@ -507,6 +520,7 @@ const saveGroup = async (items) => {
         puntaje_total: t1 + t2 + t3 + t4,
         detalle_evaluacion: d,
         observaciones: d.observaciones,
+        pretension_salarial: row.pretension_salarial
       })
     }
     $q.notify({ color: 'positive', message: 'Tabla guardada correctamente' })
@@ -537,6 +551,7 @@ const saveAll = async () => {
                 puntaje_total: t1 + t2 + t3 + t4,
                 detalle_evaluacion: d,
                 observaciones: d.observaciones,
+                pretension_salarial: row.pretension_salarial
             })
         }
         $q.notify({ color: 'positive', message: '¡Todo guardado!' })
