@@ -7,29 +7,29 @@ const routes = [
       {
         path: '',
         name: 'portal',
-        component: () => import('pages/PortalPage.vue')
+        component: () => import('pages/PortalPage.vue'),
       },
       {
         path: 'postular/:id?',
         name: 'postular',
-        component: () => import('pages/PortalPostulacion.vue')
+        component: () => import('pages/PortalPostulacion.vue'),
       },
       {
         path: 'postular-legacy',
         name: 'postular_legacy',
-        component: () => import('pages/IndexPage.vue')
+        component: () => import('pages/IndexPage.vue'),
       },
       {
         path: 'seguimiento',
         name: 'seguimiento',
-        component: () => import('pages/ConsultaEstado.vue')
+        component: () => import('pages/ConsultaEstado.vue'),
       },
       {
         path: 'login',
         name: 'login',
-        component: () => import('pages/LoginPage.vue')
-      }
-    ]
+        component: () => import('pages/LoginPage.vue'),
+      },
+    ],
   },
 
   // Admin Routes with MainLayout (Sidebar/Header)
@@ -41,41 +41,45 @@ const routes = [
       {
         path: '',
         name: 'admin_dashboard',
-        component: () => import('pages/admin/DashboardHome.vue')
+        component: () => import('pages/admin/DashboardHome.vue'),
       },
       {
         path: 'sedes',
-        component: () => import('pages/admin/SedesPage.vue')
+        component: () => import('pages/admin/SedesPage.vue'),
       },
       {
         path: 'cargos',
-        component: () => import('pages/admin/CargosPage.vue')
+        component: () => import('pages/admin/CargosPage.vue'),
       },
       {
         path: 'requisitos',
-        component: () => import('pages/admin/TiposDocumentoPage.vue')
+        component: () => import('pages/admin/TiposDocumentoPage.vue'),
       },
       {
         path: 'convocatorias',
-        component: () => import('pages/admin/ConvocatoriasPage.vue')
+        component: () => import('pages/admin/ConvocatoriasPage.vue'),
       },
       {
         path: 'postulaciones',
-        component: () => import('pages/admin/PostulacionesPage.vue')
+        component: () => import('pages/admin/PostulacionesPage.vue'),
       },
       {
         path: 'expediente/:id',
-        component: () => import('pages/admin/ExpedientePage.vue')
+        component: () => import('pages/admin/ExpedientePage.vue'),
+      },
+      {
+        path: 'evaluacion-tabla',
+        component: () => import('pages/admin/EvaluacionTablaPage.vue'),
       },
       {
         path: 'usuarios',
-        component: () => import('pages/admin/UsuariosPage.vue')
+        component: () => import('pages/admin/UsuariosPage.vue'),
       },
       {
         path: 'roles',
-        component: () => import('pages/admin/RolesPage.vue')
-      }
-    ]
+        component: () => import('pages/admin/RolesPage.vue'),
+      },
+    ],
   },
 
   // Always leave this as last one

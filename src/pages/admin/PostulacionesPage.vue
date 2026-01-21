@@ -4,7 +4,9 @@
     <div class="flex justify-between items-center mb-6">
       <div>
         <h1 class="text-2xl font-bold text-gray-800">Gestión de Postulaciones</h1>
-        <p class="text-gray-500">Seleccione una convocatoria para ver y gestionar sus postulantes.</p>
+        <p class="text-gray-500">
+          Seleccione una convocatoria para ver y gestionar sus postulantes.
+        </p>
       </div>
     </div>
 
@@ -21,7 +23,12 @@
     >
       <template v-slot:header="props">
         <q-tr :props="props" class="bg-primary text-white">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
+          <q-th
+            v-for="col in props.cols"
+            :key="col.name"
+            :props="props"
+            class="text-weight-bolder uppercase tracking-wider"
+          >
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -50,7 +57,9 @@
       <template v-slot:body-cell-acciones="props">
         <q-td :props="props" class="text-right">
           <q-btn
-            :label="selectedConvocatoria?.id === props.row.id ? 'Viendo Postulantes' : 'Ver Postulantes'"
+            :label="
+              selectedConvocatoria?.id === props.row.id ? 'Viendo Postulantes' : 'Ver Postulantes'
+            "
             :icon="selectedConvocatoria?.id === props.row.id ? 'check_circle' : 'groups'"
             :color="selectedConvocatoria?.id === props.row.id ? 'green-7' : 'indigo-7'"
             unelevated
@@ -73,129 +82,143 @@
             <q-icon name="people" color="teal-7" />
             Postulantes: <span class="text-teal-7">{{ selectedConvocatoria.titulo }}</span>
           </h2>
-          <p class="text-gray-500 text-sm">Use los filtros para buscar postulantes específicos en esta lista.</p>
+          <p class="text-gray-500 text-sm">
+            Use los filtros para buscar postulantes específicos en esta lista.
+          </p>
         </div>
 
-        <q-btn
-          label="Descargar Reporte (Excel)"
-          icon="download"
-          color="green-8"
-          unelevated
-          @click="exportGeneralReport"
-          rounded
-          class="shadow-2"
-        />
+        <div class="row items-center gap-2">
+          <q-btn
+            label="Tabla de Evaluación"
+            icon="grid_on"
+            color="primary"
+            unelevated
+            @click="goToEvaluationTable"
+            rounded
+            class="shadow-2"
+          />
+          <q-btn
+            label="Descargar Reporte (Excel)"
+            icon="download"
+            color="green-8"
+            unelevated
+            @click="exportGeneralReport"
+            rounded
+            class="shadow-2"
+          />
+
+        </div>
       </div>
 
       <!-- Postulantes Filter Bar -->
       <q-card class="mb-6 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div class="p-4 row q-col-gutter-md items-center">
-        <!-- Search -->
-        <div class="col-12 col-sm-3">
-          <q-input
-            v-model="filterSearch"
-            placeholder="Buscar por nombre o CI..."
-            dense
-            outlined
-            rounded
-            bg-color="white"
-          >
-            <template v-slot:prepend>
-              <q-icon name="search" />
-            </template>
-          </q-input>
-        </div>
+          <!-- Search -->
+          <div class="col-12 col-sm-3">
+            <q-input
+              v-model="filterSearch"
+              placeholder="Buscar por nombre o CI..."
+              dense
+              outlined
+              rounded
+              bg-color="white"
+            >
+              <template v-slot:prepend>
+                <q-icon name="search" />
+              </template>
+            </q-input>
+          </div>
 
-        <!-- Filter Status -->
-        <div class="col-12 col-sm-2">
-          <q-select
-            v-model="filterEstado"
-            :options="statusOptions"
-            label="Estado"
-            dense
-            outlined
-            rounded
-            clearable
-            bg-color="white"
-            emit-value
-            map-options
-            stack-label
-            class="text-uppercase filter-select"
-          />
-        </div>
+          <!-- Filter Status -->
+          <div class="col-12 col-sm-2">
+            <q-select
+              v-model="filterEstado"
+              :options="statusOptions"
+              label="Estado"
+              dense
+              outlined
+              rounded
+              clearable
+              bg-color="white"
+              emit-value
+              map-options
+              stack-label
+              class="text-uppercase filter-select"
+            />
+          </div>
 
-        <!-- Filter Sede -->
-        <div class="col-12 col-sm-2">
-          <q-select
-            v-model="filterSede"
-            :options="uniqueSedes"
-            label="Sede"
-            dense
-            outlined
-            rounded
-            clearable
-            stack-label
-            bg-color="white"
-            class="filter-select"
-          />
-        </div>
+          <!-- Filter Sede -->
+          <div class="col-12 col-sm-2">
+            <q-select
+              v-model="filterSede"
+              :options="uniqueSedes"
+              label="Sede"
+              dense
+              outlined
+              rounded
+              clearable
+              stack-label
+              bg-color="white"
+              class="filter-select"
+            />
+          </div>
 
-        <!-- Filter Cargo -->
-        <div class="col-12 col-sm-2">
-          <q-select
-            v-model="filterCargo"
-            :options="uniqueCargos"
-            label="Cargo"
-            dense
-            outlined
-            rounded
-            clearable
-            stack-label
-            bg-color="white"
-            class="filter-select"
-          />
-        </div>
+          <!-- Filter Cargo -->
+          <div class="col-12 col-sm-2">
+            <q-select
+              v-model="filterCargo"
+              :options="uniqueCargos"
+              label="Cargo"
+              dense
+              outlined
+              rounded
+              clearable
+              stack-label
+              bg-color="white"
+              class="filter-select"
+            />
+          </div>
 
-        <!-- Filter Salary Range -->
-        <div class="col-12 col-sm-3 flex items-center gap-2">
-          <q-input
-            v-model.number="filterSalarioMin"
-            label="Sueldo Mín."
-            type="number"
-            dense
-            outlined
-            rounded
-            bg-color="white"
-            stack-label
-            class="filter-select flex-1"
-          />
-          <q-input
-            v-model.number="filterSalarioMax"
-            label="Sueldo Máx."
-            type="number"
-            dense
-            outlined
-            rounded
-            bg-color="white"
-            stack-label
-            class="filter-select flex-1"
-          />
-        </div>
+          <!-- Filter Salary Range -->
+          <div class="col-12 col-sm-3 flex items-center gap-2">
+            <q-input
+              v-model.number="filterSalarioMin"
+              label="Sueldo Mín."
+              type="number"
+              dense
+              outlined
+              rounded
+              bg-color="white"
+              stack-label
+              class="filter-select flex-1"
+            />
+            <q-input
+              v-model.number="filterSalarioMax"
+              label="Sueldo Máx."
+              type="number"
+              dense
+              outlined
+              rounded
+              bg-color="white"
+              stack-label
+              class="filter-select flex-1"
+            />
+          </div>
 
-        <!-- Reset -->
-        <div class="col-12 col-sm-2 text-right">
-          <q-btn
-            icon="filter_list_off"
-            label="Limpiar"
-            flat
-            color="grey-7"
-            @click="clearFilters"
-            rounded
-            dense
-          />
+          <!-- Reset -->
+          <div class="col-12 col-sm-2 text-right">
+            <q-btn
+              icon="filter_list_off"
+              label="Limpiar"
+              flat
+              color="grey-7"
+              @click="clearFilters"
+              rounded
+              dense
+            />
+          </div>
         </div>
-      </div>
-    </q-card>
+      </q-card>
 
       <!-- Postulantes Table -->
       <q-table
@@ -207,42 +230,68 @@
         bordered
         class="rounded-2xl shadow-lg overflow-hidden pb-10"
       >
-      <template v-slot:header="props">
-        <q-tr :props="props" class="bg-teal-7 text-white">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-weight-bolder uppercase tracking-wider">
-            {{ col.label }}
-          </q-th>
-        </q-tr>
-      </template>
+        <template v-slot:header="props">
+          <q-tr :props="props" class="bg-teal-7 text-white">
+            <q-th
+              v-for="col in props.cols"
+              :key="col.name"
+              :props="props"
+              class="text-weight-bolder uppercase tracking-wider"
+            >
+              {{ col.label }}
+            </q-th>
+          </q-tr>
+        </template>
 
-      <template v-slot:body-cell-postulante="props">
-        <q-td :props="props">
-          <div class="font-bold uppercase">{{ props.row.postulante?.nombres }} {{ props.row.postulante?.apellidos }}</div>
-          <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">CI: {{ props.row.postulante?.ci }}</div>
-        </q-td>
-      </template>
+        <template v-slot:body-cell-postulante="props">
+          <q-td :props="props">
+            <div class="font-bold uppercase">
+              {{ props.row.postulante?.nombres }} {{ props.row.postulante?.apellidos }}
+            </div>
+            <div class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">
+              CI: {{ props.row.postulante?.ci }}
+            </div>
+          </q-td>
+        </template>
 
-      <template v-slot:body-cell-cargo="props">
-        <q-td :props="props">
-          <div class="text-xs font-bold text-primary uppercase">{{ props.row.oferta?.cargo?.nombre || 'N/A' }}</div>
-          <div class="text-[10px] text-gray-500 uppercase font-medium">{{ props.row.oferta?.sede?.nombre || '' }}</div>
-        </q-td>
-      </template>
+        <template v-slot:body-cell-cargo="props">
+          <q-td :props="props">
+            <div class="text-xs font-bold text-primary uppercase">
+              {{ props.row.oferta?.cargo?.nombre || 'N/A' }}
+            </div>
+            <div class="text-[10px] text-gray-500 uppercase font-medium">
+              {{ props.row.oferta?.sede?.nombre || '' }}
+            </div>
+          </q-td>
+        </template>
 
-      <template v-slot:body-cell-fecha_postulacion="props">
-        <q-td :props="props">
-          <div class="text-xs font-medium">{{ formatDate(props.row.fecha_postulacion) }}</div>
-        </q-td>
-      </template>
+        <template v-slot:body-cell-fecha_postulacion="props">
+          <q-td :props="props">
+            <div class="text-xs font-medium">{{ formatDate(props.row.fecha_postulacion) }}</div>
+          </q-td>
+        </template>
 
-      <template v-slot:body-cell-pretension_salarial="props">
-        <q-td :props="props" class="text-center font-bold text-teal-9">
-          {{ props.row.pretension_salarial ? 'Bs. ' + Math.round(Number(props.row.pretension_salarial)).toLocaleString('de-DE') : '-' }}
-        </q-td>
-      </template>
+        <template v-slot:body-cell-pretension_salarial="props">
+          <q-td :props="props" class="text-center font-bold text-teal-9">
+            {{
+              props.row.pretension_salarial
+                ? 'Bs. ' + Math.round(Number(props.row.pretension_salarial)).toLocaleString('de-DE')
+                : '-'
+            }}
+          </q-td>
+        </template>
 
-      <template v-slot:body-cell-estado="props">
-         <q-td :props="props" class="text-center">
+        <template v-slot:body-cell-puntaje_tecnico="props">
+          <q-td :props="props" class="text-center font-bold text-deep-orange-9">
+            <q-badge v-if="props.row.evaluacion" color="deep-orange-9" class="p-1 q-px-sm">
+              {{ props.row.evaluacion.puntaje_total }} / 100
+            </q-badge>
+            <span v-else class="text-grey-5">-</span>
+          </q-td>
+        </template>
+
+        <template v-slot:body-cell-estado="props">
+          <q-td :props="props" class="text-center">
             <q-select
               v-model="props.row.estado"
               :options="statusOptions"
@@ -263,25 +312,42 @@
                 </div>
               </template>
             </q-select>
-         </q-td>
-      </template>
+          </q-td>
+        </template>
 
-      <template v-slot:body-cell-acciones="props">
-        <q-td :props="props" class="flex gap-2 justify-end">
-          <q-btn
-            label="Ver Expediente"
-            icon="visibility"
-            size="sm"
-            style="background-color: #009999; color: white;"
-            unelevated
-            class="rounded-xl shadow-lg q-px-md"
-            @click="viewExpediente(props.row)"
-            rounded
-          />
-        </q-td>
-      </template>
-    </q-table>
+        <template v-slot:body-cell-acciones="props">
+          <q-td :props="props" class="flex gap-2 justify-end">
+            <q-btn
+              label="Evaluar"
+              icon="psychology"
+              size="sm"
+              color="deep-orange-9"
+              unelevated
+              class="rounded-xl shadow-lg q-px-md"
+              @click="openEvalModal(props.row)"
+              rounded
+            />
+            <q-btn
+              label="Ver Expediente"
+              icon="visibility"
+              size="sm"
+              style="background-color: #009999; color: white"
+              unelevated
+              class="rounded-xl shadow-lg q-px-md"
+              @click="viewExpediente(props.row)"
+              rounded
+            />
+          </q-td>
+        </template>
+      </q-table>
     </div>
+
+    <!-- Modals -->
+    <EvaluacionMeritosModal
+      v-model="showEvalModal"
+      :postulation="selectedPostulacionForEval"
+      @saved="refreshData"
+    />
   </q-page>
 </template>
 
@@ -291,22 +357,39 @@ import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import { useRouter } from 'vue-router'
 
+import EvaluacionMeritosModal from 'components/admin/EvaluacionMeritosModal.vue'
+
 const $q = useQuasar()
 const router = useRouter()
 const rows = ref([])
 const convocatorias = ref([])
 const selectedConvocatoria = ref(null)
 const loading = ref(false)
+
+// Modals state
+const showEvalModal = ref(false)
+const selectedPostulacionForEval = ref(null)
+
+const openEvalModal = (row) => {
+  selectedPostulacionForEval.value = row
+  showEvalModal.value = true
+}
+
+const refreshData = () => {
+  if (selectedConvocatoria.value) {
+    selectConvocatoria(selectedConvocatoria.value)
+  }
+}
 const statusLabels = {
   enviada: 'Postulado',
   en_revision: 'En Evaluación',
   validada: 'Pre-seleccionado',
   observada: 'Con Observación',
-  rechazada: 'No Seleccionado'
+  rechazada: 'No Seleccionado',
 }
 const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
   label,
-  value
+  value,
 }))
 
 // Filters
@@ -327,17 +410,17 @@ const clearFilters = () => {
 }
 
 const uniqueSedes = computed(() => {
-  const sedes = rows.value.map(r => r.oferta?.sede?.nombre).filter(Boolean)
+  const sedes = rows.value.map((r) => r.oferta?.sede?.nombre).filter(Boolean)
   return [...new Set(sedes)].sort()
 })
 
 const uniqueCargos = computed(() => {
-  const cargos = rows.value.map(r => r.oferta?.cargo?.nombre).filter(Boolean)
+  const cargos = rows.value.map((r) => r.oferta?.cargo?.nombre).filter(Boolean)
   return [...new Set(cargos)].sort()
 })
 
 const filteredRows = computed(() => {
-  return rows.value.filter(row => {
+  return rows.value.filter((row) => {
     // Search filter
     if (filterSearch.value) {
       const search = filterSearch.value.toLowerCase()
@@ -356,30 +439,95 @@ const filteredRows = computed(() => {
     if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
 
     // Salary Min filter
-    if (filterSalarioMin.value !== null && filterSalarioMin.value !== '' && (row.pretension_salarial || 0) < filterSalarioMin.value) return false
+    if (
+      filterSalarioMin.value !== null &&
+      filterSalarioMin.value !== '' &&
+      (row.pretension_salarial || 0) < filterSalarioMin.value
+    )
+      return false
 
     // Salary Max filter
-    if (filterSalarioMax.value !== null && filterSalarioMax.value !== '' && (row.pretension_salarial || 0) > filterSalarioMax.value) return false
+    if (
+      filterSalarioMax.value !== null &&
+      filterSalarioMax.value !== '' &&
+      (row.pretension_salarial || 0) > filterSalarioMax.value
+    )
+      return false
 
     return true
   })
 })
 
 const convocatoriaColumns = [
-  { name: 'titulo', label: 'Nombre de la Convocatoria', field: 'titulo', sortable: true, align: 'left' },
-  { name: 'fecha_inicio', label: 'Fecha Inicio', field: 'fecha_inicio', sortable: true, align: 'left' },
-  { name: 'fecha_cierre', label: 'Fecha Cierre', field: 'fecha_cierre', sortable: true, align: 'left' },
-  { name: 'postulaciones_count', label: 'Total Postulantes', field: 'postulaciones_count', sortable: true, align: 'center' },
-  { name: 'acciones', label: 'Acciones', align: 'right' }
+  {
+    name: 'titulo',
+    label: 'Nombre de la Convocatoria',
+    field: 'titulo',
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'fecha_inicio',
+    label: 'Fecha Inicio',
+    field: 'fecha_inicio',
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'fecha_cierre',
+    label: 'Fecha Cierre',
+    field: 'fecha_cierre',
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'postulaciones_count',
+    label: 'Total Postulantes',
+    field: 'postulaciones_count',
+    sortable: true,
+    align: 'center',
+  },
+  { name: 'acciones', label: 'Acciones', align: 'right' },
 ]
 
 const columns = [
-  { name: 'postulante', label: 'Postulante', field: row => row.postulante?.nombres, sortable: true, align: 'left' },
-  { name: 'cargo', label: 'Cargo / Sede', field: row => row.oferta?.cargo?.nombre, sortable: true, align: 'left' },
-  { name: 'fecha_postulacion', label: 'Fecha', field: 'fecha_postulacion', sortable: true, align: 'left' },
-  { name: 'pretension_salarial', label: 'Pretensión (Bs)', field: 'pretension_salarial', sortable: true, align: 'center' },
+  {
+    name: 'postulante',
+    label: 'Postulante',
+    field: (row) => row.postulante?.nombres,
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'cargo',
+    label: 'Cargo / Sede',
+    field: (row) => row.oferta?.cargo?.nombre,
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'fecha_postulacion',
+    label: 'Fecha',
+    field: 'fecha_postulacion',
+    sortable: true,
+    align: 'left',
+  },
+  {
+    name: 'pretension_salarial',
+    label: 'Pretensión (Bs)',
+    field: 'pretension_salarial',
+    sortable: true,
+    align: 'center',
+  },
+  {
+    name: 'puntaje_tecnico',
+    label: 'Puntaje Técnica',
+    field: (row) => row.evaluacion?.puntaje_total || '-',
+    sortable: true,
+    align: 'center',
+  },
   { name: 'estado', label: 'Estado Actual', field: 'estado', sortable: true, align: 'center' },
-  { name: 'acciones', label: 'Acciones', align: 'right' }
+  { name: 'acciones', label: 'Acciones', align: 'right' },
 ]
 
 const formatDate = (val) => {
@@ -387,13 +535,19 @@ const formatDate = (val) => {
 }
 
 const getStatusColor = (status) => {
-  switch(status) {
-    case 'enviada': return 'indigo-7';
-    case 'en_revision': return 'orange-7';
-    case 'validada': return 'teal-7';
-    case 'observada': return 'deep-orange-7';
-    case 'rechazada': return 'red-7';
-    default: return 'grey-7';
+  switch (status) {
+    case 'enviada':
+      return 'indigo-7'
+    case 'en_revision':
+      return 'orange-7'
+    case 'validada':
+      return 'teal-7'
+    case 'observada':
+      return 'deep-orange-7'
+    case 'rechazada':
+      return 'red-7'
+    default:
+      return 'grey-7'
   }
 }
 
@@ -424,6 +578,33 @@ const selectConvocatoria = async (convocatoria) => {
   }
 }
 
+const goToEvaluationTable = () => {
+  if (!selectedConvocatoria.value) return
+
+  // Find IDs for selected filters if they exist
+  let sedeId = null
+  let cargoId = null
+
+  if (filterSede.value) {
+    const row = rows.value.find(r => r.oferta?.sede?.nombre === filterSede.value)
+    if (row) sedeId = row.oferta.sede_id
+  }
+
+  if (filterCargo.value) {
+    const row = rows.value.find(r => r.oferta?.cargo?.nombre === filterCargo.value)
+    if (row) cargoId = row.oferta.cargo_id
+  }
+
+  router.push({
+    path: '/admin/evaluacion-tabla',
+    query: {
+      convocatoria_id: selectedConvocatoria.value.id,
+      sede_id: sedeId,
+      cargo_id: cargoId
+    }
+  })
+}
+
 const updateStatus = async (row) => {
   try {
     await api.put(`/postulaciones/${row.id}/estado`, { estado: row.estado })
@@ -440,15 +621,25 @@ const viewExpediente = (row) => {
 
 const exportGeneralReport = async () => {
   try {
-    const endpoint = selectedConvocatoria.value
-      ? `/postulaciones/export/${selectedConvocatoria.value.id}`
-      : '/postulaciones/export'
+    if (!selectedConvocatoria.value) return
 
+    // Build query params from current filters
+    const params = new URLSearchParams()
+    if (filterSearch.value) params.append('search', filterSearch.value)
+    if (filterEstado.value) params.append('estado', filterEstado.value)
+    if (filterSede.value) params.append('sede_nombre', filterSede.value)
+    if (filterCargo.value) params.append('cargo_nombre', filterCargo.value)
+    if (filterSalarioMin.value) params.append('salario_min', filterSalarioMin.value)
+    if (filterSalarioMax.value) params.append('salario_max', filterSalarioMax.value)
+
+    const endpoint = `/postulaciones/export/${selectedConvocatoria.value.id}?${params.toString()}`
+
+    $q.loading.show({ message: 'Preparando reporte Excel...' })
     const response = await api.get(endpoint, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
-    const fileName = selectedConvocatoria.value ? `Reporte_Postulantes_${selectedConvocatoria.value.titulo}.xlsx` : 'postulaciones_general.xlsx'
+    const fileName = `Reporte_Postulantes_${selectedConvocatoria.value.titulo.replace(/\s+/g, '_')}.xlsx`
     link.setAttribute('download', fileName)
     document.body.appendChild(link)
     link.click()
@@ -456,8 +647,12 @@ const exportGeneralReport = async () => {
   } catch (error) {
     console.error(error)
     $q.notify({ type: 'negative', message: 'Error al descargar reporte' })
+  } finally {
+    $q.loading.hide()
   }
 }
+
+
 
 onMounted(loadConvocatorias)
 </script>
