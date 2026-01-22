@@ -12,13 +12,21 @@
       <div class="row justify-between items-center q-mt-lg">
         <q-btn icon="arrow_back" unelevated color="grey-7" label="Regresar al Listado" @click="$router.back()" class="rounded-xl px-4" />
         <div class="flex gap-4 items-center">
-          <div class="text-weight-bold text-grey-7">Se evaluarán <span class="text-deep-purple-9 text-h6">{{ localRows.length }}</span> postulantes en total</div>
+          <div class="text-weight-bold text-grey-7">Se evaluarán <span class="text-primary text-h6">{{ localRows.length }}</span> postulantes en total</div>
           <q-btn
             color="red-9"
             icon="picture_as_pdf"
             label="Exportar Todo (PDF)"
             unelevated
             @click="exportToPDF()"
+            class="rounded-xl shadow-lg q-mr-sm"
+          />
+          <q-btn
+            color="green-8"
+            icon="description"
+            label="Exportar Todo (Excel)"
+            unelevated
+            @click="exportToExcel()"
             class="rounded-xl shadow-lg q-mr-sm"
           />
           <q-btn
@@ -110,6 +118,15 @@
                 class="rounded-xl font-bold shadow-lg"
               />
               <q-btn
+                color="white"
+                text-color="green-8"
+                icon="description"
+                label="Excel"
+                unelevated
+                @click="exportToExcel(group)"
+                class="rounded-xl font-bold shadow-lg"
+              />
+              <q-btn
                 color="secondary"
                 text-color="white"
                 icon="save"
@@ -166,7 +183,6 @@
                     <td class="text-weight-bold sticky-col second-col bg-white">
                       <div class="q-pr-md line-height-1">
                         <div class="text-primary text-weight-bolder" style="font-size: 13px;">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
-                        <div class="text-[10px] text-grey-7 font-bold tracking-tighter">CI: {{ row.postulante?.ci }}</div>
                       </div>
                     </td>
 
@@ -228,6 +244,8 @@ import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import ExcelJS from 'exceljs'
+import { saveAs } from 'file-saver'
 
 const route = useRoute()
 const $q = useQuasar()
@@ -438,8 +456,8 @@ const exportToPDF = (targetGroup = null) => {
         { content: 'NO.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
         { content: 'NOMBRES Y APELLIDOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
         { content: 'ÁREA FORMACIÓN', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-        { content: 'AÑO TÍT.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-        { content: 'PRET. SALAR.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
+        { content: 'AÑO TÍTULO', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
+        { content: 'PRETENSIÓN SALARIAL', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
         { content: 'FORMACIÓN PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
         { content: 'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [0, 153, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
         { content: 'EXPERIENCIA ACADEMICA (50 PTS)', colSpan: 5, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
@@ -448,28 +466,28 @@ const exportToPDF = (targetGroup = null) => {
         { content: 'OBSERVACIONES', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 8, fontStyle: 'bold' } }
       ],
       [
-        { content: 'DIPLOM.\n(3)', styles: { fontSize: 6, halign: 'center' } },
-        { content: 'ESPEC.\n(4)', styles: { fontSize: 6, halign: 'center' } },
-        { content: 'MAEST.\n(6)', styles: { fontSize: 6, halign: 'center' } },
-        { content: 'DOCT.\n(7)', styles: { fontSize: 6, halign: 'center' } },
-        { content: 'CURS. >120\n(MAX 9)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'CURS. >20\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'DISERT.\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'FORM. PED.\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'EJER. PROF.\n(MAX 15)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'DOC. EJER.\n(MAX 10)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'TUT. TESIS\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'DOC. POST.\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'CARG. SIM.\n(MAX 15)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'REVISTAS\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'LIBROS\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
-        { content: 'DISTINC.\n(MAX 4)', styles: { fontSize: 5, halign: 'center' } }
+        { content: 'DIPLOMADO\n(3)', styles: { fontSize: 5.5, halign: 'center' } },
+        { content: 'ESPECIALIZACIÓN\n(4)', styles: { fontSize: 5.5, halign: 'center' } },
+        { content: 'MAESTRÍA\n(6)', styles: { fontSize: 5.5, halign: 'center' } },
+        { content: 'DOCTORADO\n(7)', styles: { fontSize: 5.5, halign: 'center' } },
+        { content: 'CURSOS ÁREA\n>120 (MAX 9)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'CURSILLOS\n>20 (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'DISERTANTE\nCONG. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'FORMACIÓN\nPEDAG. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'EJERCICIO\nPROF. (MAX 15)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'DOCENCIA\nEJER. (MAX 10)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'TUTORÍA\nTESIS (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'DOCENTE\nPOSTG. (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'CARGOS\nSIMIL. (MAX 15)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'REVISTAS\nINDEX. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'LIBROS/\nTEXTOS (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
+        { content: 'DISTINCIONES\nHONOR. (MAX 4)', styles: { fontSize: 4.5, halign: 'center' } }
       ]
     ]
 
     const body = group.items.map((row, idx) => [
       idx + 1,
-      { content: `${row.postulante?.nombres || ''} ${row.postulante?.apellidos || ''}\nCI: ${row.postulante?.ci || ''}`.toUpperCase(), styles: { halign: 'left', fontSize: 6, fontStyle: 'bold' } },
+      { content: `${row.postulante?.nombres || ''} ${row.postulante?.apellidos || ''}`.toUpperCase(), styles: { halign: 'left', fontSize: 6, fontStyle: 'bold' } },
       { content: (row.extraInfo.area || '-').toUpperCase(), styles: { fontSize: 5 } },
       row.extraInfo.anio || '-',
       `BS. ${Math.round(row.pretension_salarial || 0)}`,
@@ -515,6 +533,139 @@ const exportToPDF = (targetGroup = null) => {
 
   const fileName = targetGroup ? `EVALUACION_${targetGroup.cargo}_${targetGroup.sede}.pdf` : 'EVALUACION_GENERAL.pdf'
   doc.save(fileName)
+}
+
+const exportToExcel = async (targetGroup = null) => {
+  const workbook = new ExcelJS.Workbook()
+  const groupsToExport = targetGroup ? { [activeTab.value]: targetGroup } : groupedRows.value
+
+  for (const [, group] of Object.entries(groupsToExport)) {
+    const sheetName = `${group.sede.substring(0, 10)}_${group.cargo.substring(0, 15)}`.replace(/[/\\?*[\]]/g, '')
+    const worksheet = workbook.addWorksheet(sheetName)
+
+    // Header styling colors (RGB)
+    const lilaColor = '663399'
+    const aquaColor = '009999'
+    const darkColor = '1E1E1E'
+    const whiteColor = 'FFFFFF'
+
+    // Title construction
+    worksheet.mergeCells('A1:W1')
+    const titleCell = worksheet.getCell('A1')
+    titleCell.value = `${headerInfo.value.nombre} - GESTIÓN ${headerInfo.value.gestion}`
+    titleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: whiteColor } }
+    titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lilaColor } }
+
+    worksheet.mergeCells('A2:W2')
+    const subtitleCell = worksheet.getCell('A2')
+    subtitleCell.value = `${group.sede} - ${group.cargo}`.toUpperCase()
+    subtitleCell.font = { name: 'Arial', bold: true, size: 12, color: { argb: whiteColor } }
+    subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+    subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: aquaColor } }
+
+    // Table headers
+    const headers1 = ['NO.', 'NOMBRES Y APELLIDOS', 'ÁREA FORMACIÓN', 'AÑO TÍTULO', 'PRETENSIÓN SALARIAL', 'FORMACIÓN PROFESIONAL (20 PTS)', '', '', '', 'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', '', '', '', 'EXPERIENCIA ACADEMICA (50 PTS)', '', '', '', '', 'OTROS MERITOS (10 PTS)', '', '', 'PUNTAJE FINAL', 'OBSERVACIONES']
+    const headers2 = ['', '', '', '', '', 'DIPLOMADO(3)', 'ESPECIALIZACIÓN(4)', 'MAESTRÍA(6)', 'DOCTORADO(7)', 'CURSOS ÁREA >120(3)', 'CURSILLOS/SEMIN. >20(1)', 'DISERTANTE CONGRESOS(1)', 'FORMACIÓN PEDAGÓGICA(1)', 'EJERCICIO PROFESIONAL(15)', 'DOCENCIA EJERCIDA(10)', 'TUTORÍA DE TESIS(5)', 'DOCENTE POSTGRADO(5)', 'CARGOS SIMILARES(15)', 'REVISTAS INDEXADAS(3)', 'LIBROS/TEXTOS(3)', 'DISTINCIONES HONORÍFICAS(4)', '', '']
+
+    worksheet.addRow(headers1)
+    worksheet.addRow(headers2)
+
+    // Merge group headers
+    worksheet.mergeCells('A3:A4') // NO.
+    worksheet.mergeCells('B3:B4') // NOMBRES
+    worksheet.mergeCells('C3:C4') // AREA
+    worksheet.mergeCells('D3:D4') // AÑO
+    worksheet.mergeCells('E3:E4') // PRET
+    worksheet.mergeCells('F3:I3') // FORMACION
+    worksheet.mergeCells('J3:M3') // PERFEC
+    worksheet.mergeCells('N3:R3') // EXP
+    worksheet.mergeCells('S3:U3') // OTROS
+    worksheet.mergeCells('V3:V4') // PUNTAJE
+    worksheet.mergeCells('W3:W4') // OBS
+
+    // Style headers
+    const headerRow1 = worksheet.getRow(3)
+    const headerRow2 = worksheet.getRow(4)
+
+    headerRow1.eachCell((cell, colNumber) => {
+      cell.font = { bold: true, color: { argb: whiteColor }, size: 9 }
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
+
+      if (colNumber >= 6 && colNumber <= 9) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lilaColor } }
+      else if (colNumber >= 10 && colNumber <= 13) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: aquaColor } }
+      else if (colNumber >= 14 && colNumber <= 18) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lilaColor } }
+      else if (colNumber >= 19 && colNumber <= 21) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: aquaColor } }
+      else if (colNumber === 22) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: darkColor } }
+      else cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' }, font: { bold: true, color: { argb: '000000' } } }
+    })
+
+    headerRow2.eachCell((cell) => {
+      cell.font = { bold: true, size: 8 }
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FAFAFA' } }
+      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
+    })
+
+    // Data rows
+    group.items.forEach((row, idx) => {
+      const total = calculateTotal(row)
+      const dataRow = worksheet.addRow([
+        idx + 1,
+        `${row.postulante?.nombres} ${row.postulante?.apellidos}`.toUpperCase(),
+        (row.extraInfo.area || '').toUpperCase(),
+        row.extraInfo.anio,
+        row.pretension_salarial,
+        row.evalData.a1_diplomado,
+        row.evalData.a1_especialidad,
+        row.evalData.a1_maestria,
+        row.evalData.a1_doctorado,
+        row.evalData.a2_cursos_120,
+        row.evalData.a2_cursos_20,
+        row.evalData.a2_disertante,
+        row.evalData.a2_pedagogico,
+        row.evalData.a3_ejercicio_prof,
+        row.evalData.a3_docencia,
+        row.evalData.a3_tutorias,
+        row.evalData.a3_docente_post,
+        row.evalData.a3_cargos_sim,
+        row.evalData.a4_revistas,
+        row.evalData.a4_libros,
+        row.evalData.a4_distinciones,
+        total,
+        (row.evalData.observaciones || '').toUpperCase()
+      ])
+
+      dataRow.eachCell((cell, colNumber) => {
+        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
+        cell.font = { size: 9 }
+
+        if (colNumber === 2) {
+          cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
+          cell.font = { bold: true, color: { argb: lilaColor }, size: 9 }
+        }
+        if (colNumber === 22) {
+          cell.font = { bold: true, size: 10, color: { argb: total < 51 ? 'C00000' : aquaColor } }
+        }
+      })
+    })
+
+    // Column widths
+    worksheet.getColumn(1).width = 5
+    worksheet.getColumn(2).width = 40
+    worksheet.getColumn(3).width = 25
+    worksheet.getColumn(4).width = 10
+    worksheet.getColumn(5).width = 10
+    for(let i=6; i<=21; i++) worksheet.getColumn(i).width = 8
+    worksheet.getColumn(22).width = 12
+    worksheet.getColumn(23).width = 30
+  }
+
+  const buffer = await workbook.xlsx.writeBuffer()
+  const fileName = targetGroup ? `EVALUACION_${targetGroup.cargo}_${targetGroup.sede}.xlsx` : 'EVALUACION_GENERAL.xlsx'
+  saveAs(new Blob([buffer]), fileName)
 }
 
 const saveGroup = async (items) => {
