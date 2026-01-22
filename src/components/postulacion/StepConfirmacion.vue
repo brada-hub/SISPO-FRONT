@@ -15,7 +15,7 @@
         <!-- CARGOS SELECTED & PER-CARGO DETAILS -->
         <q-form ref="confirmForm" @submit.prevent="handleSubmit" @validation-error="onValidationError" class="space-y-8">
           <div class="rounded-3xl shadow-sm overflow-hidden bg-white border border-gray-100 group">
-            <div class="bg-gradient-to-r from-[#4a2371] to-[#663399] px-8 py-6 text-white flex items-center justify-between">
+            <div class="bg-gradient-to-r from-primary to-secondary px-8 py-6 text-white flex items-center justify-between">
                <div class="flex items-center gap-4">
                   <div class="p-3 bg-white/10 rounded-2xl backdrop-blur-md">
                      <q-icon name="work" size="md" />
@@ -86,7 +86,7 @@
                       class="custom-input"
                       type="textarea"
                       rows="2"
-                      maxlength="1000"
+                      maxlength="250"
                       counter
                       :rules="[val => !!val || 'Requerido']"
                     >

@@ -2,7 +2,7 @@
     <q-page class="flex flex-col min-h-screen font-sans bg-gray-50">
 
         <!-- HEADER / HERO SECTION -->
-        <div class="relative bg-primary text-white overflow-hidden pb-32">
+        <div class="relative bg-gradient-to-r from-primary to-secondary text-white overflow-hidden pb-32">
             <!-- Decoración de Fondo (Patron) -->
             <div class="absolute inset-0 opacity-10 pointer-events-none">
                 <svg class="w-full h-full" width="100%" height="100%" viewBox="0 0 800 800"

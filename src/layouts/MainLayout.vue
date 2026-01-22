@@ -1,7 +1,7 @@
 <template>
   <q-layout view="lHh LpR lFf">
     <!-- HEADER -->
-    <q-header class="bg-primary text-white" height-hint="60">
+    <q-header class="bg-gradient-to-r from-primary to-secondary text-white" height-hint="60">
       <q-toolbar class="h-16 px-6">
         <q-btn
           flat
@@ -63,9 +63,10 @@
         <!-- Brand Area - CLEAN STYLE -->
         <div class="p-6 flex flex-col gap-1">
           <div class="flex items-center gap-2 text-primary font-bold text-xl tracking-tight">
-            <span class="text-2xl">UNITEPC</span>
+            <!-- <span class="text-2xl">UNITEPC</span> -->
+             <img src="~assets/logo_unitepc.png" class="h-10" alt="UNITEPC" />
           </div>
-          <div class="text-sm text-gray-400">Sistema Convocatorias</div>
+          <div class="text-sm text-gray-400">Sistema de Postulaciones</div>
         </div>
 
         <!-- Menu items -->
