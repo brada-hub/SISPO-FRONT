@@ -3,9 +3,9 @@
     <!-- Header info -->
     <div class="bg-white p-6 rounded-2xl shadow-xl border q-mb-md">
       <div class="text-center">
-        <h1 class="text-h3 font-bold q-ma-none text-deep-purple-9 uppercase tracking-tighter">{{ headerInfo.nombre || 'Concurso de Méritos' }}</h1>
-        <div class="row justify-center q-mt-md q-col-gutter-xl uppercase text-h6 text-weight-bold text-deep-purple-8">
-          <div class="bg-deep-purple-1 q-px-lg q-py-xs rounded-full">GESTIÓN: <span class="text-black">{{ headerInfo.gestion }}</span></div>
+        <h1 class="text-h3 font-bold q-ma-none text-primary uppercase tracking-tighter">{{ headerInfo.nombre || 'Concurso de Méritos' }}</h1>
+        <div class="row justify-center q-mt-md q-col-gutter-xl uppercase text-h6 text-weight-bold text-primary">
+          <div class="bg-purple-1 q-px-lg q-py-xs rounded-full">GESTIÓN: <span class="text-black">{{ headerInfo.gestion }}</span></div>
         </div>
       </div>
 
@@ -22,7 +22,7 @@
             class="rounded-xl shadow-lg q-mr-sm"
           />
           <q-btn
-            color="green-9"
+            color="secondary"
             icon="check_circle"
             label="Guardar Todas las Tablas"
             unelevated
@@ -52,7 +52,7 @@
                 @update:model-value="onSedeChange"
              >
                 <template v-slot:prepend>
-                  <q-icon name="apartment" color="deep-purple-9" />
+                  <q-icon name="apartment" color="primary" />
                 </template>
              </q-select>
           </div>
@@ -65,7 +65,7 @@
                     unelevated
                     rounded
                     no-caps
-                    :color="activeTab === groupKey ? 'deep-purple-9' : 'grey-2'"
+                    :color="activeTab === groupKey ? 'primary' : 'grey-2'"
                     :text-color="activeTab === groupKey ? 'white' : 'grey-7'"
                     @click="activeTab = groupKey"
                     class="q-px-md font-bold transition-all border shadow-sm"
@@ -86,9 +86,9 @@
       <q-tab-panels v-model="activeTab" animated class="bg-transparent no-shadow">
         <q-tab-panel v-for="(group, groupKey) in groupedRows" :key="groupKey" :name="groupKey" class="q-pa-none">
           <!-- Section Header -->
-          <div class="bg-deep-purple-9 text-white p-6 shadow-2xl row items-center justify-between no-wrap" style="border-radius: 20px 20px 0 0;">
+          <div class="bg-primary text-white p-6 shadow-2xl row items-center justify-between no-wrap" style="border-radius: 20px 20px 0 0;">
             <div class="row items-center gap-4 no-wrap">
-              <div class="bg-white text-deep-purple-9 p-3 rounded-2xl shadow-inner">
+              <div class="bg-white text-primary p-3 rounded-2xl shadow-inner">
                 <q-icon name="apartment" size="md" />
               </div>
               <div class="column">
@@ -97,7 +97,7 @@
               </div>
             </div>
             <div class="row items-center gap-3">
-              <div class="text-h6 font-black bg-white text-deep-purple-9 px-6 py-2 rounded-2xl whitespace-nowrap shadow-lg">
+              <div class="text-h6 font-black bg-white text-primary px-6 py-2 rounded-2xl whitespace-nowrap shadow-lg">
                 {{ group.items.length }} POSTULANTES
               </div>
               <q-btn
@@ -110,7 +110,7 @@
                 class="rounded-xl font-bold shadow-lg"
               />
               <q-btn
-                color="green-6"
+                color="secondary"
                 text-color="white"
                 icon="save"
                 label="Guardar Tabla"
@@ -133,12 +133,12 @@
                     <th rowspan="2" class="header-v bg-grey-2">Año Título</th>
                     <th rowspan="2" class="header-v bg-grey-2">Pretensión Salarial</th>
 
-                    <th colspan="4" class="bg-deep-purple-10 text-white area-title">FORMACIÓN PROFESIONAL (20 pts)</th>
-                    <th colspan="4" class="bg-teal-9 text-white area-title">PERFECCIONAMIENTO PROFESIONAL (20 pts)</th>
-                    <th colspan="5" class="bg-orange-9 text-white area-title">EXPERIENCIA ACADEMICA (50 pts)</th>
-                    <th colspan="3" class="bg-deep-purple-10 text-white area-title">OTROS MERITOS (10 pts)</th>
+                    <th colspan="4" class="bg-primary text-white area-title">FORMACIÓN PROFESIONAL (20 pts)</th>
+                    <th colspan="4" class="bg-secondary text-white area-title">PERFECCIONAMIENTO PROFESIONAL (20 pts)</th>
+                    <th colspan="5" class="bg-primary text-white area-title">EXPERIENCIA ACADEMICA (50 pts)</th>
+                    <th colspan="3" class="bg-secondary text-white area-title">OTROS MERITOS (10 pts)</th>
 
-                    <th rowspan="2" class="bg-grey-10 text-white final-score-header">PUNTAJE FINAL</th>
+                    <th rowspan="2" class="bg-primary text-white final-score-header">PUNTAJE FINAL</th>
                     <th rowspan="2" class="header-cell" style="min-width: 250px;">OBSERVACIONES</th>
                   </tr>
                   <tr class="sub-headers">
@@ -165,14 +165,14 @@
                     <td class="text-center text-weight-bold sticky-col first-col bg-grey-1">{{ index + 1 }}</td>
                     <td class="text-weight-bold sticky-col second-col bg-white">
                       <div class="q-pr-md line-height-1">
-                        <div class="text-deep-purple-10 text-weight-bolder" style="font-size: 13px;">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
+                        <div class="text-primary text-weight-bolder" style="font-size: 13px;">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
                         <div class="text-[10px] text-grey-7 font-bold tracking-tighter">CI: {{ row.postulante?.ci }}</div>
                       </div>
                     </td>
 
                     <td class="text-center bg-grey-1 text-[9px] font-bold" style="width: 80px; word-break: break-all;">{{ row.extraInfo.area }}</td>
                     <td class="text-center bg-grey-1 font-bold">{{ row.extraInfo.anio }}</td>
-                    <td class="text-center bg-teal-1 font-bold text-teal-10 cursor-pointer">
+                    <td class="text-center bg-teal-1 font-bold text-secondary cursor-pointer">
                       Bs. <br>{{ Math.round(row.pretension_salarial || 0) }}
                       <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope">
                         <q-input
@@ -197,7 +197,7 @@
                       </q-popup-proxy>
                     </td>
 
-                    <td class="text-center text-weight-bolder text-h6 bg-grey-2" :class="calculateTotal(row) < 51 ? 'text-red' : 'text-teal-9'">
+                    <td class="text-center text-weight-bolder text-h6 bg-grey-2" :class="calculateTotal(row) < 51 ? 'text-red' : 'text-secondary'">
                       {{ calculateTotal(row) }}
                     </td>
                     <td class="bg-white"><textarea v-model="row.evalData.observaciones" class="cell-textarea" rows="2"></textarea></td>
@@ -239,7 +239,7 @@ const selectedSedeName = ref(null)
 
 const headerInfo = ref({
   nombre: '',
-  gestion: '2025'
+  gestion: '2026'
 })
 
 const meritFields = [
@@ -271,10 +271,10 @@ const FIELD_LABELS = {
 const getFieldLabel = (field) => FIELD_LABELS[field] || "Puntuación"
 
 const getFieldColorClass = (field) => {
-  if (field.startsWith('a1')) return 'text-deep-purple-10'
-  if (field.startsWith('a2')) return 'text-teal-10'
-  if (field.startsWith('a3')) return 'text-orange-9'
-  return 'text-indigo-10'
+  if (field.startsWith('a1')) return 'text-primary'
+  if (field.startsWith('a2')) return 'text-secondary'
+  if (field.startsWith('a3')) return 'text-primary'
+  return 'text-secondary'
 }
 
 const getOptionsForField = (field) => {
@@ -344,7 +344,7 @@ const loadData = async () => {
     const { data } = await api.get('/postulaciones', { params })
 
     if (data.length > 0) {
-      headerInfo.value.gestion = data[0].oferta?.convocatoria?.gestion || '2025'
+      headerInfo.value.gestion = data[0].oferta?.convocatoria?.gestion || '2026'
       headerInfo.value.nombre = data[0].oferta?.convocatoria?.titulo || 'Importación Externa'
     }
 
@@ -414,7 +414,7 @@ const exportToPDF = (targetGroup = null) => {
   Object.values(groupsToExport).forEach((group, gIdx) => {
     if (gIdx > 0) doc.addPage()
 
-    doc.setFillColor(74, 20, 140)
+    doc.setFillColor(102, 51, 153)
     doc.rect(5, 5, 320, 22, 'F')
 
     doc.setTextColor(255, 255, 255)
@@ -428,57 +428,69 @@ const exportToPDF = (targetGroup = null) => {
 
     doc.setFillColor(255, 255, 255)
     doc.roundedRect(260, 8, 50, 14, 7, 7, 'F')
-    doc.setTextColor(74, 20, 140)
+    doc.setTextColor(102, 51, 153)
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text(`${group.items.length} POSTULANTES`, 285, 17, { align: 'center' })
 
     const head = [
       [
-        { content: 'NO.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7 } },
-        { content: 'NOMBRES Y APELLIDOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7 } },
-        { content: 'ÁREA FORMACIÓN', rowSpan: 2, styles: { valign: 'bottom', halign: 'center', minCellHeight: 45 } },
-        { content: 'AÑO TÍTULO', rowSpan: 2, styles: { valign: 'bottom', halign: 'center' } },
-        { content: 'PRETENSIÓN SALARIAL', rowSpan: 2, styles: { valign: 'bottom', halign: 'center' } },
-        { content: 'FORMACIÓN PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [74, 20, 140], halign: 'center', textColor: [255, 255, 255] } },
-        { content: 'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [0, 150, 136], halign: 'center', textColor: [255, 255, 255] } },
-        { content: 'EXPERIENCIA ACADEMICA (50 PTS)', colSpan: 5, styles: { fillColor: [245, 124, 0], halign: 'center', textColor: [255, 255, 255] } },
-        { content: 'OTROS MERITOS (10 PTS)', colSpan: 3, styles: { fillColor: [74, 20, 140], halign: 'center', textColor: [255, 255, 255] } },
-        { content: 'PUNTAJE FINAL', rowSpan: 2, styles: { fillColor: [40, 40, 40], valign: 'middle', halign: 'center', textColor: [255, 255, 255], fontSize: 8 } },
-        { content: 'OBSERVACIONES', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 8 } }
+        { content: 'NO.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
+        { content: 'NOMBRES Y APELLIDOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
+        { content: 'ÁREA FORMACIÓN', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
+        { content: 'AÑO TÍT.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
+        { content: 'PRET. SALAR.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
+        { content: 'FORMACIÓN PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
+        { content: 'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [0, 153, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
+        { content: 'EXPERIENCIA ACADEMICA (50 PTS)', colSpan: 5, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
+        { content: 'OTROS MERITOS (10 PTS)', colSpan: 3, styles: { fillColor: [0, 153, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
+        { content: 'PUNTAJE FINAL', rowSpan: 2, styles: { fillColor: [102, 51, 153], valign: 'middle', halign: 'center', textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' } },
+        { content: 'OBSERVACIONES', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 8, fontStyle: 'bold' } }
       ],
       [
-        'DIPLOMADO (3 PTS)', 'ESPECIALIZACIÓN (4 PTS)', 'MAESTRÍA (6 PTS)', 'DOCTORADO (7 PTS)',
-        'CURSOS ÁREA > 120 HRS (3 P/C MAX 9)', 'CURSILLOS/SEMIN. > 20 HRS (1 P MAX 5)', 'DISERTANTE CONGRESOS (1 P MAX 3)', 'FORMACIÓN PEDAGÓG. (1 P MAX 3)',
-        'EJERCICIO PROFESIONAL (1 P/AÑO MAX 15)', 'DOCENCIA EJERCIDA (1 P/SEM MAX 10)', 'TUTORÍA DE TESIS (1 P MAX 5)', 'DOCENTE POSTGRADO (1 P MAX 5)', 'CARGOS SIMILARES (MAX 15)',
-        'REVISTAS INDEXADAS (1 P MAX 3)', 'LIBROS/TEXTOS (1 P MAX 3)', 'DISTINCIONES HONORÍF. (1 P MAX 4)'
+        { content: 'DIPLOM.\n(3)', styles: { fontSize: 6, halign: 'center' } },
+        { content: 'ESPEC.\n(4)', styles: { fontSize: 6, halign: 'center' } },
+        { content: 'MAEST.\n(6)', styles: { fontSize: 6, halign: 'center' } },
+        { content: 'DOCT.\n(7)', styles: { fontSize: 6, halign: 'center' } },
+        { content: 'CURS. >120\n(MAX 9)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'CURS. >20\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'DISERT.\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'FORM. PED.\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'EJER. PROF.\n(MAX 15)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'DOC. EJER.\n(MAX 10)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'TUT. TESIS\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'DOC. POST.\n(MAX 5)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'CARG. SIM.\n(MAX 15)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'REVISTAS\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'LIBROS\n(MAX 3)', styles: { fontSize: 5, halign: 'center' } },
+        { content: 'DISTINC.\n(MAX 4)', styles: { fontSize: 5, halign: 'center' } }
       ]
     ]
 
     const body = group.items.map((row, idx) => [
       idx + 1,
-      { content: `${row.postulante?.nombres || ''} ${row.postulante?.apellidos || ''}\nCI: ${row.postulante?.ci || ''}`.toUpperCase(), styles: { halign: 'left', fontSize: 7, fontStyle: 'bold' } },
-      row.extraInfo.area,
-      row.extraInfo.anio,
+      { content: `${row.postulante?.nombres || ''} ${row.postulante?.apellidos || ''}\nCI: ${row.postulante?.ci || ''}`.toUpperCase(), styles: { halign: 'left', fontSize: 6, fontStyle: 'bold' } },
+      { content: (row.extraInfo.area || '-').toUpperCase(), styles: { fontSize: 5 } },
+      row.extraInfo.anio || '-',
       `BS. ${Math.round(row.pretension_salarial || 0)}`,
-      row.evalData.a1_diplomado,
-      row.evalData.a1_especialidad,
-      row.evalData.a1_maestria,
-      row.evalData.a1_doctorado,
-      row.evalData.a2_cursos_120,
-      row.evalData.a2_cursos_20,
-      row.evalData.a2_disertante,
-      row.evalData.a2_pedagogico,
-      row.evalData.a3_ejercicio_prof,
-      row.evalData.a3_docencia,
-      row.evalData.a3_tutorias,
-      row.evalData.a3_docente_post,
-      row.evalData.a3_cargos_sim,
-      row.evalData.a4_revistas,
-      row.evalData.a4_libros,
-      row.evalData.a4_distinciones,
-      calculateTotal(row),
-      row.evalData.observaciones || ''
+      { content: row.evalData.a1_diplomado, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a1_especialidad, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a1_maestria, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a1_doctorado, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a2_cursos_120, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a2_cursos_20, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a2_disertante, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a2_pedagogico, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a3_ejercicio_prof, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a3_docencia, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a3_tutorias, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a3_docente_post, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a3_cargos_sim, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a4_revistas, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a4_libros, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: row.evalData.a4_distinciones, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
+      { content: calculateTotal(row), styles: { fontStyle: 'bold', fontSize: 9, textColor: calculateTotal(row) < 51 ? [200, 0, 0] : [0, 153, 153] } },
+      { content: (row.evalData.observaciones || '').toUpperCase(), styles: { halign: 'left', fontSize: 6 } }
     ])
 
     autoTable(doc, {
@@ -486,14 +498,18 @@ const exportToPDF = (targetGroup = null) => {
       head: head,
       body: body,
       theme: 'grid',
-      styles: { fontSize: 7, cellPadding: 1, valign: 'middle', halign: 'center', lineColor: [180, 180, 180], lineWidth: 0.1 },
-      headStyles: { fillColor: [250, 250, 250], textColor: [40, 40, 40], fontStyle: 'bold', fontSize: 6 },
+      styles: { fontSize: 6, cellPadding: 1, valign: 'middle', halign: 'center', lineColor: [180, 180, 180], lineWidth: 0.1 },
+      headStyles: { fillColor: [250, 250, 250], textColor: [40, 40, 40], fontStyle: 'bold' },
       columnStyles: {
-        0: { cellWidth: 10 },
-        1: { cellWidth: 50, textColor: [74, 20, 140] },
-        21: { cellWidth: 22, fontStyle: 'bold', fontSize: 9 },
-        22: { halign: 'left', cellWidth: 45 }
-      }
+        0: { cellWidth: 8 },
+        1: { cellWidth: 45, textColor: [102, 51, 153] },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 12 },
+        4: { cellWidth: 15 },
+        21: { cellWidth: 18 },
+        22: { cellWidth: 40 }
+      },
+      margin: { left: 5, right: 5 }
     })
   })
 

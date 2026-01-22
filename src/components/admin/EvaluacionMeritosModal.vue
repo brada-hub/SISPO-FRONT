@@ -16,7 +16,7 @@
           <div class="col-12 col-md-6">
             <q-card flat bordered class="rounded-xl shadow-sm">
               <q-card-section
-                class="bg-indigo-7 text-white row justify-between items-center q-py-sm"
+                class="bg-primary text-white row justify-between items-center q-py-sm"
               >
                 <div class="text-subtitle1 text-weight-bold">ÁREA 1: FORMACIÓN ACADÉMICA</div>
                 <div class="text-h6">{{ totalArea1 }} / 20</div>
@@ -77,7 +77,7 @@
           <!-- Area 2: Perfeccionamiento -->
           <div class="col-12 col-md-6">
             <q-card flat bordered class="rounded-xl shadow-sm">
-              <q-card-section class="bg-teal-7 text-white row justify-between items-center q-py-sm">
+              <q-card-section class="bg-secondary text-white row justify-between items-center q-py-sm">
                 <div class="text-subtitle1 text-weight-bold">ÁREA 2: PERFECCIONAMIENTO</div>
                 <div class="text-h6">{{ totalArea2 }} / 20</div>
               </q-card-section>
@@ -138,7 +138,7 @@
           <div class="col-12 col-md-6">
             <q-card flat bordered class="rounded-xl shadow-sm">
               <q-card-section
-                class="bg-orange-8 text-white row justify-between items-center q-py-sm"
+                class="bg-primary text-white row justify-between items-center q-py-sm"
               >
                 <div class="text-subtitle1 text-weight-bold">ÁREA 3: EXPERIENCIA</div>
                 <div class="text-h6">{{ totalArea3 }} / 50</div>
@@ -212,7 +212,7 @@
           <div class="col-12 col-md-6">
             <q-card flat bordered class="rounded-xl shadow-sm">
               <q-card-section
-                class="bg-deep-purple-7 text-white row justify-between items-center q-py-sm"
+                class="bg-secondary text-white row justify-between items-center q-py-sm"
               >
                 <div class="text-subtitle1 text-weight-bold">ÁREA 4: OTROS MÉRITOS</div>
                 <div class="text-h6">{{ totalArea4 }} / 10</div>
@@ -275,7 +275,7 @@
       >
         <div class="row items-center gap-4">
           <div class="text-h5 text-weight-bolder text-primary">
-            PUNTAJE TOTAL: <span class="text-deep-orange-9">{{ totalPuntaje }} / 100</span>
+            PUNTAJE TOTAL: <span class="text-secondary">{{ totalPuntaje }} / 100</span>
           </div>
         </div>
         <div class="row gap-4">
