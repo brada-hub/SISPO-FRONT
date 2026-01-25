@@ -99,15 +99,7 @@
         </div>
 
         <div class="row items-center gap-2">
-          <q-btn
-            label="Tabla de Evaluación"
-            icon="grid_on"
-            color="primary"
-            unelevated
-            @click="goToEvaluationTable"
-            rounded
-            class="shadow-2"
-          />
+
           <q-btn
             label="Descargar Reporte (Excel)"
             icon="download"
@@ -328,16 +320,7 @@
 
         <template v-slot:body-cell-acciones="props">
           <q-td :props="props" class="flex gap-2 justify-end">
-            <q-btn
-              label="Evaluar"
-              icon="psychology"
-              size="sm"
-              color="deep-orange-9"
-              unelevated
-              class="rounded-xl shadow-lg q-px-md"
-              @click="openEvalModal(props.row)"
-              rounded
-            />
+
             <q-btn
               label="Ver Expediente"
               icon="visibility"
@@ -432,7 +415,7 @@ import { api } from 'boot/axios'
 import { useQuasar, date } from 'quasar'
 import { useRouter } from 'vue-router'
 
-import EvaluacionMeritosModal from 'components/admin/EvaluacionMeritosModal.vue'
+
 
 import { useAuthStore } from 'src/stores/auth-store'
 
@@ -455,10 +438,7 @@ const showImportDialog = ref(false)
 const importFile = ref(null)
 const importing = ref(false)
 
-const openEvalModal = (row) => {
-  selectedPostulacionForEval.value = row
-  showEvalModal.value = true
-}
+// Removed unused eval modal logic
 
 const refreshData = () => {
   if (selectedConvocatoria.value) {
@@ -663,32 +643,7 @@ const selectConvocatoria = async (convocatoria) => {
   }
 }
 
-const goToEvaluationTable = () => {
-  if (!selectedConvocatoria.value) return
-
-  // Find IDs for selected filters if they exist
-  let sedeId = null
-  let cargoId = null
-
-  if (filterSede.value) {
-    const row = rows.value.find(r => r.oferta?.sede?.nombre === filterSede.value)
-    if (row) sedeId = row.oferta.sede_id
-  }
-
-  if (filterCargo.value) {
-    const row = rows.value.find(r => r.oferta?.cargo?.nombre === filterCargo.value)
-    if (row) cargoId = row.oferta.cargo_id
-  }
-
-  router.push({
-    path: '/admin/evaluacion-tabla',
-    query: {
-      convocatoria_id: selectedConvocatoria.value.id,
-      sede_id: sedeId,
-      cargo_id: cargoId
-    }
-  })
-}
+// Removed unused navigation functions
 
 const updateStatus = async (row) => {
   try {

@@ -67,6 +67,7 @@
                         val => (val !== null && val !== undefined && val !== '') || 'Requerido',
                         val => val >= 0 || 'Inválido'
                       ]"
+                      lazy-rules
                     >
                       <template v-slot:prepend>
                         <q-icon name="payments" color="primary" />
@@ -89,6 +90,7 @@
                       maxlength="250"
                       counter
                       :rules="[val => !!val || 'Requerido']"
+                      lazy-rules
                     >
                       <template v-slot:prepend>
                         <q-icon name="psychology" color="primary" size="xs" />

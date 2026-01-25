@@ -68,6 +68,10 @@ const routes = [
         component: () => import('pages/admin/ExpedientePage.vue'),
       },
       {
+        path: 'evaluaciones',
+        component: () => import('pages/admin/EvaluacionesListPage.vue'),
+      },
+      {
         path: 'evaluacion-tabla',
         component: () => import('pages/admin/EvaluacionTablaPage.vue'),
       },

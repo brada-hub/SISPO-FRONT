@@ -4,40 +4,50 @@
     <div class="bg-white p-6 rounded-2xl shadow-xl border q-mb-md">
       <div class="text-center">
         <h1 class="text-h3 font-bold q-ma-none text-primary uppercase tracking-tighter">{{ headerInfo.nombre || 'Concurso de Méritos' }}</h1>
-        <div class="row justify-center q-mt-md q-col-gutter-xl uppercase text-h6 text-weight-bold text-primary">
-          <div class="bg-purple-1 q-px-lg q-py-xs rounded-full">GESTIÓN: <span class="text-black">{{ headerInfo.gestion }}</span></div>
+        <div class="row justify-center q-mt-sm q-col-gutter-md uppercase text-subtitle1 text-weight-bold text-primary">
+          <div class="bg-purple-1 q-px-md q-py-xs rounded-full shadow-sm">
+            GESTIÓN: <span class="text-black">{{ headerInfo.gestion }}</span>
+          </div>
+          <div class="bg-indigo-1 q-px-md q-py-xs rounded-full shadow-sm">
+            INICIO: <span class="text-black">{{ formatDate(headerInfo.fecha_inicio) }}</span>
+          </div>
+          <div class="bg-red-1 q-px-md q-py-xs rounded-full shadow-sm">
+            CIERRE: <span class="text-black">{{ formatDate(headerInfo.fecha_cierre) }}</span>
+          </div>
         </div>
       </div>
 
       <div class="row justify-between items-center q-mt-lg">
-        <q-btn icon="arrow_back" unelevated color="grey-7" label="Regresar al Listado" @click="$router.back()" class="rounded-xl px-4" />
-        <div class="flex gap-4 items-center">
-          <div class="text-weight-bold text-grey-7">Se evaluarán <span class="text-primary text-h6">{{ localRows.length }}</span> postulantes en total</div>
+        <q-btn icon="arrow_back" unelevated color="grey-3" text-color="grey-9" label="VOLVER" @click="$router.back()" class="rounded-xl px-6 font-black h-12" />
+
+        <div class="flex gap-3 items-center">
+          <div class="text-weight-bold text-grey-7 q-mr-md uppercase text-[10px] tracking-widest">
+            Postulantes: <span class="text-primary text-h6">{{ localRows.length }}</span>
+          </div>
           <q-btn
             color="red-9"
             icon="picture_as_pdf"
-            label="Exportar Todo (PDF)"
+            label="PDF (OFICIO)"
             unelevated
             @click="exportToPDF()"
-            class="rounded-xl shadow-lg q-mr-sm"
+            class="rounded-xl shadow-lg font-black h-12 min-w-[160px]"
           />
           <q-btn
             color="green-8"
             icon="description"
-            label="Exportar Todo (Excel)"
+            label="EXCEL"
             unelevated
             @click="exportToExcel()"
-            class="rounded-xl shadow-lg q-mr-sm"
+            class="rounded-xl shadow-lg font-black h-12 min-w-[160px]"
           />
           <q-btn
             color="secondary"
             icon="check_circle"
-            label="Guardar Todas las Tablas"
+            label="GUARDAR TODO"
             unelevated
-            size="lg"
             :loading="saving"
             @click="saveAll"
-            class="rounded-xl px-xl shadow-lg"
+            class="rounded-xl shadow-lg font-black h-12 min-w-[170px]"
           />
         </div>
       </div>
@@ -104,37 +114,37 @@
                 <span class="text-subtitle1 font-bold opacity-80 uppercase tracking-widest">{{ group.cargo }}</span>
               </div>
             </div>
-            <div class="row items-center gap-3">
-              <div class="text-h6 font-black bg-white text-primary px-6 py-2 rounded-2xl whitespace-nowrap shadow-lg">
+            <div class="row items-center gap-2">
+              <div class="text-subtitle2 font-black bg-white text-primary px-4 h-10 flex items-center rounded-xl shadow-inner mr-2">
                 {{ group.items.length }} POSTULANTES
               </div>
               <q-btn
                 color="white"
                 text-color="red-9"
                 icon="picture_as_pdf"
-                label="Generar PDF"
+                label="PDF"
                 unelevated
                 @click="exportToPDF(group)"
-                class="rounded-xl font-bold shadow-lg"
+                class="rounded-xl font-black shadow-md h-10 min-w-[110px]"
               />
               <q-btn
                 color="white"
                 text-color="green-8"
                 icon="description"
-                label="Excel"
+                label="EXCEL"
                 unelevated
                 @click="exportToExcel(group)"
-                class="rounded-xl font-bold shadow-lg"
+                class="rounded-xl font-black shadow-md h-10 min-w-[110px]"
               />
               <q-btn
                 color="secondary"
                 text-color="white"
                 icon="save"
-                label="Guardar Tabla"
+                label="GUARDAR"
                 unelevated
                 :loading="saving"
                 @click="saveGroup(group.items)"
-                class="rounded-xl font-bold px-lg shadow-lg"
+                class="rounded-xl font-black shadow-md h-10 min-w-[130px]"
               />
             </div>
           </div>
@@ -182,7 +192,10 @@
                     <td class="text-center text-weight-bold sticky-col first-col bg-grey-1">{{ index + 1 }}</td>
                     <td class="text-weight-bold sticky-col second-col bg-white">
                       <div class="q-pr-md line-height-1">
-                        <div class="text-primary text-weight-bolder" style="font-size: 13px;">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
+                        <div class="text-primary text-weight-bolder cursor-pointer hover:underline" style="font-size: 13px;" @click="openExpedienteModal(row)">
+                          {{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}
+                          <q-tooltip>Ver Expediente Completo</q-tooltip>
+                        </div>
                       </div>
                     </td>
 
@@ -234,6 +247,39 @@
         <p class="text-grey-5">Utilice el selector de arriba para visualizar los datos.</p>
       </div>
     </div>
+
+    <!-- EXPEDIENTE MODAL -->
+    <q-dialog v-model="showExpedienteModal" maximizable maximized transition-show="slide-up" transition-hide="slide-down">
+      <q-card class="bg-grey-3 flex flex-col no-wrap">
+        <!-- Modal Toolbar -->
+        <q-toolbar class="bg-gradient-to-r from-primary to-secondary text-white shadow-md q-px-lg">
+          <q-btn flat round dense icon="close" v-close-popup />
+          <q-toolbar-title class="text-weight-bold text-subtitle1">
+             EXPEDIENTE: {{ selectedPostulacion?.postulante?.nombres }} {{ selectedPostulacion?.postulante?.apellidos }}
+          </q-toolbar-title>
+          <q-space />
+          <q-btn
+            flat
+            round
+            icon="download"
+            @click="exportToPDFExpediente"
+            class="q-mr-sm"
+          >
+            <q-tooltip>Descargar Expediente (PDF)</q-tooltip>
+          </q-btn>
+        </q-toolbar>
+
+        <!-- Expediente Content (Reusing Logic) -->
+        <div class="flex-1 overflow-hidden relative">
+           <!-- We embed the Page component but modify it slightly via props or styles if needed,
+                but since ExpedientePage is a full page, we might just iframe it or reuse components.
+                For Speed, we will use an iframe to the existing route to ensure 100% fidelity without code dupe
+            -->
+            <!-- Using iframe to reuse the full page logic without refactoring everything into components right now. It is efficient for this admin task. -->
+            <ExpedienteDetail ref="expedienteRef" v-if="selectedPostulacion" :postulacion-id="selectedPostulacion.id" />
+        </div>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -246,6 +292,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 
 const route = useRoute()
 const $q = useQuasar()
@@ -255,10 +302,134 @@ const saving = ref(false)
 const activeTab = ref(null)
 const selectedSedeName = ref(null)
 
+// Modal Logic
+const showExpedienteModal = ref(false)
+const selectedPostulacion = ref(null)
+const expedienteRef = ref(null)
+
+const openExpedienteModal = (row) => {
+  selectedPostulacion.value = row
+  showExpedienteModal.value = true
+}
+
+const exportToPDFExpediente = () => {
+  if (!expedienteRef.value) return
+
+  const postu = expedienteRef.value.postulacion
+  if (!postu) return
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  })
+
+  // Header
+  doc.setFontSize(24)
+  doc.setFont('helvetica', 'bold')
+  doc.text('UNITEPC', 105, 20, { align: 'center' })
+  doc.setFontSize(14)
+  doc.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS', 105, 28, { align: 'center' })
+  doc.setFontSize(12)
+  doc.text('CURRICULUM VITAE', 105, 36, { align: 'center' })
+  doc.setTextColor(102, 51, 153)
+  doc.text((postu.oferta?.convocatoria?.titulo || '').toUpperCase(), 105, 43, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+
+  // Section I
+  doc.setFontSize(11)
+  doc.setFillColor(243, 239, 255)
+  doc.rect(15, 55, 185, 8, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.text('I. DATOS PERSONALES', 20, 60.5)
+
+  const personalData = [
+    ['NOMBRE COMPLETO:', `${postu.postulante?.nombres} ${postu.postulante?.apellidos}`.toUpperCase()],
+    ['CARGO AL QUE POSTULA:', `${postu.oferta?.cargo?.nombre} (${postu.oferta?.sede?.nombre})`.toUpperCase()],
+    ['Nº CÉDULA DE IDENTIDAD:', `${postu.postulante?.ci} ${postu.postulante?.ci_expedido || ''}`],
+    ['NACIONALIDAD:', (postu.postulante?.nacionalidad || '').toUpperCase()],
+    ['DIRECCIÓN:', (postu.postulante?.direccion_domicilio || '').toUpperCase()],
+    ['TELÉFONO / CELULAR:', postu.postulante?.celular || ''],
+    ['CORREO ELECTRÓNICO:', postu.postulante?.email || ''],
+    ['PRETENSIÓN SALARIAL:', `BS. ${Math.round(postu.pretension_salarial || 0)}`]
+  ]
+
+  autoTable(doc, {
+    startY: 65,
+    body: personalData,
+    theme: 'grid',
+    styles: { fontSize: 9, cellPadding: 2, lineColor: [102, 51, 153] },
+    columnStyles: {
+      0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 239, 255], textColor: [102, 51, 153] },
+      1: { cellWidth: 135 }
+    },
+    margin: { left: 15 }
+  })
+
+  // Dynamic Merit Sections
+  let lastY = doc.lastAutoTable.finalY + 10
+  const meritos = expedienteRef.value.filteredMeritos
+
+  meritos.forEach((group, gIdx) => {
+    // Check page space
+    if (lastY > 230) {
+      doc.addPage()
+      lastY = 20
+    }
+
+    doc.setFillColor(243, 239, 255)
+    doc.rect(15, lastY, 185, 8, 'F')
+    doc.setFont('helvetica', 'bold')
+    const roman = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][gIdx] || 'X'
+    doc.text(`${roman}. ${group.tipo?.nombre.toUpperCase()}`, 20, lastY + 5.5)
+    lastY += 10
+
+    const headers = group.tipo?.campos.map(c => c.label.toUpperCase())
+    const rows = group.items.map(item => {
+      return group.tipo?.campos.map(c => (item.respuestas[c.key] || '---').toUpperCase())
+    })
+
+    autoTable(doc, {
+      startY: lastY,
+      head: [headers],
+      body: rows,
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, lineColor: [102, 51, 153], halign: 'center' },
+      headStyles: { fillColor: [243, 239, 255], textColor: [102, 51, 153], fontStyle: 'bold' },
+      margin: { left: 15 }
+    })
+
+    lastY = doc.lastAutoTable.finalY + 10
+  })
+
+  // Footer
+  const pageCount = doc.internal.getNumberOfPages()
+  doc.setFontSize(8)
+  for(let i = 1; i <= pageCount; i++) {
+    doc.setPage(i)
+    doc.setTextColor(150, 150, 150)
+    doc.text(`Expediente Digital - UNITEPC - Página ${i} de ${pageCount}`, 105, 270, { align: 'center' })
+  }
+
+  doc.save(`EXPEDIENTE_${postu.postulante?.nombres}_${postu.postulante?.apellidos}.pdf`)
+}
+
 const headerInfo = ref({
   nombre: '',
-  gestion: '2026'
+  gestion: '',
+  fecha_inicio: '',
+  fecha_cierre: ''
 })
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-'
+  const date = new Date(dateStr)
+  return date.toLocaleDateString('es-ES', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
 
 const meritFields = [
   'a1_diplomado', 'a1_especialidad', 'a1_maestria', 'a1_doctorado',
@@ -348,7 +519,16 @@ const hierarchicalGroups = computed(() => {
 })
 
 const onSedeChange = () => {
-    activeTab.value = null
+    if (selectedSedeName.value && hierarchicalGroups.value[selectedSedeName.value]) {
+        const cargoKeys = Object.keys(hierarchicalGroups.value[selectedSedeName.value].cargos)
+        if (cargoKeys.length > 0) {
+            activeTab.value = cargoKeys[0]
+        } else {
+            activeTab.value = null
+        }
+    } else {
+        activeTab.value = null
+    }
 }
 
 const loadData = async () => {
@@ -359,11 +539,37 @@ const loadData = async () => {
     if (sede_id) params.sede_id = sede_id
     if (cargo_id) params.cargo_id = cargo_id
 
+    // Fetch Convocatoria details to get the official title/name
+    if (convocatoria_id) {
+      try {
+        const { data: convo } = await api.get(`/convocatorias/${convocatoria_id}`)
+        if (convo && convo.titulo) {
+          headerInfo.value.nombre = convo.titulo
+          headerInfo.value.gestion = convo.gestion
+          headerInfo.value.fecha_inicio = convo.fecha_inicio
+          headerInfo.value.fecha_cierre = convo.fecha_cierre
+        }
+      } catch (e) {
+        console.error('Error fetching convocatoria info:', e)
+      }
+    }
+
     const { data } = await api.get('/postulaciones', { params })
 
-    if (data.length > 0) {
-      headerInfo.value.gestion = data[0].oferta?.convocatoria?.gestion || '2026'
-      headerInfo.value.nombre = data[0].oferta?.convocatoria?.titulo || 'Importación Externa'
+    // If we didn't get the info from fetching the convo directly, try to get it from the first row
+    if (data.length > 0 && !headerInfo.value.nombre) {
+      const convoData = data[0].oferta?.convocatoria
+      if (convoData) {
+        headerInfo.value.nombre = convoData.titulo
+        headerInfo.value.gestion = convoData.gestion
+        headerInfo.value.fecha_inicio = convoData.fecha_inicio
+        headerInfo.value.fecha_cierre = convoData.fecha_cierre
+      }
+    }
+
+    // Still empty? Use a more visible fallback for debugging
+    if (!headerInfo.value.nombre) {
+      headerInfo.value.nombre = 'Título no disponible'
     }
 
     localRows.value = data.map((postulacion) => {
@@ -436,13 +642,18 @@ const exportToPDF = (targetGroup = null) => {
     doc.rect(5, 5, 320, 22, 'F')
 
     doc.setTextColor(255, 255, 255)
-    doc.setFontSize(18)
+    doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
-    doc.text(group.sede.toUpperCase(), 15, 14)
+    doc.text((headerInfo.value.nombre || 'EVALUACIÓN DE MÉRITOS').toUpperCase(), 15, 12)
+
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    const periodInfo = `GESTIÓN: ${headerInfo.value.gestion} | INICIO: ${formatDate(headerInfo.value.fecha_inicio)} | CIERRE: ${formatDate(headerInfo.value.fecha_cierre)}`
+    doc.text(periodInfo, 15, 17)
 
     doc.setFontSize(11)
-    doc.setFont('helvetica', 'normal')
-    doc.text(group.cargo.toUpperCase(), 15, 21)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${group.sede.toUpperCase()} - ${group.cargo.toUpperCase()}`, 15, 23)
 
     doc.setFillColor(255, 255, 255)
     doc.roundedRect(260, 8, 50, 14, 7, 7, 'F')
@@ -552,15 +763,16 @@ const exportToExcel = async (targetGroup = null) => {
     // Title construction
     worksheet.mergeCells('A1:W1')
     const titleCell = worksheet.getCell('A1')
-    titleCell.value = `${headerInfo.value.nombre} - GESTIÓN ${headerInfo.value.gestion}`
+    titleCell.value = `${headerInfo.value.nombre || 'EVALUACIÓN DE MÉRITOS'} - GESTIÓN ${headerInfo.value.gestion}`
     titleCell.font = { name: 'Arial', bold: true, size: 14, color: { argb: whiteColor } }
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lilaColor } }
 
     worksheet.mergeCells('A2:W2')
     const subtitleCell = worksheet.getCell('A2')
-    subtitleCell.value = `${group.sede} - ${group.cargo}`.toUpperCase()
-    subtitleCell.font = { name: 'Arial', bold: true, size: 12, color: { argb: whiteColor } }
+    const datesInfo = `INICIO: ${formatDate(headerInfo.value.fecha_inicio)} | CIERRE: ${formatDate(headerInfo.value.fecha_cierre)} | SEDE: ${group.sede} | CARGO: ${group.cargo}`.toUpperCase()
+    subtitleCell.value = datesInfo
+    subtitleCell.font = { name: 'Arial', bold: true, size: 10, color: { argb: whiteColor } }
     subtitleCell.alignment = { horizontal: 'center', vertical: 'middle' }
     subtitleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: aquaColor } }
 

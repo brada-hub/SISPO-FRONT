@@ -246,11 +246,11 @@ const generatePDF = async () => {
   await new Promise(resolve => setTimeout(resolve, 500))
 
   try {
-    // Create PDF in Letter format (portrait)
+    // Create PDF in Oficio format (Bolivia: 216mm x 330mm)
     const pdf = new jsPDF({
       orientation: 'p',
       unit: 'mm',
-      format: 'letter'
+      format: [216, 330]
     })
 
     const pdfWidth = pdf.internal.pageSize.getWidth()
@@ -366,7 +366,7 @@ defineExpose({ generatePDF })
 
 .reporte-container {
   background: white;
-  width: 259mm;
+  width: 216mm;
   padding: 15mm;
   font-family: 'Times New Roman', Times, serif;
   color: #000;

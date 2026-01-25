@@ -10,7 +10,12 @@
       <div class="text-center w-full">
         <h2 class="main-title text-uppercase">REQUERIMIENTO DE PERSONAL</h2>
         <h3 class="area-title text-uppercase" :style="titleScaleStyle">
-          PARA {{ titulo || '[ÁREA]' }}
+          PARA <span
+            :contenteditable="editable"
+            @input="onInputTitle"
+            :class="{ 'editable-field': editable }"
+            class="inline-block min-w-[50px]"
+          >{{ titulo || '[ÁREA]' }}</span>
         </h3>
         <!-- SEDE BANNER -->
         <div v-if="singleSede" class="sede-banner-container animate-fade-in">
@@ -24,7 +29,12 @@
     <!-- 2. CONTENT (FLEX FLOW) -->
     <div class="afiche-body">
       <!-- INVITATION TEXT -->
-      <p class="invitation-text">
+      <p
+        class="invitation-text"
+        :contenteditable="editable"
+        @input="onInputDescription"
+        :class="{ 'editable-field': editable }"
+      >
         {{ truncateDesc(descripcion) || 'La Universidad Técnica Privada Cosmos invita a profesionales con formación en el área a postular para el puesto respectivo en nuestras nuevas oficinas.' }}
       </p>
 
@@ -59,9 +69,16 @@
             <span class="bullet"></span>
             <div class="doc-text">
               <span class="item-main-text text-uppercase">{{ getReqName(rid) }}:</span>
-              <span v-if="requisitosAfiche[rid]" class="item-sub-text">
+              <span
+                v-if="requisitosAfiche[rid]"
+                class="item-sub-text"
+                :contenteditable="editable"
+                @input="onInputReq(rid, $event)"
+                :class="{ 'editable-field': editable }"
+              >
                 {{ requisitosAfiche[rid] }}
               </span>
+              <span v-else-if="editable" class="item-sub-text italic opacity-50" :contenteditable="editable" @input="onInputReq(rid, $event)">[Añadir detalles...]</span>
             </div>
           </div>
         </div>
@@ -130,8 +147,24 @@ const props = defineProps({
   catalogCargos: { type: Array, default: () => [] },
   catalogRequisitos: { type: Array, default: () => [] },
   fontSizeScale: { type: Number, default: 1 },
-  qrValue: { type: String, default: 'https://sispo.unitepc.edu.bo' }
+  qrValue: { type: String, default: 'https://sispo.unitepc.edu.bo' },
+  editable: { type: Boolean, default: false }
 })
+
+const emit = defineEmits(['update:titulo', 'update:descripcion', 'update:requisitoAfiche'])
+
+const onInputTitle = (e) => {
+  emit('update:titulo', e.target.innerText)
+}
+
+const onInputDescription = (e) => {
+  emit('update:descripcion', e.target.innerText)
+}
+
+const onInputReq = (rid, e) => {
+  emit('update:requisitoAfiche', { id: rid, value: e.target.innerText })
+}
+
 
 const hasCargos = computed(() => props.ofertas.length > 0)
 
@@ -532,6 +565,19 @@ function formatDateLiteral (dateStr) {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.editable-field:hover {
+  background: rgba(102, 51, 153, 0.05);
+  box-shadow: 0 0 0 2px rgba(102, 51, 153, 0.1);
+  border-radius: 4px;
+  cursor: text;
+}
+.editable-field:focus {
+  background: rgba(102, 51, 153, 0.1);
+  box-shadow: 0 0 0 3px rgba(102, 51, 153, 0.2);
+  border-radius: 4px;
+  outline: none;
 }
 </style>
 

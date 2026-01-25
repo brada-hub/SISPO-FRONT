@@ -1,66 +1,73 @@
 <template>
-  <q-page class="flex items-center justify-center bg-gradient-to-br from-[#5b2586] to-[#0e4d92]">
-    <div class="w-full max-w-[400px] p-4 animate-fade">
-      <q-card class="w-full rounded-2xl shadow-2xl overflow-hidden">
-        <q-card-section class="flex flex-col items-center pt-8 pb-4">
+  <q-page class="flex items-center justify-center bg-gradient-to-br from-[#663399] to-[#009999]">
+    <div class="w-full max-w-[380px] p-4 animate-fade">
+      <q-card class="w-full rounded-2xl shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-white/20">
+        <q-card-section class="flex flex-col items-center pt-8 pb-2">
           <!-- Logo -->
-          <img src="~assets/logo_unitepc.png" alt="UNITEPC Logo" class="h-16 mb-2 object-contain" />
+          <div class="bg-gray-50/80 p-3 rounded-2xl mb-4 shadow-inner inline-block">
+            <img src="~assets/logo_unitepc.png" alt="UNITEPC Logo" class="h-12 object-contain" />
+          </div>
 
           <div class="text-center">
-            <h2 class="text-2xl font-bold text-[#5b2586] m-0 leading-none">CONVOCATORIAS</h2>
-            <div class="text-[10px] text-gray-500 font-medium tracking-widest mt-1 uppercase">
-              Universidad Técnica Privada Cosmos
+            <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#663399] to-[#009999] m-0 leading-none tracking-tighter">CONVOCATORIAS</h2>
+            <div class="text-[9px] text-gray-400 font-black tracking-[0.2em] mt-2 uppercase">
+              Talento Humano • UNITEPC
             </div>
           </div>
         </q-card-section>
 
-        <q-card-section class="px-8 py-2">
-          <div class="text-center mb-6 text-gray-500 text-sm">
-            Ingrese sus credenciales para acceder
+        <q-card-section class="px-8 pt-4 pb-2">
+          <div class="text-center mb-6 text-gray-500 font-medium text-xs">
+            Acceso administrativo al sistema
           </div>
 
           <q-form @submit="handleLogin" class="space-y-4">
-            <div>
-              <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1 block"
+            <div class="relative">
+              <label class="text-[9px] font-black text-[#663399]/70 uppercase tracking-widest mb-1.5 block ml-1"
                 >Usuario / CI</label
               >
               <q-input
                 v-model="ci"
                 outlined
+                rounded
                 dense
-                placeholder="Ingrese su Usuario o CI"
+                placeholder="Número de Carnet"
                 bg-color="white"
-                :rules="[(val) => !!val || 'Requerido']"
+                class="shadow-sm"
+                :rules="[(val) => !!val || 'El CI es obligatorio']"
                 autocomplete="username"
               >
                 <template v-slot:prepend>
-                  <q-icon name="person_outline" color="purple-8" size="20px" />
+                  <q-icon name="person" color="primary" size="xs" />
                 </template>
               </q-input>
             </div>
 
-            <div>
-              <label class="text-[11px] font-bold text-gray-700 uppercase tracking-wider mb-1 block"
+            <div class="relative">
+              <label class="text-[9px] font-black text-[#663399]/70 uppercase tracking-widest mb-1.5 block ml-1"
                 >Contraseña</label
               >
               <q-input
                 v-model="password"
                 :type="showPassword ? 'text' : 'password'"
                 outlined
+                rounded
                 dense
-                placeholder="Ingrese su contraseña"
+                placeholder="••••••••"
                 bg-color="white"
-                :rules="[(val) => !!val || 'Requerido']"
+                class="shadow-sm"
+                :rules="[(val) => !!val || 'La contraseña es obligatoria']"
                 autocomplete="current-password"
               >
                 <template v-slot:prepend>
-                  <q-icon name="lock_outline" color="purple-8" size="20px" />
+                  <q-icon name="lock" color="primary" size="xs" />
                 </template>
                 <template v-slot:append>
                   <q-icon
                     :name="showPassword ? 'visibility' : 'visibility_off'"
                     class="cursor-pointer"
-                    color="gray"
+                    color="grey-6"
+                    size="xs"
                     @click="showPassword = !showPassword"
                   />
                 </template>
@@ -70,19 +77,19 @@
             <div class="pt-2">
               <q-btn
                 type="submit"
-                label="Iniciar Sesión"
-                color="primary"
-                class="w-full py-2.5 font-bold rounded-lg shadow-md hover:shadow-lg transition-all"
+                label="ENTRAR AL SISTEMA"
+                class="w-full py-3 font-black rounded-xl shadow-lg shadow-purple-200/40 hover:translate-y-[-1px] transition-all bg-gradient-to-r from-[#663399] to-[#5b2586] text-white"
                 :loading="loading"
                 unelevated
+                no-caps
               />
             </div>
           </q-form>
         </q-card-section>
 
-        <q-card-section class="pb-6 pt-2 text-center">
-          <div class="text-[10px] text-gray-400">
-            © {{ new Date().getFullYear() }} Universidad Técnica Privada Cosmos
+        <q-card-section class="pb-6 pt-0 text-center">
+          <div class="text-[8px] text-gray-300 font-bold uppercase tracking-widest">
+            © {{ new Date().getFullYear() }} • UNITEPC • SISTEMA DE SELECCIÓN
           </div>
         </q-card-section>
       </q-card>

@@ -181,6 +181,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         config_archivos: req.config_archivos || [],
         compartido: req.compartido,
         usadoPor: req.usadoPor,
+        opcional: req.opcional || false, // CAPTURE OPTIONAL STATUS
         permite_multiples: req.permite_multiples || false,
         registros: [
           { respuestas: {}, archivos: {} }

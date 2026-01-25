@@ -31,8 +31,8 @@
         </q-input>
       </template>
       <template v-slot:header="props">
-        <q-tr :props="props" style="background-color: #663399; color: white;">
-          <q-th v-for="col in props.cols" :key="col.name" :props="props">
+        <q-tr :props="props" class="bg-gradient-to-r from-primary to-secondary text-white">
+          <q-th v-for="col in props.cols" :key="col.name" :props="props" class="text-uppercase font-bold tracking-wider">
             {{ col.label }}
           </q-th>
         </q-tr>
@@ -104,181 +104,317 @@
     <q-dialog v-model="dialog" persistent maximized transition-show="slide-up" transition-hide="slide-down">
       <q-card class="bg-gray-100 flex flex-col no-wrap">
         <!-- HEADER FIXED -->
-        <q-toolbar style="background-color: #663399; color: white;" class="q-py-md shadow-2 relative" :class="$q.screen.lt.md ? 'flex-col items-center gap-4' : ''">
-          <div class="flex items-center gap-2">
-            <q-btn flat round dense icon="close" v-close-popup />
-            <q-toolbar-title class="text-weight-bold text-subtitle1">
-              {{ isViewMode ? 'VISTA DE AFICHE' : (isEdit ? 'EDITANDO CONVOCATORIA' : 'NUEVA CONVOCATORIA') }}
-            </q-toolbar-title>
+        <q-toolbar class="bg-gradient-to-r from-primary to-secondary text-white q-py-lg shadow-lg z-50 sticky top-0" :class="$q.screen.lt.md ? 'flex-col items-center gap-4' : ''">
+          <div class="flex items-center gap-3">
+            <q-btn flat round dense icon="arrow_back" v-close-popup class="hover:bg-white/10 transition-colors" />
+            <div class="flex flex-col">
+              <q-toolbar-title class="text-weight-bolder text-xl tracking-tight leading-none">
+                {{ isViewMode ? 'VISTA PREVIA' : (isEdit ? 'EDITAR CONVOCATORIA' : 'NUEVA CONVOCATORIA') }}
+              </q-toolbar-title>
+              <div class="text-[10px] opacity-80 font-medium tracking-widest uppercase mt-1">Gestión de Talento Humano • UNITEPC</div>
+            </div>
           </div>
 
           <q-space v-if="!$q.screen.lt.md" />
 
-          <div class="flex gap-2" :class="$q.screen.lt.md ? 'w-full justify-around' : ''">
-            <q-btn v-if="isViewMode || isEdit" :label="$q.screen.lt.sm ? '' : 'Imagen (HD)'" color="teal" unelevated icon="image" @click="downloadImage" rounded />
-            <q-btn v-if="isViewMode || isEdit" :label="$q.screen.lt.sm ? '' : 'PDF'" color="deep-orange" unelevated icon="picture_as_pdf" @click="downloadPDF" rounded />
-            <q-btn v-if="!isViewMode" label="Publicar" color="white" text-color="primary" unelevated icon="rocket_launch" :loading="saving" @click="save" rounded />
+          <div class="flex items-center gap-3" :class="$q.screen.lt.md ? 'w-full justify-around' : ''">
+             <template v-if="isViewMode || isEdit">
+                <q-btn outline :label="$q.screen.lt.sm ? '' : 'Descargar Imagen'" icon="image" @click="downloadImage" class="bg-white/10 text-white border-white/30 hover:bg-white/20 rounded-xl" no-caps />
+                <q-btn outline :label="$q.screen.lt.sm ? '' : 'Exportar PDF'" icon="picture_as_pdf" @click="downloadPDF" class="bg-white/10 text-white border-white/30 hover:bg-white/20 rounded-xl" no-caps />
+            </template>
+
+            <q-btn v-if="!isViewMode"
+                :label="isEdit ? 'Guardar Cambios' : 'Publicar Convocatoria'"
+                class="bg-white text-primary font-bold px-8 py-2 rounded-xl shadow-xl shadow-primary/20 hover:scale-105 transition-all"
+                unelevated
+                :icon="isEdit ? 'save' : 'rocket_launch'"
+                :loading="saving"
+                @click="save"
+                no-caps
+            />
           </div>
         </q-toolbar>
 
         <!-- MAIN SCROLLABLE SECTION -->
         <q-card-section class="flex-1 scroll p-4 row q-col-gutter-md">
-          <!-- LEFT: CONFIG PANEL -->
+          <!-- LEFT: CONFIG PANEL (MODERN ACCORDION) -->
           <div v-if="!isViewMode" class="col-12 col-md-4 pr-2">
-            <div class="space-y-4 pb-12">
-              <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <div class="text-h6 text-gray-700 mb-4 flex items-center gap-2">
-                  <q-icon name="info" color="primary" /> Información de Encabezado
-                </div>
-                <q-input v-model="form.titulo" label="Título (Eje: MARKETING Y VENTAS)" outlined dense class="mb-4 text-uppercase" placeholder="MARKETING Y VENTAS" :rules="[val => !!val || 'El título es obligatorio']" />
-                <q-input v-model="form.descripcion" label="Descripción / Invitación" type="textarea" outlined dense rows="3" placeholder="La Universidad Técnica Privada Cosmos invita a profesionales..." :rules="[val => !!val || 'La descripción es obligatoria']" />
+            <q-list bordered class="rounded-2xl shadow-sm bg-white overflow-hidden">
+              <!-- SECTION 1: BASIC INFO -->
+              <q-expansion-item
+                v-model="expandBasic"
+                icon="info"
+                label="1. Información Básica"
+                caption="Título, descripción y fechas"
+                header-class="bg-grey-1 font-bold text-primary"
+                expand-icon-class="text-primary"
+              >
+                <q-card>
+                  <q-card-section class="space-y-4 py-4">
+                    <q-input
+                      v-model="form.titulo"
+                      label="Título (Eje: MARKETING Y VENTAS)"
+                      outlined
+                      dense
+                      class="text-uppercase"
+                      placeholder="MARKETING Y VENTAS"
+                      :rules="[val => !!val || 'El título es obligatorio']"
+                      hint="Puedes editarlo directamente en el afiche a la derecha"
+                    />
+                    <q-input v-model="form.descripcion" label="Descripción / Invitación" type="textarea" outlined dense rows="3" placeholder="La Universidad Técnica Privada Cosmos invita a profesionales..." :rules="[val => !!val || 'La descripción es obligatoria']" />
 
-                <div class="grid grid-cols-1 gap-3 mt-4">
-                  <q-input v-model="form.fecha_inicio" label="Inicia recepción" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
-                  <q-input v-model="form.fecha_cierre" label="Plazo de postulación" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
-                  <q-input v-model="form.hora_limite" label="Hora de Cierre" type="time" outlined dense stack-label hint="Hora límite de recepción" :rules="[val => !!val || 'Hora obligatoria']" />
-                </div>
-
-                <q-input
-                  v-model="form.codigo_interno"
-                  label="Código de Control Interno"
-                  outlined
-                  dense
-                  class="mt-4 text-weight-bold"
-                  color="primary"
-                  hint="Se autogenera, pero puedes editarlo si ya existe."
-                  @update:model-value="manualCodigoInterno = true"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="pin" />
-                  </template>
-                </q-input>
-              </div>
-
-              <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <div class="flex flex-col gap-3 mb-4">
-                  <div class="text-h6 text-gray-700 flex items-center gap-2">
-                    <q-icon name="apartment" color="primary" /> Ofertas
-                  </div>
-                  <q-btn-toggle v-model="builderMode" toggle-color="primary" flat dense spread :options="[{label: 'Sede', value: 'sede', icon: 'location_on'},{label: 'Cargo', value: 'cargo', icon: 'badge'}]" />
-                </div>
-
-                <div class="bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-200">
-                  <div class="flex flex-col gap-3">
-                    <template v-if="builderMode === 'sede'">
-                      <div class="flex items-center gap-2">
-                        <q-select v-model="buildOne" :options="catalogSedes" option-label="nombre" label="Sede" outlined dense emit-value map-options option-value="id" bg-color="white" class="flex-1" />
-                        <q-btn icon="add" color="teal" flat round dense @click="showQuickSede = true" />
+                    <div class="row q-col-gutter-sm">
+                      <div class="col-6">
+                        <q-input v-model="form.fecha_inicio" label="Inicia recepción" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
                       </div>
-                      <div class="flex items-center gap-2">
-                        <q-select v-model="buildMany" :options="catalogCargos" option-label="nombre" label="Cargos" outlined dense multiple use-chips emit-value map-options option-value="id" bg-color="white" class="flex-1" />
-                        <q-btn icon="add" color="teal" flat round dense @click="showQuickCargo = true" />
+                      <div class="col-6">
+                        <q-input v-model="form.fecha_cierre" label="Plazo de postulación" type="date" outlined dense stack-label :rules="[val => !!val || 'Fecha obligatoria']" />
                       </div>
-                    </template>
-                    <template v-else>
-                      <div class="flex items-center gap-2">
-                        <q-select v-model="buildOne" :options="catalogCargos" option-label="nombre" label="Cargo" outlined dense emit-value map-options option-value="id" bg-color="white" class="flex-1" />
-                        <q-btn icon="add" color="teal" flat round dense @click="showQuickCargo = true" />
+                      <div class="col-12">
+                        <q-input v-model="form.hora_limite" label="Hora de Cierre" type="time" outlined dense stack-label hint="Hora límite de recepción" :rules="[val => !!val || 'Hora obligatoria']" />
                       </div>
-                      <div class="flex items-center gap-2">
-                        <q-select v-model="buildMany" :options="catalogSedes" option-label="nombre" label="Sedes" outlined dense multiple use-chips emit-value map-options option-value="id" bg-color="white" class="flex-1" />
-                        <q-btn icon="add" color="teal" flat round dense @click="showQuickSede = true" />
-                      </div>
-                    </template>
-                    <q-btn icon="add_circle" color="primary" class="full-width" label="Añadir a lista" unelevated @click="addOffersFromBuilder" rounded />
-                  </div>
-                </div>
-
-                <div class="mt-6">
-                  <div class="text-subtitle2 text-gray-500 mb-2 font-black uppercase text-[10px]">Lista de Cargos:</div>
-                  <div class="space-y-2">
-                    <div v-for="(o, idx) in form.ofertas" :key="idx" class="flex justify-between items-center p-2 bg-gray-50 rounded-lg border border-gray-200">
-                      <div class="text-[10px] uppercase font-black">
-                        <div class="text-gray-800">{{ getCargoName(o.cargo_id) }}</div>
-                        <div class="text-primary">{{ getSedeName(o.sede_id) }}</div>
-                      </div>
-                      <q-btn icon="close" size="xs" flat round color="negative" @click="form.ofertas.splice(idx, 1)" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                <div class="text-h6 text-gray-700 mb-4 flex items-center gap-2">
-                  <q-icon name="list_alt" color="primary" /> Requisitos
-                </div>
-                <div class="space-y-3">
-                  <div v-for="req in catalogRequisitos" :key="req.id" class="border rounded-2xl p-3 bg-gray-50/50 hover:bg-gray-50 transition-all border-gray-100 flex flex-col gap-2 shadow-sm">
-                    <div class="flex items-center gap-2 cursor-pointer" @click="toggleReq(req.id)">
-                      <q-checkbox :model-value="form.config_requisitos_ids.includes(req.id)" dense color="primary" />
-                      <div class="text-[11px] font-black uppercase text-gray-700 flex-1">{{ req.nombre }}</div>
-
-                      <q-btn flat round dense icon="info" color="grey-5" size="xs" @click.stop="() => {}">
-                          <q-menu anchor="top middle" self="bottom middle" class="shadow-2xl rounded-2xl border border-gray-100">
-                             <div class="p-4 bg-gray-50 border-b">
-                                <div class="text-xs font-black text-primary uppercase">Estructura del Documento</div>
-                                <div class="text-sm font-bold text-gray-800">{{ req.nombre }}</div>
-                             </div>
-                             <div class="p-4 space-y-3 min-w-[250px]">
-                                <div v-if="req.campos?.length > 0">
-                                   <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Cuestionario</div>
-                                   <div class="space-y-1">
-                                      <div v-for="(f, fi) in req.campos" :key="fi" class="text-xs font-bold text-indigo-700 bg-indigo-50 px-2 py-1 rounded flex items-center gap-2">
-                                         <q-icon name="edit_note" size="14px" /> {{ f.label }}
-                                      </div>
-                                   </div>
-                                </div>
-                                <div v-if="req.config_archivos?.length > 0">
-                                   <div class="text-[10px] font-bold text-gray-400 uppercase mb-1">Archivos Requeridos</div>
-                                   <div class="space-y-1">
-                                      <div v-for="(a, ai) in req.config_archivos" :key="ai" class="text-xs font-bold text-teal-700 bg-teal-50 px-2 py-1 rounded flex items-center gap-2">
-                                         <q-icon name="file_present" size="14px" /> {{ a.label }}
-                                      </div>
-                                   </div>
-                                </div>
-                             </div>
-                          </q-menu>
-                      </q-btn>
                     </div>
 
-                    <div v-if="form.config_requisitos_ids.includes(req.id)" class="ml-7 animate-fade-in space-y-2">
-                       <q-input
-                          v-model="form.requisitos_afiche[req.id]"
-                          placeholder="Ejem: en Ciencias de la Ingeniería..."
-                          dense
+                    <q-input
+                      v-model="form.codigo_interno"
+                      label="Código de Control Interno"
+                      outlined
+                      dense
+                      class="mt-2 text-weight-bold"
+                      color="primary"
+                      hint="Se autogenera según sedes/cargos."
+                      @update:model-value="manualCodigoInterno = true"
+                    >
+                      <template v-slot:prepend>
+                        <q-icon name="pin" />
+                      </template>
+                    </q-input>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
+
+              <q-separator />
+
+              <!-- SECTION 2: OFFERS -->
+              <q-expansion-item
+                v-model="expandOffers"
+                icon="apartment"
+                label="2. Sedes y Cargos"
+                caption="Defina dónde y qué puestos"
+                header-class="bg-grey-1 font-bold text-primary"
+              >
+                <q-card>
+                  <q-card-section class="space-y-4 py-4">
+                    <div class="bg-gray-50 p-2 rounded-xl mb-3">
+                      <q-btn-toggle
+                        v-model="builderMode"
+                        toggle-color="primary"
+                        flat
+                        dense
+                        spread
+                        :options="[
+                          {label: 'Por Sede', value: 'sede', icon: 'location_on', slot: 'sede'},
+                          {label: 'Por Cargo', value: 'cargo', icon: 'badge', slot: 'cargo'}
+                        ]"
+                        class="bg-white rounded-lg border border-gray-100"
+                      />
+                    </div>
+
+                    <div class="space-y-4">
+                      <!-- Mode: By Sede (Select 1 Sede -> N Cargos) -->
+                      <template v-if="builderMode === 'sede'">
+                        <q-select
+                          v-model="buildOne"
+                          :options="catalogSedes"
+                          option-label="nombre"
+                          option-value="id"
+                          label="Fijar Sede"
                           outlined
-                          type="textarea"
-                          autogrow
+                          dense
+                          emit-value
+                          map-options
                           bg-color="white"
-                          class="rounded-lg shadow-inner"
-                          input-class="text-[10px] font-bold text-primary"
-                          :disable="form.requisitos_afiche[req.id] === 'OCULTAR'"
                         >
-                          <template v-slot:prepend>
-                             <q-icon name="edit" size="xs" color="grey-4" />
+                          <template v-slot:append>
+                            <q-btn icon="add" color="teal" flat round dense @click="showQuickSede = true" />
                           </template>
-                       </q-input>
+                        </q-select>
 
-                       <q-btn
-                         :label="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'Mostrar en Afiche' : 'Ocultar en Afiche'"
-                         :icon="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'visibility' : 'visibility_off'"
-                         size="xs"
-                         flat
-                         dense
-                         :color="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'positive' : 'grey-7'"
-                         class="opacity-70 hover:opacity-100"
-                         @click="form.requisitos_afiche[req.id] === 'OCULTAR' ? form.requisitos_afiche[req.id] = '' : form.requisitos_afiche[req.id] = 'OCULTAR'"
-                       />
+                        <div v-if="buildOne" class="animate-fade-in">
+                          <q-select
+                            v-model="buildMany"
+                            :options="catalogCargos"
+                            option-label="nombre"
+                            option-value="id"
+                            multiple
+                            use-chips
+                            outlined
+                            dense
+                            emit-value
+                            map-options
+                            label="Marcar Cargos"
+                            bg-color="white"
+                            @update:model-value="syncOffers"
+                          >
+                            <template v-slot:append>
+                              <q-btn icon="add" color="teal" flat round dense @click="showQuickCargo = true" />
+                            </template>
+                          </q-select>
+                        </div>
+                      </template>
+
+                      <!-- Mode: By Cargo (Select 1 Cargo -> N Sedes) -->
+                      <template v-else>
+                        <q-select
+                          v-model="buildOne"
+                          :options="catalogCargos"
+                          option-label="nombre"
+                          option-value="id"
+                          label="Fijar Cargo"
+                          outlined
+                          dense
+                          emit-value
+                          map-options
+                          bg-color="white"
+                        >
+                          <template v-slot:append>
+                            <q-btn icon="add" color="teal" flat round dense @click="showQuickCargo = true" />
+                          </template>
+                        </q-select>
+
+                        <div v-if="buildOne" class="animate-fade-in">
+                          <q-select
+                            v-model="buildMany"
+                            :options="catalogSedes"
+                            option-label="nombre"
+                            option-value="id"
+                            multiple
+                            use-chips
+                            outlined
+                            dense
+                            emit-value
+                            map-options
+                            label="Marcar Sedes"
+                            bg-color="white"
+                            @update:model-value="syncOffers"
+                          >
+                            <template v-slot:append>
+                              <q-btn icon="add" color="teal" flat round dense @click="showQuickSede = true" />
+                            </template>
+                          </q-select>
+                        </div>
+                      </template>
+
+
+                      <div class="mt-4 border-t pt-4">
+                        <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <q-icon name="list" /> Resumen de Ofertas ({{ form.ofertas.length }})
+                        </div>
+                        <div class="row q-gutter-xs">
+                           <q-chip
+                            v-for="(o, idx) in form.ofertas"
+                            :key="idx"
+                            removable
+                            @remove="form.ofertas.splice(idx, 1)"
+                            size="sm"
+                            outline
+                            color="primary"
+                            class="font-bold text-[10px] uppercase"
+                           >
+                            {{ getSedeName(o.sede_id) }}: {{ getCargoName(o.cargo_id) }}
+                           </q-chip>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
+
+              <q-separator />
+
+              <!-- SECTION 3: REQUIREMENTS -->
+              <q-expansion-item
+                v-model="expandReqs"
+                icon="list_alt"
+                label="3. Requisitos del Perfil"
+                caption="Documentos y méritos"
+                header-class="bg-grey-1 font-bold text-primary"
+              >
+                <q-card>
+                  <q-card-section class="py-4">
+                    <!-- PRESETS AREA -->
+                    <div class="bg-indigo-50 p-3 rounded-xl mb-4 border border-indigo-100">
+                      <div class="text-[10px] font-black text-indigo-800 uppercase mb-2">Packs Rápidos:</div>
+                      <div class="row q-gutter-sm">
+                        <q-btn label="Docente" icon="school" size="xs" color="indigo-7" unelevated rounded no-caps @click="applyPreset('docente')" />
+                        <q-btn label="Administrativo" icon="work" size="xs" color="indigo-7" unelevated rounded no-caps @click="applyPreset('adm')" />
+                        <q-btn label="Limpiar" icon="clear" size="xs" color="grey-7" flat rounded no-caps @click="form.config_requisitos_ids = []; form.requisitos_afiche = {}" />
+                      </div>
+                    </div>
+
+                    <div class="text-[11px] font-bold text-gray-500 uppercase mb-2 ml-1">Seleccione requisitos:</div>
+                    <div class="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                      <div v-for="req in catalogRequisitos" :key="req.id"
+                           class="border rounded-xl p-3 hover:bg-grey-1 transition-all flex flex-col gap-2"
+                           :class="form.config_requisitos_ids.includes(req.id) ? 'border-primary bg-primary/5' : 'border-gray-100'"
+                      >
+                        <div class="flex items-center gap-2 cursor-pointer" @click="toggleReq(req.id)">
+                          <q-checkbox :model-value="form.config_requisitos_ids.includes(req.id)" dense color="primary" />
+                          <div class="text-[11px] font-bold uppercase text-gray-700 flex-1">{{ req.nombre }}</div>
+                        </div>
+
+                        <div v-if="form.config_requisitos_ids.includes(req.id)" class="ml-7 animate-fade-in flex flex-col gap-2">
+                          <q-input
+                            v-model="form.requisitos_afiche[req.id]"
+                            dense
+                            outlined
+                            class="full-width"
+                            placeholder="Detalle (Eje: Título Provisión Nacional)"
+                            input-class="text-[10px]"
+                            bg-color="white"
+                          />
+                          <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-dashed">
+                             <div class="flex items-center gap-1">
+                                <q-toggle
+                                  :model-value="!form.requisitos_opcionales.includes(req.id)"
+                                  @update:model-value="toggleOptional(req.id)"
+                                  size="sm"
+                                  color="primary"
+                                  dense
+                                />
+                                <span class="text-[10px] font-black" :class="!form.requisitos_opcionales.includes(req.id)?'text-primary':'text-orange-9'">
+                                  {{ !form.requisitos_opcionales.includes(req.id) ? 'OBLIGATORIO' : 'OPCIONAL' }}
+                                </span>
+                             </div>
+
+                             <q-btn
+                                :icon="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'visibility_off' : 'visibility'"
+                                flat
+                                round
+                                size="xs"
+                                :color="form.requisitos_afiche[req.id] === 'OCULTAR' ? 'grey-4' : 'teal'"
+                                @click="form.requisitos_afiche[req.id] === 'OCULTAR' ? form.requisitos_afiche[req.id] = '' : form.requisitos_afiche[req.id] = 'OCULTAR'"
+                              >
+                                <q-tooltip>{{ form.requisitos_afiche[req.id] === 'OCULTAR' ? 'Oculto en Afiche' : 'Visible en Afiche' }}</q-tooltip>
+                              </q-btn>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
+            </q-list>
           </div>
 
           <!-- RIGHT: OFFICIAL POSTER PREVIEW (AFICHE) -->
           <div :class="isViewMode ? 'col-12 flex flex-col items-center bg-gray-800' : 'col-12 col-md-8 flex flex-col'"
                :style="isViewMode ? 'min-height: calc(100vh - 80px)' : ''">
+              <!-- HELP BANNER -->
+              <div v-if="!isViewMode" class="bg-amber-1 text-amber-9 border border-amber-200 p-2 rounded-xl mb-3 text-center text-xs font-bold animate-pulse mx-4">
+                <q-icon name="edit" /> TIP: HAZ CLIC DIRECTAMENTE EN EL TEXTO DEL AFICHE PARA EDITAR EL TÍTULO O DESCRIPCIÓN
+              </div>
+
               <div
                 ref="previewContainer"
                 class="afiche-preview-wrapper p-4 md:p-10"
@@ -300,6 +436,10 @@
                     :catalog-requisitos="catalogRequisitos"
                     :font-size-scale="aficheFontScale"
                     :qr-value="qrValue"
+                    :editable="!isViewMode"
+                    @update:titulo="val => form.titulo = val"
+                    @update:descripcion="val => form.descripcion = val"
+                    @update:requisito-afiche="({ id, value }) => form.requisitos_afiche[id] = value"
                   />
                 </div>
             </div>
@@ -396,9 +536,17 @@ const filter = ref('')
 const previewContainer = ref(null)
 const containerWidth = ref(800)
 
+// Accordion Expand States
+const expandBasic = ref(true)
+const expandOffers = ref(false)
+const expandReqs = ref(false)
+
+// Multiselect logic for Section 2
+const builderMode = ref('sede') // 'sede' or 'cargo'
+const buildOne = ref(null) // selected Sede (if mode=sede) or Cargo (if mode=cargo)
+const buildMany = ref([]) // selected list
+
 const previewStyle = computed(() => {
-  // 794 is the base width of AficheV2
-  // We add some margin and padding in our calculation (target ~850px)
   const scale = containerWidth.value < 850 ? (containerWidth.value / 850) : 1
   return {
     transform: `scale(${scale})`,
@@ -418,10 +566,6 @@ const updateWidth = () => {
 watch(dialog, (val) => {
   if (val) setTimeout(updateWidth, 100)
 })
-
-const builderMode = ref('sede')
-const buildOne = ref(null)
-const buildMany = ref([])
 
 // Quick Add States
 const showQuickSede = ref(false)
@@ -444,7 +588,6 @@ const helperGenerarSigla = (val) => {
 
   if (words.length === 0) return val.substring(0, 3).toUpperCase()
   if (words.length === 1) return words[0].substring(0, 3)
-
   return words.slice(0, 3).map(w => w.substring(0, 3)).join('-')
 }
 
@@ -456,12 +599,54 @@ watch(() => quickCargo.value.nombre, (newVal) => {
   if (!manualSiglaCargo.value) quickCargo.value.sigla = helperGenerarSigla(newVal)
 })
 
-watch(builderMode, () => {
-  buildOne.value = null
-  buildMany.value = []
+const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} })
+
+const syncOffers = (newMany) => {
+  if (!buildOne.value) return
+  if (builderMode.value === 'sede') {
+    const sId = buildOne.value
+    form.value.ofertas = form.value.ofertas.filter(o => o.sede_id !== sId || newMany.includes(o.cargo_id))
+    newMany.forEach(cId => {
+      if (!form.value.ofertas.find(o => o.sede_id === sId && o.cargo_id === cId)) {
+        form.value.ofertas.push({ sede_id: sId, cargo_id: cId, vacantes: 1 })
+      }
+    })
+  } else {
+    const cId = buildOne.value
+    form.value.ofertas = form.value.ofertas.filter(o => o.cargo_id !== cId || newMany.includes(o.sede_id))
+    newMany.forEach(sId => {
+      if (!form.value.ofertas.find(o => o.sede_id === sId && o.cargo_id === cId)) {
+        form.value.ofertas.push({ sede_id: sId, cargo_id: cId, vacantes: 1 })
+      }
+    })
+  }
+}
+
+watch([buildOne, builderMode], () => {
+  if (!buildOne.value) { buildMany.value = []; return }
+  if (builderMode.value === 'sede') {
+    buildMany.value = form.value.ofertas.filter(o => o.sede_id === buildOne.value).map(o => o.cargo_id)
+  } else {
+    buildMany.value = form.value.ofertas.filter(o => o.cargo_id === buildOne.value).map(o => o.sede_id)
+  }
 })
 
-const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_afiche: {} })
+
+const applyPreset = (type) => {
+  if (type === 'docente') {
+    const docReqs = catalogRequisitos.value.filter(r =>
+      ['FORMACIÓN PROFESIONAL', 'PERFECCIONAMIENTO PROFESIONAL', 'EXPERIENCIA ACADÉMICA'].some(k => r.nombre.includes(k))
+    ).map(r => r.id)
+    form.value.config_requisitos_ids = [...new Set([...form.value.config_requisitos_ids, ...docReqs])]
+    $q.notify({ message: 'Pack Docente aplicado', color: 'indigo-8' })
+  } else if (type === 'adm') {
+    const admReqs = catalogRequisitos.value.filter(r =>
+      ['FORMACIÓN PROFESIONAL', 'CURRICULUM VITAE'].some(k => r.nombre.includes(k))
+    ).map(r => r.id)
+    form.value.config_requisitos_ids = [...new Set([...form.value.config_requisitos_ids, ...admReqs])]
+    $q.notify({ message: 'Pack Administrativo aplicado', color: 'indigo-8' })
+  }
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return ''
@@ -474,12 +659,10 @@ const getStatus = (row) => {
   const hoy = new Date().toISOString().split('T')[0]
   const inicio = row.fecha_inicio.split('T')[0]
   const cierre = row.fecha_cierre.split('T')[0]
-
   if (hoy < inicio) return { label: 'PROGRAMADA', color: 'blue', icon: 'schedule' }
   if (hoy > cierre) return { label: 'CERRADA', color: 'red', icon: 'block' }
   return { label: 'ABIERTA', color: 'positive', icon: 'check_circle' }
 }
-
 
 const qrValue = computed(() => form.value.id ? `https://postulacionesunitepc.xpertiaplus.com/#/postular/${form.value.id}` : 'https://postulacionesunitepc.xpertiaplus.com/#/postular')
 
@@ -494,36 +677,28 @@ const columns = [
   { name: 'acciones', label: 'Acciones', align: 'center', style: 'width: 140px' }
 ]
 
-// Logic for automatic internal code generation
 watch(() => form.value.ofertas, (newOffers) => {
   if (isEdit.value && form.value.codigo_interno) return
-  if (manualCodigoInterno.value) return // Don't overwrite if user typed something manually
-
+  if (manualCodigoInterno.value) return
   if (!newOffers || newOffers.length === 0) {
     form.value.codigo_interno = ''
     return
   }
-
   const uniqueCargoIds = [...new Set(newOffers.map(o => o.cargo_id))]
   const uniqueSedeIds = [...new Set(newOffers.map(o => o.sede_id))]
   const year = new Date().getFullYear()
-
-  // Sede Sigla (Use NAC for Multiple)
   let sSigla = 'NAC'
   if (uniqueSedeIds.length === 1) {
     const sedeEncontrada = catalogSedes.value.find(s => s.id == uniqueSedeIds[0])
     sSigla = sedeEncontrada?.sigla || 'SEDE'
   }
-
-  // Cargo Sigla
   let cSigla = 'MULT'
   if (uniqueCargoIds.length === 1) {
     const cargo = catalogCargos.value.find(c => c.id === uniqueCargoIds[0])
     cSigla = cargo?.sigla || 'CARGO'
   }
-
   form.value.codigo_interno = `CONV-${year}-${cSigla}-${sSigla}`.toUpperCase()
-}, { deep: true, immediate: true }) // Added immediate to generate on open if already has offers
+}, { deep: true, immediate: true })
 
 const loadData = async () => {
   loading.value = true
@@ -541,7 +716,8 @@ const loadData = async () => {
 }
 
 const openDialog = (item = null) => {
-  isViewMode.value = false
+  isViewMode.value = false; buildOne.value = null; buildMany.value = []
+  expandBasic.value = true; expandOffers.value = false; expandReqs.value = false
   if (item) {
     isEdit.value = true
     form.value = {
@@ -549,15 +725,15 @@ const openDialog = (item = null) => {
       fecha_inicio: item.fecha_inicio ? item.fecha_inicio.split('T')[0] : '',
       fecha_cierre: item.fecha_cierre ? item.fecha_cierre.split('T')[0] : '',
       config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
+      requisitos_opcionales: Array.isArray(item.requisitos_opcionales) ? item.requisitos_opcionales : [],
       requisitos_afiche: item.requisitos_afiche || {},
       ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []
     }
   } else {
     isEdit.value = false
-    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_afiche: {} }
+    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} }
   }
-  manualCodigoInterno.value = false
-  buildOne.value = null; buildMany.value = []; dialog.value = true
+  manualCodigoInterno.value = false; dialog.value = true
 }
 
 const viewAfiche = (item) => {
@@ -567,27 +743,11 @@ const viewAfiche = (item) => {
     fecha_inicio: item.fecha_inicio ? item.fecha_inicio.split('T')[0] : '',
     fecha_cierre: item.fecha_cierre ? item.fecha_cierre.split('T')[0] : '',
     config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
+    requisitos_opcionales: Array.isArray(item.requisitos_opcionales) ? item.requisitos_opcionales : [],
     requisitos_afiche: item.requisitos_afiche || {},
     ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []
   }
   dialog.value = true
-}
-
-const addOffersFromBuilder = () => {
-  if (!buildOne.value || (Array.isArray(buildMany.value) ? buildMany.value.length === 0 : !buildMany.value)) { $q.notify({ message: 'Completa la selección', color: 'orange' }); return }
-  let countAdded = 0
-
-  const many = Array.isArray(buildMany.value) ? buildMany.value : [buildMany.value]
-
-  many.forEach(id => {
-    let sId = builderMode.value === 'sede' ? buildOne.value : id
-    let cId = builderMode.value === 'sede' ? id : buildOne.value
-    if (!form.value.ofertas.find(o => o.sede_id === sId && o.cargo_id === cId)) {
-      form.value.ofertas.push({ sede_id: sId, cargo_id: cId, vacantes: 1 }); countAdded++
-    }
-  })
-  if (countAdded > 0) $q.notify({ message: `Se añadieron ${countAdded} combinaciones`, color: 'positive' })
-  buildOne.value = null; buildMany.value = []
 }
 
 const saveQuickSede = async () => {
@@ -596,21 +756,14 @@ const saveQuickSede = async () => {
   try {
     const { data } = await api.post('/sedes', quickSede.value)
     catalogSedes.value.push(data)
-
-    // Auto-select after creation
-    if (builderMode.value === 'sede') {
-      buildOne.value = data.id
-    } else {
-      if (!buildMany.value) buildMany.value = []
-      buildMany.value.push(data.id)
-    }
-
+    if (builderMode.value === 'sede') buildOne.value = data.id
+    else { buildMany.value.push(data.id); syncOffers(buildMany.value) }
     showQuickSede.value = false
     quickSede.value = { nombre: '', sigla: '', departamento: '' }
     manualSiglaSede.value = false
-    $q.notify({ type: 'positive', message: 'Sede creada y seleccionada' })
+    $q.notify({ type: 'positive', message: 'Sede creada' })
   } catch {
-    $q.notify({ type: 'negative', message: 'Error al crear sede' })
+    $q.notify({ type: 'negative', message: 'Error' })
   } finally { quickSaving.value = false }
 }
 
@@ -620,21 +773,14 @@ const saveQuickCargo = async () => {
   try {
     const { data } = await api.post('/cargos', quickCargo.value)
     catalogCargos.value.push(data)
-
-    // Auto-select after creation
-    if (builderMode.value === 'cargo') {
-      buildOne.value = data.id
-    } else {
-      if (!buildMany.value) buildMany.value = []
-      buildMany.value.push(data.id)
-    }
-
+    if (builderMode.value === 'cargo') buildOne.value = data.id
+    else { buildMany.value.push(data.id); syncOffers(buildMany.value) }
     showQuickCargo.value = false
     quickCargo.value = { nombre: '', sigla: '' }
     manualSiglaCargo.value = false
-    $q.notify({ type: 'positive', message: 'Cargo creado y seleccionado' })
+    $q.notify({ type: 'positive', message: 'Cargo creado' })
   } catch {
-    $q.notify({ type: 'negative', message: 'Error al crear cargo' })
+    $q.notify({ type: 'negative', message: 'Error' })
   } finally { quickSaving.value = false }
 }
 
@@ -642,31 +788,25 @@ const toggleReq = (id) => {
   const idx = form.value.config_requisitos_ids.indexOf(id)
   if (idx > -1) {
     form.value.config_requisitos_ids.splice(idx, 1)
-    if (form.value.requisitos_afiche[id]) delete form.value.requisitos_afiche[id]
+    // También quitar de opcionales si estaba ahí
+    const oidx = form.value.requisitos_opcionales.indexOf(id)
+    if (oidx > -1) form.value.requisitos_opcionales.splice(oidx, 1)
   } else {
     form.value.config_requisitos_ids.push(id)
-    if (!form.value.requisitos_afiche) form.value.requisitos_afiche = {}
   }
+}
+
+const toggleOptional = (id) => {
+  const idx = form.value.requisitos_opcionales.indexOf(id)
+  if (idx > -1) form.value.requisitos_opcionales.splice(idx, 1)
+  else form.value.requisitos_opcionales.push(id)
 }
 
 const getSedeName = (id) => catalogSedes.value.find(s => s.id == id)?.nombre || 'Sede'
 const getCargoName = (id) => catalogCargos.value.find(c => c.id == id)?.nombre || 'Cargo'
 
-const groupedOfertas = computed(() => {
-  const groups = {}
-  form.value.ofertas.forEach(o => { if (!groups[o.sede_id]) groups[o.sede_id] = []; groups[o.sede_id].push(o) })
-  return groups
-})
-
-// DYNAMIC FONT SCALING LOGIC (Aggressive)
 const aficheFontScale = computed(() => {
-  let count = 0
-  Object.values(groupedOfertas.value).forEach(list => {
-    count += 1 // Sede Title
-    count += list.length // Cargos
-  })
-  count += form.value.config_requisitos_ids.length // Requisitos
-
+  let count = form.value.ofertas.length + form.value.config_requisitos_ids.length
   if (count > 35) return 0.5
   if (count > 25) return 0.6
   if (count > 18) return 0.75
@@ -678,50 +818,27 @@ const aficheFontScale = computed(() => {
 const downloadPDF = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Renderizando PDF Pro...' })
+  $q.loading.show({ message: 'Renderizando PDF...' })
   try {
-    // Asegurar que las fuentes y el DOM estén listos
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Forzar el redibujado
-    el.style.display = 'flex'
-    el.style.visibility = 'visible'
-
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    el.style.display = 'flex'; el.style.visibility = 'visible'
     const scale = 3
     const param = {
-      height: el.scrollHeight * scale, // Usar la altura real del contenido
-      width: 794 * scale,
-      style: {
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-        width: '794px',
-        height: `${el.scrollHeight}px`,
-        opacity: '1'
-      },
-      quality: 1,
-      backgroundColor: '#ffffff',
-      cacheBust: true
+        height: el.scrollHeight * scale,
+        width: 794 * scale,
+        style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
+        quality: 1, backgroundColor: '#ffffff', cacheBust: true
     }
-
     const dataUrl = await htmlToImage.toPng(el, param)
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    })
-
-    // Si la imagen es más alta que un A4, ajustar manteniendo proporción
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const imgProps = pdf.getImageProperties(dataUrl)
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-
     pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`Afiche_SISPO_${form.value.titulo || 'Convocatoria'}.pdf`)
+    pdf.save(`Afiche_${form.value.titulo}.pdf`)
   } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al generar PDF' })
+    console.error(error); $q.notify({ type: 'negative', message: 'Error al generar PDF' })
   } finally {
     const el = document.getElementById('afiche-perfect-capture')
     if (el) el.style.visibility = 'hidden'
@@ -732,43 +849,22 @@ const downloadPDF = async () => {
 const downloadImage = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Generando Imagen Ultra-HD...' })
+  $q.loading.show({ message: 'Generando Imagen...' })
   try {
-    // Asegurar que las fuentes y activos estén listos
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 1500))
-
-    // Asegurar visibilidad para la captura
-    el.style.display = 'flex'
-    el.style.visibility = 'visible'
-
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    el.style.display = 'flex'; el.style.visibility = 'visible'
     const scale = 3
-    const actualHeight = el.scrollHeight
-
     const param = {
-      height: actualHeight * scale,
-      width: 794 * scale,
-      style: {
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-        width: '794px',
-        height: `${actualHeight}px`,
-        opacity: '1'
-      },
-      quality: 1,
-      backgroundColor: '#ffffff',
-      cacheBust: true
+        height: el.scrollHeight * scale, width: 794 * scale,
+        style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
+        quality: 1, backgroundColor: '#ffffff', cacheBust: true
     }
-
     const dataUrl = await htmlToImage.toPng(el, param)
-
     const link = document.createElement('a')
-    link.download = `Afiche_SISPO_${form.value.titulo || 'Convocatoria'}.png`
-    link.href = dataUrl
-    link.click()
+    link.download = `Afiche_${form.value.titulo}.png`; link.href = dataUrl; link.click()
   } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al generar imagen UHD' })
+    console.error(error); $q.notify({ type: 'negative', message: 'Error al generar imagen' })
   } finally {
     const el = document.getElementById('afiche-perfect-capture')
     if (el) el.style.visibility = 'hidden'
@@ -777,59 +873,27 @@ const downloadImage = async () => {
 }
 
 const save = async () => {
-  // Validación manual más estricta
-  const errors = []
-  if (!form.value.titulo) errors.push('Título')
-  if (!form.value.descripcion) errors.push('Descripción')
-  if (!form.value.fecha_inicio) errors.push('Fecha Inicio')
-  if (!form.value.fecha_cierre) errors.push('Fecha Cierre')
-  if (form.value.ofertas.length === 0) errors.push('Al menos una Oferta (Cargo/Sede)')
-
-  if (errors.length > 0) {
-    $q.notify({
-      type: 'negative',
-      message: 'Faltan campos obligatorios',
-      caption: `Verifique: ${errors.join(', ')}`,
-      position: 'top',
-      icon: 'warning'
-    })
-    return
+  if (!form.value.titulo || !form.value.descripcion || !form.value.fecha_inicio || !form.value.fecha_cierre || form.value.ofertas.length === 0) {
+    $q.notify({ type: 'negative', message: 'Faltan campos' }); return
   }
-
   saving.value = true
   try {
-    if (isEdit.value) {
-      await api.put(`/convocatorias/${form.value.id}`, form.value)
-    } else {
-      await api.post('/convocatorias', form.value)
-    }
-    $q.notify({ type: 'positive', message: '¡Convocatoria publicada con éxito!' })
-    dialog.value = false
-    loadData()
+    if (isEdit.value) { await api.put(`/convocatorias/${form.value.id}`, form.value) }
+    else { await api.post('/convocatorias', form.value) }
+    $q.notify({ type: 'positive', message: 'Guardado' }); dialog.value = false; loadData()
   } catch (error) {
-    console.error(error)
-    if (error.response?.status === 422 && error.response.data?.errors) {
-      const serverErrors = error.response.data.errors
-      const messages = Object.values(serverErrors).flat().join('<br>')
-      $q.notify({ type: 'negative', message: messages, html: true, multiLine: true })
-    } else {
-      $q.notify({ type: 'negative', message: 'Error al procesar la solicitud. Verifica los datos.' })
-    }
-  } finally {
-    saving.value = false
-  }
+    console.error(error); $q.notify({ type: 'negative', message: 'Error' })
+  } finally { saving.value = false }
 }
 
-
 const confirmDelete = (item) => {
-  $q.dialog({ title: 'Eliminar', message: `¿Estás seguro de eliminar "${item.titulo}"?`, cancel: true }).onOk(async () => {
+  $q.dialog({ title: 'Eliminar', message: `¿Eliminar "${item.titulo}"?`, cancel: true }).onOk(async () => {
     try { await api.delete(`/convocatorias/${item.id}`); loadData() } catch { $q.notify({ type: 'negative', message: 'Error' }) }
   })
 }
 
 onMounted(() => {
-  window.addEventListener('resize', updateWidth)
-  loadData()
+  window.addEventListener('resize', updateWidth); loadData()
 })
 </script>
 
@@ -837,303 +901,12 @@ onMounted(() => {
 .afiche-preview-wrapper {
   transform-origin: top center;
   width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
 }
-
-/* CONTAINER WITH LETTER ASPECT RATIO (8.5 x 11) */
-.afiche-container {
-  background: white;
-  width: 794px; /* Reference width (~93 DPI) */
-  min-height: 1027px; /* Ensure at least full page, but can grow */
-  height: auto;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  font-family: 'Inter', sans-serif;
-  user-select: none;
-  /* Font size is controlled by the scale multiplier */
-  --base-fs: calc(16px * var(--afiche-scale, 1));
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
 }
-
-.afiche-container * {
-  box-sizing: border-box;
-}
-
-/* COMPACT HEADER */
-.afiche-header {
-  height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 30px 50px 10px 50px; /* Reduced padding */
-  flex-shrink: 0;
-}
-
-.afiche-logo {
-  width: 320px;
-  margin-bottom: 15px;
-}
-
-.main-title {
-  font-size: calc(1.4 * var(--base-fs));
-  font-weight: 900;
-  color: #1a202c;
-  margin: 0;
-  line-height: 1.1;
-  text-align: center;
-  font-family: 'Outfit', sans-serif;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-.area-title {
-  font-size: calc(2.2 * var(--base-fs));
-  font-weight: 900;
-  color: #1a202c;
-  margin: 5px 0 10px 0;
-  line-height: 1.1;
-  text-align: center;
-  font-family: 'Outfit', sans-serif;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  padding: 0 40px;
-}
-
-.sede-banner-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 5px;
-  width: 100%;
-  justify-content: center;
-}
-
-.sede-banner-line {
-  width: 250px;
-  height: 2px;
-  background-color: #008080;
-}
-
-.sede-banner-text {
-  color: #008080;
-  font-weight: 900;
-  padding: 4px 0;
-  font-size: calc(1.15 * var(--base-fs));
-  text-align: center;
-}
-
-/* SCALABLE BODY */
-/* COMPACT BODY */
-.afiche-body {
-  flex-grow: 1;
-  padding: 0 60px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start; /* Correct correlative flow */
-}
-
-.invitation-text {
-  font-size: calc(1 * var(--base-fs));
-  color: #4a5568;
-  text-align: justify;
-  line-height: 1.3;
-  font-weight: 600;
-  margin-bottom: calc(12px * var(--afiche-scale, 1)); /* Reduced margin */
-  overflow-wrap: anywhere;
-  word-break: break-all;
-  max-width: 100%;
-}
-
-.section-container {
-  margin-bottom: calc(10px * var(--afiche-scale, 1));
-}
-
-.section-label {
-  font-size: calc(1.1 * var(--base-fs));
-  font-weight: 900;
-  color: #1a202c;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: calc(6px * var(--afiche-scale, 1));
-}
-
-.label-box {
-  background: #663399;
-  color: white;
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
-.sede-group-title {
-  color: #008080;
-  font-weight: 900;
-  font-size: calc(0.9 * var(--base-fs));
-  border-left: 5px solid #008080;
-  padding-left: 12px;
-  margin: 8px 0 6px 0;
-}
-
-.cargo-item {
-  font-size: calc(1.1 * var(--base-fs)); /* Standardized around 14pt-equiv */
-  font-weight: 800;
-  color: #1a202c;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  line-height: 1.2;
-  margin-bottom: calc(4px * var(--afiche-scale, 1));
-}
-
-.bullet {
-  width: 8px;
-  height: 8px;
-  background: #663399;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.docs-list {
-  padding-left: 20px;
-  font-weight: 700;
-  font-size: calc(0.9 * var(--base-fs));
-  color: #1a202c;
-  line-height: 1.3;
-}
-
-.doc-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  margin-bottom: 3px;
-}
-
-.bullet-small {
-  width: 5px;
-  height: 5px;
-  background: #1a202c;
-  border-radius: 50%;
-  margin-top: 7px;
-  flex-shrink: 0;
-}
-
-/* CORRELATIVE FOOTER */
-.afiche-footer {
-  height: auto;
-  padding-top: 10px;
-  padding-bottom: 95px; /* Space for background waves */
-  flex-shrink: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  position: relative;
-}
-
-.footer-info-bar {
-  display: flex;
-  align-items: center;
-  padding: 0 40px 60px 40px; /* Space for the background wave */
-  gap: 30px;
-  position: relative;
-  z-index: 20;
-}
-
-.footer-text {
-  flex-grow: 1;
-  border-left: 10px solid #663399;
-  padding-left: 20px;
-}
-
-.footer-title {
-  color: #663399;
-  font-weight: 900;
-  font-size: calc(1.1 * var(--base-fs));
-}
-
-.footer-desc {
-  font-size: calc(0.85 * var(--base-fs));
-  color: #4a5568;
-  margin: 2px 0;
-  font-weight: 500;
-}
-
-.deadline-literal {
-  color: #1a202c;
-  font-size: calc(0.9 * var(--base-fs));
-  margin-top: 5px;
-  line-height: 1.2;
-}
-
-.deadline-literal strong {
-  font-weight: 900;
-}
-
-.footer-qr {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  background: #f7fafc;
-  padding: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  min-width: 120px;
-}
-
-.qr-code {
-  display: block;
-  margin: 0 auto;
-}
-
-.qr-hint {
-  font-size: 8px;
-  font-weight: 900;
-  color: #a0aec0;
-  margin-top: 4px;
-}
-
-.footer-social-img {
-  width: 100%;
-  height: 90px;
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  z-index: 10;
-}
-
-.footer-social-img img {
-  width: 100%;
-  height: 100%;
-  object-fit: fill;
-}
-
-/* RESPONSIVE SCALE FOR SCREEN PREVIEW */
-@media (min-width: 1600px) {
-  .afiche-preview-wrapper {
-    transform: scale(0.9);
-    margin-top: -50px;
-    margin-bottom: -50px;
-  }
-}
-
-@media (max-width: 1599px) {
-  .afiche-preview-wrapper {
-    transform: scale(0.85);
-    margin-top: -70px;
-    margin-bottom: -70px;
-  }
-}
-
-@media (max-width: 1400px) {
-  .afiche-preview-wrapper {
-    transform: scale(0.75);
-    margin-top: -120px;
-    margin-bottom: -120px;
-  }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 </style>

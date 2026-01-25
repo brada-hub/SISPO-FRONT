@@ -1,36 +1,23 @@
 <template>
   <div class="space-y-10 relative">
-    <div v-if="merito.descripcion" class="text-xs text-gray-500 bg-blue-50/50 p-4 rounded-2xl italic border border-blue-100 flex items-center justify-between gap-4">
-      <div class="flex items-center gap-2">
-        <q-icon name="help_outline" color="blue" />
-        <span>{{ merito.descripcion }}</span>
-      </div>
-      <q-badge v-if="merito.permite_multiples" color="indigo-1" text-color="indigo-9" class="q-pa-sm rounded-lg border border-indigo-200 shrink-0">
-        <q-icon name="layers" class="mr-1" /> Múltiplos Permitidos
-      </q-badge>
-    </div>
-
-    <!-- Si no hay descripción pero sí permite múltiples, mostramos solo el badge elegantemente -->
-    <div v-else-if="merito.permite_multiples" class="flex justify-end">
-       <q-badge color="indigo-1" text-color="indigo-9" class="q-pa-sm rounded-lg border border-indigo-200">
-         <q-icon name="layers" class="mr-1" /> Múltiplos Permitidos
-       </q-badge>
-    </div>
 
     <!-- ITERATE OVER RECORDS (Instances) -->
     <div
       v-for="(reg, rIdx) in merito.registros"
       :key="rIdx"
-      class="record-card bg-white rounded-3xl border-2 border-gray-100 shadow-sm overflow-hidden relative"
+      class="record-card bg-white rounded-3xl border border-purple-100 shadow-sm overflow-hidden relative mb-10 last:mb-0"
     >
       <!-- RECORD HEADER / ACTIONS -->
-      <div class="flex items-center justify-between px-6 py-4 bg-gray-50/80 border-b border-gray-100">
+      <div class="flex items-center justify-between px-6 py-4 bg-purple-50/30 border-b border-purple-100/50">
          <div class="flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-black text-sm shadow-lg">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#663399] to-[#009999] text-white flex items-center justify-center font-black text-lg shadow-lg shadow-purple-200/50">
               {{ rIdx + 1 }}
             </div>
-            <div class="text-xs font-black text-gray-600 uppercase tracking-widest">
-               Instancia de Mérito
+            <div>
+              <div class="text-[11px] font-black text-transparent bg-clip-text bg-gradient-to-r from-[#663399] to-[#009999] uppercase tracking-[0.2em] leading-none mb-1">Registro</div>
+              <div class="text-sm font-black text-purple-900 uppercase tracking-tight">
+                 Información del Mérito
+              </div>
             </div>
          </div>
 
@@ -58,15 +45,12 @@
       <div class="p-8 space-y-8">
         <!-- 1. DYNAMIC TEXT FIELDS -->
         <div v-if="normalizedCampos.length > 0">
-          <div class="text-[11px] font-black text-indigo-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
-            <q-icon name="history_edu" size="xs" /> Información Requerida
+          <div class="text-[11px] font-black text-purple-700 uppercase mb-4 flex items-center gap-2 tracking-widest">
+            <q-icon name="history_edu" size="xs" color="purple" /> Información Requerida
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx" class="relative">
-              <!-- BADGE EXIGIDO (Único por campo) -->
-              <div v-if="campo.required" class="absolute -top-3 right-0 z-10">
-                <q-badge color="red" label="EXIGIDO" class="text-[8px] font-black q-px-xs" />
-              </div>
+              <!-- REMAINS CLEAN WITHOUT REPETITIVE BADGES -->
 
               <!-- SELECT -->
               <q-select
@@ -80,7 +64,7 @@
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
                 :rules="campo.required ? [val => !!val || 'Este campo es obligatorio'] : []"
-                lazy-rules="ondemand"
+                lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
                   <q-icon name="verified" color="teal" size="xs" />
@@ -97,7 +81,7 @@
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
                 :rules="campo.required ? [val => !!val || 'Fecha requerida'] : []"
-                lazy-rules="ondemand"
+                lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
                   <q-icon name="verified" color="teal" size="xs" />
@@ -115,7 +99,7 @@
                 style="text-transform: uppercase"
                 @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
                 :rules="campo.required ? [val => !!val || 'Detalle obligatorio'] : []"
-                lazy-rules="ondemand"
+                lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
                   <q-icon name="verified" color="teal" size="xs" />
@@ -135,7 +119,7 @@
                 style="text-transform: uppercase"
                 @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
                 :rules="campo.required ? [val => !!val || 'Campo obligatorio'] : []"
-                lazy-rules="ondemand"
+                lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
                   <q-icon name="verified" color="teal" size="xs" />
@@ -154,7 +138,6 @@
             <div v-for="(archivo, aIdx) in normalizedArchivos" :key="aIdx" class="file-dropzone p-5 rounded-2xl border-2 border-dashed border-teal-100 bg-teal-50/20">
               <div class="text-[10px] font-black text-teal-800 mb-3 flex justify-between uppercase tracking-wider">
                 {{ archivo.label }}
-                <q-badge v-if="archivo.required" color="red" class="q-px-sm" label="EXIGIDO" />
               </div>
               <q-file
                 v-model="reg.archivos[archivo.key]"
@@ -167,7 +150,7 @@
                 :color="reg.archivos[archivo.key] ? 'teal' : 'primary'"
                 :bg-color="reg.archivos[archivo.key] ? 'teal-50' : 'white'"
                 :rules="archivo.required ? [val => !!val || 'El archivo es obligatorio'] : []"
-                lazy-rules="ondemand"
+                lazy-rules
               >
                 <template v-slot:prepend>
                   <q-icon :name="reg.archivos[archivo.key] ? 'verified' : 'file_upload'" :color="reg.archivos[archivo.key] ? 'teal-7' : 'teal-7'" />
@@ -183,20 +166,16 @@
       </div>
     </div>
 
-    <!-- ADD ANOTHER BUTTON (PROMINENT) -->
-    <div v-if="merito.permite_multiples" class="flex flex-col items-center gap-3 pt-6">
+    <!-- ADD ANOTHER BUTTON (MINIMALIST) -->
+    <div v-if="merito.permite_multiples" class="flex justify-center pt-4">
        <q-btn
          unelevated
-         color="indigo-7"
-         icon="add_circle"
-         label="AÑADIR OTRO REGISTRO"
-         size="lg"
-         class="rounded-2xl px-12 font-black shadow-xl shadow-indigo-200 animate-bounce-slow"
+         rounded
+         icon="add"
+         label="Añadir otro Registro"
+         class="btn-gradient shadow-lg shadow-teal-200/50 px-10 py-3"
          @click="store.agregarRegistroMerito(merito.tipo_documento_id)"
        />
-       <div class="text-[10px] text-indigo-400 font-bold uppercase tracking-widest italic">
-         Puedes añadir cuántos registros sean necesarios para este mérito.
-       </div>
     </div>
   </div>
 </template>
@@ -244,7 +223,7 @@ const normalizedCampos = computed(() => {
       key: c.key || c.id || c.name || `campo_${i}`,
       label: c.label || c.nombre || c.name || `Campo ${i + 1}`,
       tipo: c.tipo || c.type || 'text',
-      required: c.required !== false && c.requerido !== false && c.obligatorio !== false,
+      required: !props.merito.opcional && c.required !== false && c.requerido !== false && c.obligatorio !== false,
       opciones: c.opciones || c.options || [],
     }))
   }
@@ -258,7 +237,7 @@ const normalizedArchivos = computed(() => {
     return archivos.map((a, i) => ({
       key: a.id || a.key || `archivo_${i}`,
       label: a.label || a.nombre || a.name || `Archivo ${i + 1}`,
-      required: !!(
+      required: !props.merito.opcional && !!(
         a.requerido || a.obligatorio || a.required || a.es_obligatorio ||
         a.config?.required || a.config?.requerido || a.config?.obligatorio ||
         a.requerido == 1 || a.requerido == '1' ||
@@ -275,8 +254,8 @@ const normalizedArchivos = computed(() => {
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 .record-card:hover {
-  border-color: #66339922;
-  box-shadow: 0 20px 40px -15px rgba(102, 51, 153, 0.1);
+  border-color: #66339944;
+  box-shadow: 0 20px 40px -15px rgba(102, 51, 153, 0.08);
 }
 
 .custom-field :deep(.q-field__inner) {
@@ -298,5 +277,20 @@ const normalizedArchivos = computed(() => {
 @keyframes bounce-slow {
   0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
   50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+}
+
+.btn-gradient {
+  background: linear-gradient(135deg, #009999 0%, #663399 100%);
+  color: white;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  transition: all 0.3s ease;
+  border: none;
+}
+.btn-gradient:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -5px rgba(0, 153, 153, 0.4);
+  filter: brightness(1.1);
 }
 </style>

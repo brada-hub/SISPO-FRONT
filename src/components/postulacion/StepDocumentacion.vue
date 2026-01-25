@@ -58,39 +58,44 @@
         <div v-else class="space-y-12">
           <!-- SHARED REQUIREMENTS SECTION -->
           <div v-if="requisitosCompartidos.length > 0">
-            <div class="flex items-center justify-between mb-6 pb-2 border-b">
-               <div class="flex items-center gap-3">
-                  <div class="p-2 bg-teal-50 rounded-lg">
-                    <q-icon name="share" color="teal-7" />
-                  </div>
-                  <div>
-                    <div class="text-lg font-black text-gray-800 uppercase tracking-tight">Méritos Comunes</div>
-                    <div class="text-xs text-teal-600 font-bold uppercase">Se solicitan una sola vez</div>
-                  </div>
-               </div>
+            <!-- SECTION DIVIDER -->
+            <div class="section-breaker mt-4 mb-8">
+              <div class="line"></div>
+              <div class="content">
+                <q-icon name="hub" size="xs" />
+                <span>Bloque 1: Documentación General</span>
+              </div>
+              <div class="line"></div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6">
+            <div class="grid grid-cols-1 gap-8">
               <q-expansion-item
                 v-for="merito in requisitosCompartidos"
                 :key="merito.tipo_documento_id"
-                header-class="merit-header-shared rounded-2xl bg-white border border-gray-100 shadow-sm transition-all"
-                expand-icon-class="text-teal"
-                default-opened
-                class="rounded-2xl overflow-hidden shadow-sm"
+                header-class="merit-header-shared rounded-2xl bg-[#f0f9f9] border border-teal-100 shadow-sm transition-all"
+                :expand-icon="merito.opcional ? 'add' : 'keyboard_arrow_down'"
+                :expand-icon-class="merito.opcional ? 'text-teal scale-150' : 'text-teal'"
+                :default-opened="!merito.opcional"
+                class="rounded-2xl overflow-hidden shadow-md mb-4"
               >
                 <template v-slot:header>
                   <q-item-section avatar>
-                    <div class="p-2 bg-teal-50 rounded-lg text-teal-700">
-                       <q-icon name="folder_shared" />
+                    <div class="p-2 bg-teal-100 rounded-lg text-teal-800 shadow-inner">
+                       <q-icon :name="merito.opcional ? 'add_box' : 'folder_shared'" />
                     </div>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="font-black text-gray-800 uppercase tracking-tight">{{ merito.nombre }}</q-item-label>
-                    <q-item-label caption class="text-[9px] uppercase font-bold text-gray-400">Requerido por: {{ merito.usadoPor.join(', ') }}</q-item-label>
+                    <div class="flex items-center gap-3">
+                      <q-item-label class="font-black text-gray-800 uppercase tracking-tight text-lg">{{ merito.nombre }}</q-item-label>
+                      <q-badge v-if="merito.opcional" color="teal-1" text-color="teal-7" label="OPCIONAL" class="font-black px-2 shadow-sm border border-teal-200" />
+                      <q-badge v-else color="red" label="OBLIGATORIO" class="font-black px-2 shadow-sm" />
+                    </div>
+                    <q-item-label v-if="merito.descripcion" caption class="text-[10px] uppercase font-bold text-teal-600 italic leading-none mt-1">
+                      {{ merito.descripcion }}
+                    </q-item-label>
                   </q-item-section>
                 </template>
-                <q-card class="bg-gray-50/50">
+                <q-card class="bg-white border-x border-b border-teal-50">
                   <q-card-section class="p-8">
                     <DynamicFormFields :merito="merito" />
                   </q-card-section>
@@ -101,39 +106,44 @@
 
           <!-- UNIQUE REQUIREMENTS SECTION -->
           <div v-if="requisitosUnicos.length > 0">
-            <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-               <div class="flex items-center gap-3">
-                  <div class="p-2 bg-indigo-50 rounded-lg">
-                    <q-icon name="auto_awesome" color="primary" />
-                  </div>
-                  <div>
-                    <div class="text-lg font-black text-gray-800 uppercase tracking-tight">Méritos Específicos</div>
-                    <div class="text-xs text-indigo-500 font-bold uppercase">Por cada cargo seleccionado</div>
-                  </div>
-               </div>
+            <!-- SECTION DIVIDER -->
+            <div class="section-breaker mt-14 mb-8">
+              <div class="line"></div>
+              <div class="content text-indigo-700">
+                <q-icon name="assignment_turned_in" size="xs" />
+                <span>Bloque 2: Requisitos Específicos por Cargo</span>
+              </div>
+              <div class="line"></div>
             </div>
 
-            <div class="grid grid-cols-1 gap-6">
+            <div class="grid grid-cols-1 gap-8">
               <q-expansion-item
                 v-for="merito in requisitosUnicos"
                 :key="merito.tipo_documento_id"
-                header-class="merit-header-unique rounded-2xl bg-white border border-gray-100 shadow-sm transition-all"
-                expand-icon-class="text-primary"
-                default-opened
-                class="rounded-2xl overflow-hidden shadow-sm"
+                header-class="merit-header-unique rounded-2xl bg-[#f5f3ff] border border-indigo-100 shadow-sm transition-all"
+                :expand-icon="merito.opcional ? 'add' : 'keyboard_arrow_down'"
+                :expand-icon-class="merito.opcional ? 'text-primary scale-150 rotate-0' : 'text-primary'"
+                :default-opened="!merito.opcional"
+                class="rounded-2xl overflow-hidden shadow-md mb-4"
               >
                 <template v-slot:header>
                   <q-item-section avatar>
-                    <div class="p-2 bg-indigo-50 rounded-lg text-primary">
-                       <q-icon name="star" />
+                    <div class="p-2 bg-indigo-100 rounded-lg text-primary shadow-inner">
+                       <q-icon :name="merito.opcional ? 'add_circle_outline' : 'star_border'" />
                     </div>
                   </q-item-section>
                   <q-item-section>
-                    <q-item-label class="font-black text-gray-800 uppercase tracking-tight">{{ merito.nombre }}</q-item-label>
-                    <q-item-label caption class="text-[9px] uppercase font-bold text-gray-400">Único para: {{ merito.usadoPor[0] }}</q-item-label>
+                    <div class="flex items-center gap-3">
+                      <q-item-label class="font-black text-gray-800 uppercase tracking-tight text-lg">{{ merito.nombre }}</q-item-label>
+                      <q-badge v-if="merito.opcional" color="indigo-1" text-color="indigo-7" label="OPCIONAL" class="font-black px-2 shadow-sm border border-indigo-200" />
+                      <q-badge v-else color="red" label="OBLIGATORIO" class="font-black px-2 shadow-sm" />
+                    </div>
+                    <q-item-label v-if="merito.descripcion" caption class="text-[10px] uppercase font-bold text-indigo-400 italic leading-none mt-1">
+                      {{ merito.descripcion }}
+                    </q-item-label>
                   </q-item-section>
                 </template>
-                <q-card class="bg-gray-50/50">
+                <q-card class="bg-white border-x border-b border-indigo-50">
                   <q-card-section class="p-8">
                     <DynamicFormFields :merito="merito" />
                   </q-card-section>
@@ -180,12 +190,23 @@ const handleNext = async () => {
   }
 
   // Validación manual de seguridad extra
-  const faltyMerit = store.meritos.find(m =>
-    m.registros.some(r => {
-      // Función espejo de la lógica de DynamicFormFields.vue para detectar campos requeridos
+  const faltyMerit = store.meritos.find(m => {
+    // Si es opcional, verificar si se ha empezado a llenar
+    if (m.opcional) {
+      const hasAnyContent = m.registros.some(r => {
+        const hasTextValue = Object.values(r.respuestas).some(v => v && String(v).trim() !== '')
+        const hasFileValue = Object.values(r.archivos).some(v => v)
+        return hasTextValue || hasFileValue
+      })
+
+      // Si es opcional y no tiene nada lleno, se ignora la validación para este mérito
+      if (!hasAnyContent) return false
+    }
+
+    // Para exigidos o para opcionales con contenido, validar campos obligatorios
+    return m.registros.some(r => {
       const isFieldRequired = (c) => c.required !== false && c.requerido !== false && c.obligatorio !== false && c.config?.required !== false && c.config?.requerido !== false
 
-      // Verificar campos de texto / select
       const camposFaltantes = (m.campos || []).filter(isFieldRequired)
         .some((c, i) => {
            const key = c.key || c.id || c.name || `campo_${i}`
@@ -193,7 +214,6 @@ const handleNext = async () => {
            return !val || (typeof val === 'string' && val.trim() === '')
         })
 
-      // Verificar archivos
       const archivosFaltantes = (m.config_archivos || []).filter(isFieldRequired)
         .some((a, i) => {
            const key = a.id || a.key || `archivo_${i}`
@@ -202,7 +222,7 @@ const handleNext = async () => {
 
       return camposFaltantes || archivosFaltantes
     })
-  )
+  })
 
   if (faltyMerit) {
     $q.notify({
@@ -247,14 +267,42 @@ const requisitosUnicos = computed(() =>
 </script>
 
 <style scoped>
+.section-breaker {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.section-breaker .line {
+  height: 2px;
+  flex-grow: 1;
+  background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+}
+
+.section-breaker .content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: white;
+  padding: 8px 16px;
+  border-radius: 99px;
+  border: 1px solid #e2e8f0;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #0d9488; /* teal-600 */
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
 :deep(.merit-header-shared) {
-  min-height: 80px;
-  border-left: 6px solid #009999 !important;
+  min-height: 90px;
+  border-left: 10px solid #009999 !important;
 }
 
 :deep(.merit-header-unique) {
-  min-height: 80px;
-  border-left: 6px solid #663399 !important;
+  min-height: 90px;
+  border-left: 10px solid #663399 !important;
 }
 
 :deep(.q-expansion-item__container) {

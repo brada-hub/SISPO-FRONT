@@ -52,10 +52,7 @@
                     class="rounded-xl shadow-sm transition-all"
                     :color="form.foto_perfil ? 'teal' : 'primary'"
                     :bg-color="form.foto_perfil ? 'teal-50' : 'white'"
-                    :rules="[
-                      val => !!val || 'Foto requerida',
-                      val => !val || val.size <= 2097152 || 'El archivo no debe exceder los 2MB'
-                    ]"
+                    lazy-rules
                   >
                     <template v-slot:prepend>
                       <q-icon :name="form.foto_perfil ? 'verified' : 'photo_camera'" :color="form.foto_perfil ? 'teal' : 'primary'" />
@@ -77,6 +74,7 @@
               style="text-transform: uppercase"
               @update:model-value="val => form.nombres = val.toUpperCase()"
               :rules="[val => !!val || 'El nombre es obligatorio']"
+              lazy-rules
             >
               <template v-slot:append v-if="form.nombres">
                 <q-icon name="verified" color="teal" size="xs" />
@@ -94,6 +92,7 @@
               style="text-transform: uppercase"
               @update:model-value="val => form.apellidos = val.toUpperCase()"
               :rules="[val => !!val || 'Los apellidos son obligatorios']"
+              lazy-rules
             >
               <template v-slot:append v-if="form.apellidos">
                 <q-icon name="verified" color="teal" size="xs" />
@@ -164,6 +163,7 @@
               style="text-transform: uppercase"
               @update:model-value="val => form.nacionalidad = val.toUpperCase()"
               :rules="[val => !!val || 'Campo obligatorio']"
+              lazy-rules
             >
               <template v-slot:append v-if="form.nacionalidad">
                 <q-icon name="verified" color="teal" size="xs" />
@@ -181,6 +181,7 @@
               style="text-transform: uppercase"
               @update:model-value="val => form.direccion_domicilio = val.toUpperCase()"
               :rules="[val => !!val || 'La dirección es obligatoria']"
+              lazy-rules
             >
               <template v-slot:append v-if="form.direccion_domicilio">
                 <q-icon name="verified" color="teal" size="xs" />
