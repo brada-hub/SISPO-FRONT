@@ -15,7 +15,7 @@
 
         <q-toolbar-title
           class="flex items-center gap-4 cursor-pointer"
-          @click="isAdminRoute ? $router.push('/admin') : $router.push('/')"
+          @click="handleHomeClick"
         >
           <div class="flex flex-col leading-tight ml-2">
             <span class="font-bold text-lg tracking-wide uppercase">Convocatorias</span>
@@ -176,8 +176,18 @@ const leftDrawerOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
 
-const isAdminRoute = computed(() => route.path.startsWith('/admin'))
-// Eliminada variable no utilizada currentAdminSection
+const handleHomeClick = () => {
+  if (!authStore.isLoggedIn) {
+    router.push('/')
+    return
+  }
+
+  if (authStore.currentUser?.rol?.nombre === 'ADMINISTRADOR') {
+    router.push('/admin')
+  } else {
+    router.push('/admin/postulaciones')
+  }
+}
 
 const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -190,24 +200,37 @@ const today = new Date().toLocaleDateString('es-ES', {
 })
 
 const adminMenuItems = computed(() => {
-  const items = [
-    { label: 'Dashboard', icon: 'dashboard', to: '/admin' },
-    { label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
-    { label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
-    { label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
-    { label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
-    { label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
-    { label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
+  const user = authStore.currentUser
+  const rolName = user?.rol?.nombre?.toUpperCase() || ''
+  const userPermisos = user?.permisos || []
+
+  const allItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
+    { key: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
+    { key: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
+    { key: 'evaluaciones', label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
+    { key: 'sedes', label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
+    { key: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
+    { key: 'requisitos', label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
+    { key: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
+    { key: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
   ]
 
-  // Solo Administradores ven Usuarios y Roles
-  const rolName = authStore.currentUser?.rol?.nombre?.toLowerCase() || ''
-  if (rolName === 'administrador' || rolName === 'super admin') {
-    items.push({ label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' })
-    items.push({ label: 'Roles', icon: 'security', to: '/admin/roles' })
+  // Super Admin siempre ve todo
+  if (rolName === 'SUPER ADMIN') return allItems
+
+  // Si tiene permisos específicos definidos, filtramos por esos keys
+  if (userPermisos && userPermisos.length > 0) {
+    return allItems.filter(item => userPermisos.includes(item.key))
   }
 
-  return items
+  // Si no tiene permisos específicos, aplicamos lógica por defecto por rol
+  if (rolName === 'USUARIO') {
+    return allItems.filter(item => ['postulaciones', 'evaluaciones'].includes(item.key))
+  }
+
+  // Por defecto (Administrador sin permisos específicos)
+  return allItems.filter(item => !['usuarios', 'roles'].includes(item.key) || rolName === 'ADMINISTRADOR')
 })
 
 const setAdminSection = (path) => {

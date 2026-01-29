@@ -120,8 +120,13 @@ const handleLogin = async () => {
 
     $q.notify({ type: 'positive', message: 'Bienvenido al Sistema' })
 
-    // All users go to admin, the Modal in MainLayout will handle mandatory password change
-    router.push('/admin')
+    // Redirect based on role
+    const rol = authStore.currentUser?.rol?.nombre?.toUpperCase()
+    if (rol === 'USUARIO') {
+        router.push('/admin/postulaciones')
+    } else {
+        router.push('/admin')
+    }
   } catch (error) {
     console.error(error)
     $q.notify({ type: 'negative', message: error.response?.data?.message || 'Error de conexión' })

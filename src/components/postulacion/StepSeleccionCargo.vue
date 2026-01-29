@@ -73,7 +73,7 @@
               </div>
 
               <div v-for="sede in sedesDelDepartamento" :key="sede.id" class="mb-8">
-                <div v-if="sedesDelDepartamento.length > 1" class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                <div class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                   <span>UBICACIÓN: {{ sede.nombre }}</span>
                   <div class="h-[1px] bg-primary/20 flex-grow"></div>
                 </div>

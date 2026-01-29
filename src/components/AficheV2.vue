@@ -46,7 +46,7 @@
 
         <div class="cargos-list docs-list" :class="{ 'multi-column': useGridForCargos }">
           <div v-for="(sedes, sedeId) in groupedOfertas" :key="sedeId" class="sede-group">
-            <div v-if="Object.keys(groupedOfertas).length > 1" class="sede-group-title text-uppercase">
+            <div class="sede-group-title text-uppercase">
                {{ getSedeName(sedeId) }}
             </div>
             <div class="cargos-items">

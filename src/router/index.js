@@ -6,6 +6,7 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
+import { useAuthStore } from 'src/stores/auth-store'
 
 /*
  * If not building with SSR mode, you can
@@ -16,7 +17,7 @@ import routes from './routes'
  * with the Router instance.
  */
 
-export default defineRouter(function (/* { store, ssrContext } */) {
+export default defineRouter(function ({ store }) {
   const createHistory = process.env.SERVER
     ? createMemoryHistory
     : process.env.VUE_ROUTER_MODE === 'history'
@@ -35,33 +36,38 @@ export default defineRouter(function (/* { store, ssrContext } */) {
 
   // Global Navigation Guard
   Router.beforeEach((to, from, next) => {
-    // Check if route requires auth
+    const authStore = useAuthStore(store)
+    const token = localStorage.getItem('token')
+    const user = authStore.user || JSON.parse(localStorage.getItem('user'))
+    const userRole = user?.rol?.nombre
+
+    // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-    // Check if we are checking for 'guest' mode (e.g. login page shouldn't be accessible if logged in)
-    // const isGuest = to.matched.some(record => record.meta.guest)
-
-    // We need to access the store somehow. Since this is outside a component setup,
-    // we need to import useAuthStore and use it inside the guard.
-    // However, Pinia needs to be installed. In Quasar, Pinia is usually installed before Router.
-    // But inside this function, we can import it dynamically or just import at top if possible.
-    // Standard way in Quasar: import { useAuthStore } from 'stores/auth-store'
-    // But we need to make sure Pinia instance is active. It is active when Router is instantiated usually.
-
-    // Simplest way: Check localStorage token directly if store access is tricky,
-    // but better to use the store.
-    // Note: 'import { useAuthStore } from ...' at top of file works if Pinia is initialized
-    // in boot file or main.js before router.
-
-    const token = localStorage.getItem('token') // Direct check for simplicity/speed in this context
-
     if (requiresAuth && !token) {
-      next('/login')
-    } else if (to.path === '/login' && token) {
-       // If trying to access login while authenticated, go to admin
-       next('/admin')
-    } else {
-      next()
+      return next('/login')
     }
+
+    // 2. Logic for already authenticated users trying to access login
+    if (to.path === '/login' && token) {
+      if (userRole === 'ADMINISTRADOR') return next('/admin')
+      return next('/admin/postulaciones')
+    }
+
+    // 3. Role-based Access Control
+    // Find if any matched record has role restrictions
+    const requiredRoles = to.matched.reduce((acc, record) => {
+      if (record.meta.roles) acc = record.meta.roles
+      return acc
+    }, null)
+
+    if (requiredRoles && !requiredRoles.includes(userRole)) {
+      console.warn(`Acces restricted for role ${userRole} to ${to.path}`)
+      // Redirect to a safe default page for the user role
+      if (userRole === 'ADMINISTRADOR') return next('/admin')
+      return next('/admin/postulaciones')
+    }
+
+    next()
   })
 
   return Router
