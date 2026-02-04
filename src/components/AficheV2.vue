@@ -35,24 +35,39 @@
         @input="onInputDescription"
         :class="{ 'editable-field': editable }"
       >
-        {{ truncateDesc(descripcion) || 'La Universidad Técnica Privada Cosmos invita a profesionales con formación en el área a postular para el puesto respectivo en nuestras nuevas oficinas.' }}
+        {{ descripcion || 'La Universidad Técnica Privada Cosmos invita a profesionales con formación en el área a postular para el puesto respectivo en nuestras nuevas oficinas.' }}
       </p>
 
       <!-- SECTION: CARGO -->
       <div class="section-container" v-if="hasCargos">
         <div class="section-label">
-          <span class="label-box">I.</span> CARGO:
+          <span class="label-box">I.</span> {{ cargoCount < sedeCount || (cargoCount === 1 && sedeCount > 1) ? 'SEDES:' : 'CARGO:' }}
         </div>
 
-        <div class="cargos-list docs-list" :class="{ 'multi-column': useGridForCargos }">
-          <div v-for="(sedes, sedeId) in groupedOfertas" :key="sedeId" class="sede-group">
-            <div class="sede-group-title text-uppercase">
-               {{ getSedeName(sedeId) }}
+        <div :class="[ 'docs-list', 'cargos-list', { 'multi-column': useGridForCargos } ]">
+          <!-- Intelligent Grouping Display -->
+          <div v-for="(group, idx) in intelligentGroups" :key="idx" class="sede-group mb-4">
+            <div v-if="!group.isList" class="sede-group-title text-uppercase">
+               {{ group.label }}
             </div>
             <div class="cargos-items">
-              <div v-for="of in sedes" :key="of.cargo_id" class="cargo-item doc-item">
-                <span class="bullet"></span>
-                <span class="item-main-text">{{ getCargoName(of.cargo_id) }}</span>
+              <div v-if="group.isList" class="sedes-columns-container">
+                 <div class="sedes-col-left">
+                    <div v-for="(item, i) in splitSedesIntoColumns(group.items).left" :key="i" class="sede-block-item">
+                      <span class="sede-bullet-rect"></span> {{ item }}
+                    </div>
+                 </div>
+                 <div class="sedes-col-right">
+                    <div v-for="(item, i) in splitSedesIntoColumns(group.items).right" :key="i" class="sede-block-item">
+                      <span class="sede-bullet-rect"></span> {{ item }}
+                    </div>
+                 </div>
+              </div>
+              <div v-else>
+                <div v-for="(item, i) in group.items" :key="i" class="cargo-item doc-item">
+                  <span class="bullet"></span>
+                  <span class="item-main-text">{{ item }}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -177,6 +192,55 @@ const groupedOfertas = computed(() => {
   return groups
 })
 
+
+const splitSedesIntoColumns = (items) => {
+  const mid = Math.ceil(items.length / 2)
+  const left = items.slice(0, mid)
+  const right = items.slice(mid)
+  return { left, right }
+}
+
+const cargoCount = computed(() => {
+  const ids = new Set(props.ofertas.map(o => o.cargo_id))
+  return ids.size
+})
+
+const sedeCount = computed(() => {
+  const ids = new Set(props.ofertas.map(o => o.sede_id))
+  return ids.size
+})
+
+const intelligentGroups = computed(() => {
+  const bySede = {}
+  const byCargo = {}
+
+  props.ofertas.forEach(o => {
+    if (!bySede[o.sede_id]) bySede[o.sede_id] = []
+    bySede[o.sede_id].push(o.cargo_id)
+
+    if (!byCargo[o.cargo_id]) byCargo[o.cargo_id] = []
+    byCargo[o.cargo_id].push(o.sede_id)
+  })
+
+  const sCount = sedeCount.value
+  const cCount = cargoCount.value
+
+  // If there's only 1 cargo but many sedes, group by Cargo (Compact)
+  if (cCount < sCount || (cCount === 1 && sCount > 1)) {
+    return Object.entries(byCargo).map(([cargoId, sedeIds]) => ({
+      label: getCargoName(cargoId),
+      items: sedeIds.map(sId => getSedeName(sId)),
+      isList: true
+    }))
+  } else {
+    return Object.entries(bySede).map(([sedeId, cargoIds]) => ({
+      label: getSedeName(sedeId),
+      items: cargoIds.map(cId => getCargoName(cId)),
+      isList: false
+    }))
+  }
+})
+
 const singleSede = computed(() => {
   const ids = Object.keys(groupedOfertas.value)
   if (ids.length === 1) return getSedeName(ids[0])
@@ -235,11 +299,6 @@ function getReqName (id) {
   return props.catalogRequisitos.find(r => r.id === parseInt(id))?.nombre || ''
 }
 
-function truncateDesc (val) {
-  if (!val) return ''
-  if (val.length > 450) return val.substring(0, 447) + '...'
-  return val
-}
 
 function formatDateLiteral (dateStr) {
   if (!dateStr || dateStr === 'null' || dateStr === 'undefined') return '...'
@@ -429,6 +488,37 @@ function formatDateLiteral (dateStr) {
 .cargo-item {
   line-height: 1.25;
   margin-bottom: 8px; /* Standardize with doc-item */
+}
+
+.sedes-columns-container {
+  display: flex;
+  width: 100%;
+  gap: 20px; /* Space between columns */
+  margin: 10px 0;
+}
+
+.sedes-col-left, .sedes-col-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sede-block-item {
+  font-size: calc(0.95 * var(--base-fs));
+  font-weight: 800;
+  color: #008080;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sede-bullet-rect {
+  width: 4px;
+  height: 12px;
+  background-color: #008080;
+  display: inline-block;
 }
 
 .bullet {

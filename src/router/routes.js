@@ -25,6 +25,11 @@ const routes = [
         component: () => import('pages/ConsultaEstado.vue'),
       },
       {
+        path: 'convocatoria/:id',
+        name: 'convocatoria_detalle',
+        component: () => import('pages/ConvocatoriaDetallePage.vue'),
+      },
+      {
         path: 'login',
         name: 'login',
         component: () => import('pages/LoginPage.vue'),

@@ -52,6 +52,38 @@
         </q-td>
       </template>
 
+      <template v-slot:body-cell-password_actual="props">
+        <q-td :props="props">
+          <div class="flex items-center gap-2">
+            <!-- Contraseña visible (CI) -->
+            <div v-if="!props.row.password_segura" class="flex items-center gap-1">
+              <code class="bg-red-100 text-red-700 px-2 py-1 rounded font-mono text-xs">{{ props.row.password_actual }}</code>
+              <q-icon name="warning" color="orange" size="16px">
+                <q-tooltip>⚠️ Contraseña igual al CI (vulnerable)</q-tooltip>
+              </q-icon>
+            </div>
+            <!-- Contraseña personalizada con botón para resetear -->
+            <div v-else class="flex items-center gap-2">
+              <div class="flex items-center gap-1 text-green-600">
+                <q-icon name="lock" size="14px" />
+                <span class="text-xs font-medium">Personalizada</span>
+              </div>
+              <q-btn
+                flat
+                dense
+                size="xs"
+                color="orange"
+                icon="refresh"
+                @click="resetPassword(props.row)"
+                :loading="resettingId === props.row.id"
+              >
+                <q-tooltip>Resetear a CI ({{ props.row.ci }})</q-tooltip>
+              </q-btn>
+            </div>
+          </div>
+        </q-td>
+      </template>
+
       <template v-slot:body-cell-acciones="props">
         <q-td :props="props" class="flex gap-2 justify-end">
           <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)" />
@@ -172,6 +204,7 @@ const dialog = ref(false)
 const saving = ref(false)
 const isEdit = ref(false)
 const userForm = ref(null)
+const resettingId = ref(null)
 
 const form = ref({
   id: null,
@@ -190,6 +223,7 @@ const columns = [
   { name: 'nombre_completo', label: 'Funcionario / Usuario', align: 'left' },
   { name: 'rol', label: 'Rol Asignado', align: 'left' },
   { name: 'sede', label: 'Sede', align: 'left' },
+  { name: 'password_actual', label: 'Contraseña Actual', align: 'center' },
   { name: 'activo', label: 'Estado', align: 'center' },
   { name: 'acciones', label: 'Acciones', align: 'right' }
 ]
@@ -291,6 +325,31 @@ const confirmDelete = (item) => {
       loadData()
     } catch {
       $q.notify({ type: 'negative', message: 'No se pudo eliminar' })
+    }
+  })
+}
+
+const resetPassword = async (user) => {
+  $q.dialog({
+    title: 'Resetear Contraseña',
+    message: `¿Resetear la contraseña de ${user.nombres} ${user.apellidos} a su CI (${user.ci})?`,
+    cancel: { label: 'Cancelar', flat: true },
+    ok: { label: 'Sí, Resetear', color: 'orange' },
+    persistent: true
+  }).onOk(async () => {
+    resettingId.value = user.id
+    try {
+      const res = await api.post(`/usuarios/${user.id}/reset-password`)
+      $q.notify({
+        type: 'positive',
+        message: `Contraseña reseteada a: ${res.data.nueva_password}`,
+        caption: 'El usuario deberá cambiarla al iniciar sesión'
+      })
+      loadData()
+    } catch {
+      $q.notify({ type: 'negative', message: 'Error al resetear contraseña' })
+    } finally {
+      resettingId.value = null
     }
   })
 }

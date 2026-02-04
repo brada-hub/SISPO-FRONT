@@ -160,6 +160,74 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- CONVOCATORIAS VIGENTES -->
+                <div class="mb-32">
+                  <div class="flex items-center justify-between mb-10">
+                    <div>
+                      <h2 class="text-4xl font-bold text-gray-800">Convocatorias Vigentes</h2>
+                      <p class="text-gray-500 mt-2">Encuentra tu lugar en nuestra comunidad académica</p>
+                    </div>
+                    <q-btn flat color="primary" label="Ver todas" icon-right="arrow_forward" no-caps to="/postular" />
+                  </div>
+
+                  <div v-if="loading" class="flex justify-center py-20">
+                    <q-spinner-dots color="primary" size="60px" />
+                  </div>
+
+                  <div v-else-if="convocatorias.length > 0" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <q-card
+                      v-for="conv in convocatorias"
+                      :key="conv.id"
+                      class="rounded-3xl shadow-lg border border-gray-100 hover:shadow-2xl hover:-translate-y-1 transition-all flex flex-col overflow-hidden"
+                    >
+                      <q-card-section class="bg-gradient-to-br from-primary to-purple-800 text-white p-6">
+                        <div class="text-[10px] font-bold tracking-widest opacity-70 mb-1 uppercase">{{ conv.codigo_interno }}</div>
+                        <h4 class="text-xl font-bold line-clamp-2 leading-tight">{{ conv.titulo }}</h4>
+                      </q-card-section>
+
+                      <q-card-section class="p-6 flex-grow">
+                        <div class="flex flex-wrap gap-2 mb-4">
+                          <q-chip
+                            v-for="sede in getUniqueSedes(conv)"
+                            :key="sede"
+                            size="sm"
+                            outline
+                            color="secondary"
+                            icon="location_on"
+                          >
+                            {{ sede }}
+                          </q-chip>
+                        </div>
+                        <p v-if="conv.descripcion && conv.descripcion !== 'null'" class="text-gray-500 text-sm line-clamp-3 mb-0">{{ conv.descripcion }}</p>
+                      </q-card-section>
+
+                      <q-separator inset />
+
+                      <q-card-actions class="p-4 bg-gray-50 flex justify-between items-center">
+                        <div class="flex items-center text-negative font-bold text-[11px]">
+                          <q-icon name="event_busy" class="mr-1" />
+                          Plazo: {{ formatDate(conv.fecha_cierre) }}
+                        </div>
+                        <q-btn
+                          unelevated
+                          color="primary"
+                          label="Ver Detalles"
+                          rounded
+                          no-caps
+                          class="px-5 shadow-lg shadow-primary/20"
+                          :to="'/convocatoria/' + conv.id"
+                        />
+                      </q-card-actions>
+                    </q-card>
+                  </div>
+
+                  <div v-else class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+                    <q-icon name="campaign" size="80px" color="grey-4" />
+                    <h3 class="text-xl font-bold text-gray-400 mt-4">No hay convocatorias externas vigentes hoy</h3>
+                    <p class="text-gray-400 mt-1 uppercase text-[10px] tracking-widest">Vuelve pronto para nuevas oportunidades</p>
+                  </div>
+                </div>
             </div>
         </div>
 
@@ -257,7 +325,38 @@
 </template>
 
 <script setup>
-// No store required for this landing page
+import { ref, onMounted } from 'vue'
+import { api } from 'boot/axios'
+
+const loading = ref(false)
+const convocatorias = ref([])
+
+const loadConvocatorias = async () => {
+    loading.value = true
+    try {
+        const res = await api.get('/convocatorias/abiertas')
+        convocatorias.value = res.data
+    } catch {
+        // Silent error
+    } finally {
+        loading.value = false
+    }
+}
+
+const formatDate = (dateStr) => {
+    if (!dateStr) return ''
+    const cleanDate = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr
+    const parts = cleanDate.split('-')
+    return `${parts[2]}/${parts[1]}`
+}
+
+const getUniqueSedes = (conv) => {
+    if (!conv.ofertas) return []
+    const sedes = conv.ofertas.map(o => o.sede?.nombre).filter(n => n)
+    return [...new Set(sedes)]
+}
+
+onMounted(loadConvocatorias)
 </script>
 
 <style scoped>

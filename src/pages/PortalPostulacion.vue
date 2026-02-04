@@ -132,7 +132,10 @@ import StepDatosPersonales from 'components/postulacion/StepDatosPersonales.vue'
 import StepDocumentacion from 'components/postulacion/StepDocumentacion.vue'
 import StepConfirmacion from 'components/postulacion/StepConfirmacion.vue'
 
+import { useRoute } from 'vue-router'
+
 const $q = useQuasar()
+const route = useRoute()
 const store = usePostulacionStore()
 
 const currentStep = computed({
@@ -146,9 +149,15 @@ const showSuccess = ref(false)
 const codigoSeguimiento = ref('')
 const cantidadCargos = ref(0)
 
-onMounted(() => {
+onMounted(async () => {
   store.resetPostulacion()
-  store.fetchOfertasActivas()
+  await store.fetchOfertasActivas()
+
+  // Si viene con un ID de convocatoria por parámetro, autoseleccionamos todo lo relacionado
+  const convId = route.query.convocatoria
+  if (convId) {
+    store.autoSelectConvocatoria(convId)
+  }
 })
 
 const goToStep2 = () => {

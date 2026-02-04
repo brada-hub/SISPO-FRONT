@@ -368,6 +368,9 @@
                             v-model="form.requisitos_afiche[req.id]"
                             dense
                             outlined
+                            autogrow
+                            type="textarea"
+                            rows="1"
                             class="full-width"
                             placeholder="Detalle (Eje: Título Provisión Nacional)"
                             input-class="text-[10px]"
@@ -401,6 +404,62 @@
                         </div>
                       </div>
                     </div>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
+
+              <q-separator />
+
+              <!-- SECTION 4: CONTENIDO DETALLADO (LANDING PAGE) -->
+              <q-expansion-item
+                v-model="expandContent"
+                icon="article"
+                label="4. Página de Detalle"
+                caption="Contenido completo para la página pública"
+                header-class="bg-grey-1 font-bold text-primary"
+              >
+                <q-card>
+                  <q-card-section class="py-4">
+                    <div class="bg-teal-50 p-3 rounded-xl mb-4 border border-teal-100">
+                      <div class="flex items-center justify-between">
+                        <div>
+                          <div class="text-xs font-bold text-teal-800">Link de la Convocatoria:</div>
+                          <div class="text-[11px] text-teal-600 font-mono">{{ publicPageUrl }}</div>
+                        </div>
+                        <q-btn
+                          :icon="copied ? 'check' : 'content_copy'"
+                          :color="copied ? 'positive' : 'teal'"
+                          flat
+                          round
+                          @click="copyPublicLink"
+                        >
+                          <q-tooltip>{{ copied ? 'Copiado!' : 'Copiar Link' }}</q-tooltip>
+                        </q-btn>
+                      </div>
+                    </div>
+
+                    <div class="text-[11px] font-bold text-gray-500 uppercase mb-2 ml-1">
+                      Contenido detallado (opcional):
+                    </div>
+                    <div class="text-[10px] text-gray-400 mb-3 ml-1">
+                      Aquí puedes pegar toda la información de la convocatoria: formación requerida, experiencia, competencias, etc.
+                    </div>
+
+                    <q-editor
+                      v-model="form.contenido_detalle"
+                      :toolbar="[
+                        ['bold', 'italic', 'underline', 'strike'],
+                        ['unordered', 'ordered'],
+                        ['outdent', 'indent'],
+                        [{ heading: ['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p'] }],
+                        ['link'],
+                        ['undo', 'redo'],
+                        ['viewsource']
+                      ]"
+                      min-height="300px"
+                      class="rounded-xl border-2 border-gray-200"
+                      placeholder="Pega aquí el contenido completo de la convocatoria..."
+                    />
                   </q-card-section>
                 </q-card>
               </q-expansion-item>
@@ -540,6 +599,8 @@ const containerWidth = ref(800)
 const expandBasic = ref(true)
 const expandOffers = ref(false)
 const expandReqs = ref(false)
+const expandContent = ref(false)
+const copied = ref(false)
 
 // Multiselect logic for Section 2
 const builderMode = ref('sede') // 'sede' or 'cargo'
@@ -599,7 +660,7 @@ watch(() => quickCargo.value.nombre, (newVal) => {
   if (!manualSiglaCargo.value) quickCargo.value.sigla = helperGenerarSigla(newVal)
 })
 
-const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} })
+const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} })
 
 const syncOffers = (newMany) => {
   if (!buildOne.value) return
@@ -664,7 +725,31 @@ const getStatus = (row) => {
   return { label: 'ABIERTA', color: 'positive', icon: 'check_circle' }
 }
 
-const qrValue = computed(() => form.value.id ? `https://postulacionesunitepc.xpertiaplus.com/#/postular/${form.value.id}` : 'https://postulacionesunitepc.xpertiaplus.com/#/postular')
+const qrValue = computed(() => {
+  const origin = window.location.origin
+  return form.value.id ? `${origin}/#/postular/${form.value.id}` : `${origin}/#/postular`
+})
+
+const publicPageUrl = computed(() => {
+  if (!form.value.id) return 'Se generará al guardar'
+  const origin = window.location.origin
+  return `${origin}/#/convocatoria/${form.value.id}`
+})
+
+const copyPublicLink = async () => {
+  if (!form.value.id) {
+    $q.notify({ type: 'warning', message: 'Guarda la convocatoria primero para obtener el link' })
+    return
+  }
+  try {
+    await navigator.clipboard.writeText(publicPageUrl.value)
+    copied.value = true
+    $q.notify({ type: 'positive', message: 'Link copiado al portapapeles' })
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    $q.notify({ type: 'negative', message: 'Error al copiar' })
+  }
+}
 
 const columns = [
   { name: 'codigo_interno', label: 'Código Interno', field: 'codigo_interno', sortable: true, align: 'left' },
@@ -724,6 +809,7 @@ const openDialog = (item = null) => {
       ...item,
       fecha_inicio: item.fecha_inicio ? item.fecha_inicio.split('T')[0] : '',
       fecha_cierre: item.fecha_cierre ? item.fecha_cierre.split('T')[0] : '',
+      contenido_detalle: item.contenido_detalle || '',
       config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
       requisitos_opcionales: Array.isArray(item.requisitos_opcionales) ? item.requisitos_opcionales : [],
       requisitos_afiche: item.requisitos_afiche || {},
@@ -731,7 +817,7 @@ const openDialog = (item = null) => {
     }
   } else {
     isEdit.value = false
-    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} }
+    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} }
   }
   manualCodigoInterno.value = false; dialog.value = true
 }

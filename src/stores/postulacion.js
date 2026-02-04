@@ -383,6 +383,21 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     return sede?.cargos || []
   }
 
+  /**
+   * Auto-select all cargos for a given convocatoria ID
+   */
+  function autoSelectConvocatoria(convocatoriaId) {
+    ofertasActivas.value.forEach(sede => {
+      sede.cargos.forEach(cargo => {
+        if (cargo.convocatoria_id == convocatoriaId) {
+          if (!isCargoSelected(cargo.oferta_id)) {
+            toggleCargo(cargo, sede)
+          }
+        }
+      })
+    })
+  }
+
   return {
     // State
     cargosSeleccionados,
@@ -414,5 +429,6 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     agregarRegistroMerito,
     duplicarRegistroMerito,
     eliminarRegistroMerito,
+    autoSelectConvocatoria,
   }
 })
