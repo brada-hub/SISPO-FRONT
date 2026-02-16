@@ -230,7 +230,7 @@ export const usePostulacionStore = defineStore('postulacion', {
       }
     },
 
-    // Cargar convocatoria específica (slug)
+    // Cargar convocatoria específica (slug o id)
     async cargarConvocatoria(slug) {
       this.loading = true
       try {
@@ -267,6 +267,21 @@ export const usePostulacionStore = defineStore('postulacion', {
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    async autoSelectConvocatoria(convocatoriaId) {
+      // 1. Cargar la lista completa de convocatorias si no está
+      if (this.convocatorias.length === 0) {
+        await this.cargarConvocatorias()
+      }
+
+      // 2. Establecer el ID seleccionado
+      const exists = this.convocatorias.find(c => c.id == convocatoriaId)
+      if (exists) {
+        this.seleccionarConvocatoria(exists.id)
+        // IMPORTANTE: No preseleccionar ninguna oferta. El usuario debe elegir.
+        this.ofertasSeleccionadas = []
       }
     },
 

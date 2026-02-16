@@ -2,11 +2,37 @@ import { defineStore } from 'pinia'
 import { api } from 'boot/axios'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: localStorage.getItem('token') || null,
-    user: JSON.parse(localStorage.getItem('user')) || null,
-    returnUrl: null
-  }),
+  state: () => {
+    // Safety check for user in localStorage
+    let storedUser = null;
+    try {
+        const rawUser = localStorage.getItem('user');
+        if (rawUser && rawUser !== 'undefined') {
+            storedUser = JSON.parse(rawUser);
+            // Si el usuario no tiene rol cargado, invalidar sesión para obligar relogin y traer datos nuevos
+            if (storedUser && !storedUser.rol) {
+                console.warn('Usuario almacenado incompleto (falta rol), reseteando sesión.');
+                storedUser = null;
+                localStorage.removeItem('user');
+                localStorage.removeItem('token');
+            }
+        } else {
+            // Clean up bad data
+            localStorage.removeItem('user');
+        }
+    } catch (e) {
+        console.warn('Error parsing stored user, logging out', e);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+    }
+
+    return {
+      token: localStorage.getItem('token') || null,
+      user: storedUser,
+      currentSystem: localStorage.getItem('currentSystem') || 'SISPO', // Por defecto SISPO
+      returnUrl: null
+    };
+  },
 
   getters: {
     isLoggedIn: (state) => !!state.token,
@@ -14,19 +40,27 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async login(ci, password) {
+    async login(loginInput, password) {
         // Directo al endpoint creado en AuthController
-        const response = await api.post('/login', { ci, password })
+        console.log('Sending login payload:', { login_input: loginInput, password })
+        const response = await api.post('/login', { login_input: loginInput, password })
 
         if (response.data.success) {
-            const token = response.data.token
-            const user = response.data.user
+            const token = response.data.data.token
+            const user = response.data.data.user
 
             this.token = token
             this.user = user
 
             localStorage.setItem('token', token)
             localStorage.setItem('user', JSON.stringify(user))
+
+            // Si el usuario tiene acceso a sistemas, establecer uno por defecto o nulo
+            if (user.systems && user.systems.length > 0) {
+              const defaultSystem = user.systems[0].name
+              this.currentSystem = defaultSystem
+              localStorage.setItem('currentSystem', defaultSystem)
+            }
 
             // Set default auth header
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`
@@ -44,8 +78,10 @@ export const useAuthStore = defineStore('auth', {
       // Limpiar estado local inmediatamente
       this.token = null
       this.user = null
+      this.currentSystem = null
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      localStorage.removeItem('currentSystem')
       delete api.defaults.headers.common['Authorization']
 
       try {
@@ -57,10 +93,28 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    async loginWithGoogle(user, token) {
+        this.token = token
+        this.user = user
+
+        localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
+
+        // Set default auth header
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+
+        return true
+    },
+
     init() {
       if (this.token) {
         api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
       }
+    },
+
+    setSystem(systemName) {
+      this.currentSystem = systemName
+      localStorage.setItem('currentSystem', systemName)
     }
   }
 })

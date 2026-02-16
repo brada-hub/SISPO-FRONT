@@ -8,9 +8,9 @@
     <div class="afiche-header">
       <img src="~assets/logo_unitepc.png" class="afiche-logo" />
       <div class="text-center w-full">
-        <h2 class="main-title text-uppercase">REQUERIMIENTO DE PERSONAL</h2>
+        <h2 class="main-title text-uppercase">REQUERIMIENTO DE PERSONAL:</h2>
         <h3 class="area-title text-uppercase" :style="titleScaleStyle">
-          PARA <span
+          <span
             :contenteditable="editable"
             @input="onInputTitle"
             :class="{ 'editable-field': editable }"
@@ -39,15 +39,15 @@
       </p>
 
       <!-- SECTION: CARGO -->
-      <div class="section-container" v-if="hasCargos">
+      <div class="section-container" v-if="showCargoSection">
         <div class="section-label">
-          <span class="label-box">I.</span> {{ cargoCount < sedeCount || (cargoCount === 1 && sedeCount > 1) ? 'SEDES:' : 'CARGO:' }}
+          <span class="label-box">{{ sectionIndices.cargo }}.</span> {{ cargoCount < sedeCount || (cargoCount === 1 && sedeCount > 1) ? 'SEDES:' : 'CARGO:' }}
         </div>
 
         <div :class="[ 'docs-list', 'cargos-list', { 'multi-column': useGridForCargos } ]">
           <!-- Intelligent Grouping Display -->
           <div v-for="(group, idx) in intelligentGroups" :key="idx" class="sede-group mb-4">
-            <div v-if="!group.isList" class="sede-group-title text-uppercase">
+            <div v-if="(!group.isList && sedeCount > 1) || (group.isList && cargoCount > 1)" class="sede-group-title text-uppercase">
                {{ group.label }}
             </div>
             <div class="cargos-items">
@@ -77,7 +77,7 @@
       <!-- SECTION: REQUISITOS MINIMOS -->
       <div v-if="requisitosIds.length > 0" class="section-container animate-fade-in">
         <div class="section-label">
-          <span class="label-box">II.</span> REQUISITOS MÍNIMOS:
+          <span class="label-box">{{ sectionIndices.reqs }}.</span> REQUISITOS MÍNIMOS:
         </div>
         <div class="docs-list" :class="{ 'multi-column': useGridForReqs }">
           <div v-for="rid in visibleRequisitosIds" :key="rid" class="doc-item">
@@ -102,7 +102,7 @@
       <!-- SECTION: DOCUMENTACION REQUERIDA -->
       <div class="section-container">
         <div class="section-label">
-          <span class="label-box">III.</span> DOCUMENTACIÓN REQUERIDA:
+          <span class="label-box">{{ sectionIndices.docs }}.</span> DOCUMENTACIÓN REQUERIDA:
         </div>
         <div class="docs-list standard-docs">
           <div class="doc-item">
@@ -127,7 +127,8 @@
         <div class="footer-text">
           <div class="footer-title">RECEPCIÓN DE POSTULACIONES</div>
           <p class="footer-desc">
-            Postulación únicamente vía plataforma <strong>SISPO</strong> UNITEPC.
+            Postulación gestionada exclusivamente a través del
+            <strong>Sistema de Postulaciones UNITEPC</strong>.
           </p>
           <div v-if="fechaCierre" class="deadline-literal">
             <strong>Plazo:</strong> {{ formatDateLiteral(fechaCierre) }} - {{ horaLimite || '18:00' }}
@@ -181,7 +182,7 @@ const onInputReq = (rid, e) => {
 }
 
 
-const hasCargos = computed(() => props.ofertas.length > 0)
+
 
 const groupedOfertas = computed(() => {
   const groups = {}
@@ -208,6 +209,26 @@ const cargoCount = computed(() => {
 const sedeCount = computed(() => {
   const ids = new Set(props.ofertas.map(o => o.sede_id))
   return ids.size
+})
+
+
+
+const showCargoSection = computed(() => {
+  return props.ofertas.length > 0
+})
+
+const sectionIndices = computed(() => {
+  let idx = 1
+  const cargo = showCargoSection.value ? idx++ : null
+  const reqs = props.requisitosIds.length > 0 ? idx++ : null
+  const docs = idx
+
+  const roman = ['I', 'II', 'III', 'IV']
+  return {
+    cargo: cargo ? roman[cargo - 1] : '',
+    reqs: reqs ? roman[reqs - 1] : '',
+    docs: roman[docs - 1]
+  }
 })
 
 const intelligentGroups = computed(() => {

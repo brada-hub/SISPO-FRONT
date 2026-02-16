@@ -156,7 +156,7 @@ onMounted(async () => {
   // Si viene con un ID de convocatoria por parámetro, autoseleccionamos todo lo relacionado
   const convId = route.query.convocatoria
   if (convId) {
-    store.autoSelectConvocatoria(convId)
+    await store.autoSelectConvocatoria(convId)
   }
 })
 

@@ -302,7 +302,7 @@
               <q-input
                 v-model="form.ref_laboral_detalle"
                 label="EMPRESA / RELACIÓN *"
-                placeholder="EJ: EX-JEFE EN BANCO UNIÓN"
+                placeholder="EJ: JEFE "
                 type="textarea"
                 rows="2"
                 outlined

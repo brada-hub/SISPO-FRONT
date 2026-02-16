@@ -9,9 +9,9 @@
           </div>
 
           <div class="text-center">
-            <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#663399] to-[#009999] m-0 leading-none tracking-tighter">CONVOCATORIAS</h2>
+            <h2 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#663399] to-[#009999] m-0 leading-none tracking-tighter">TALENTO HUMANO</h2>
             <div class="text-[9px] text-gray-400 font-black tracking-[0.2em] mt-2 uppercase">
-              Talento Humano • UNITEPC
+              GESTIÓN INTEGRAL • UNITEPC
             </div>
           </div>
         </q-card-section>
@@ -27,7 +27,7 @@
                 >Usuario / CI</label
               >
               <q-input
-                v-model="ci"
+                v-model="loginInput"
                 outlined
                 rounded
                 dense
@@ -77,19 +77,20 @@
             <div class="pt-2">
               <q-btn
                 type="submit"
-                label="ENTRAR AL SISTEMA"
+                label="INICIAR SESIÓN"
                 class="w-full py-3 font-black rounded-xl shadow-lg shadow-purple-200/40 hover:translate-y-[-1px] transition-all bg-gradient-to-r from-[#663399] to-[#5b2586] text-white"
                 :loading="loading"
                 unelevated
                 no-caps
               />
             </div>
+
           </q-form>
         </q-card-section>
 
         <q-card-section class="pb-6 pt-0 text-center">
           <div class="text-[8px] text-gray-300 font-bold uppercase tracking-widest">
-            © {{ new Date().getFullYear() }} • UNITEPC • SISTEMA DE SELECCIÓN
+            © {{ new Date().getFullYear() }} • UNITEPC • PLATAFORMA INTEGRAL
           </div>
         </q-card-section>
       </q-card>
@@ -98,38 +99,78 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from 'stores/auth-store'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 
-const ci = ref('')
+const loginInput = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
+
+// Handle Google Redirect and Session Cleanup
+onMounted(async () => {
+    // Check for query params
+    const token = route.query.token
+    const userEncoded = route.query.user
+    const error = route.query.error
+
+    if (error) {
+        $q.notify({ type: 'negative', message: 'Error de Google: ' + decodeURIComponent(error) })
+        router.replace('/login')
+        return
+    }
+
+    // Si no venimos de un login exitoso (con token en URL de Google/SSO),
+    // nos aseguramos de que no haya sesiones viejas colgando que causen bucles
+    if (!token) {
+        console.log('LoginPage: No token in URL, forcing session cleanup to avoid loops.')
+        authStore.logout()
+        localStorage.clear()
+    }
+
+    if (token && userEncoded) {
+        try {
+            const user = JSON.parse(atob(userEncoded))
+            await authStore.loginWithGoogle(user, token)
+            $q.notify({ type: 'positive', message: 'Bienvenido ' + (user.nombres || user.name) })
+
+            const rol = (user.rol?.name || user.rol?.nombre)?.toUpperCase()
+            if (rol === 'USUARIO') {
+                router.push('/admin/postulaciones')
+            } else {
+                router.push('/admin')
+            }
+        } catch (e) {
+            console.error('Error parsing token', e)
+            $q.notify({ type: 'negative', message: 'Datos de sesión inválidos' })
+        }
+    }
+})
 
 const handleLogin = async () => {
   if (loading.value) return
   loading.value = true
   try {
-    await authStore.login(ci.value, password.value)
+    await authStore.login(loginInput.value, password.value)
 
     $q.notify({ type: 'positive', message: 'Bienvenido al Sistema' })
 
     // Redirect based on role
-    const rol = authStore.currentUser?.rol?.nombre?.toUpperCase()
-    if (rol === 'USUARIO') {
-        router.push('/admin/postulaciones')
-    } else {
+    const rol = (authStore.currentUser?.rol?.name || authStore.currentUser?.rol?.nombre)?.toUpperCase()
+    if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
         router.push('/admin')
+    } else {
+        router.push('/admin/postulaciones')
     }
   } catch (error) {
     console.error(error)
-    $q.notify({ type: 'negative', message: error.response?.data?.message || 'Error de conexión' })
   } finally {
     loading.value = false
   }

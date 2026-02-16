@@ -64,18 +64,17 @@
       class="bg-white"
       v-if="authStore.isLoggedIn"
     >
-      <div class="flex flex-col h-full">
+      <div class="column no-wrap h-full" style="height: 100vh;">
         <!-- Brand Area - CLEAN STYLE -->
         <div class="p-6 flex flex-col gap-1">
           <div class="flex items-center gap-2 font-bold text-xl tracking-tight">
-            <!-- <span class="text-2xl">UNITEPC</span> -->
              <img src="~assets/logo_unitepc.png" class="h-10" alt="UNITEPC" />
           </div>
           <div class="text-sm text-gray-400">Sistema de Postulaciones</div>
         </div>
 
         <!-- Menu items -->
-        <div class="flex-1 px-4 space-y-2 overflow-y-auto mt-2">
+        <div class="col px-4 space-y-2 overflow-y-auto mt-2">
           <!-- Back to Public Button -->
           <div
             @click="$router.push('/')"
@@ -85,7 +84,26 @@
             <span class="font-bold text-gray-700 group-hover:text-white">Ver Portal Público</span>
           </div>
 
-          <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-4 mb-2">Menú Principal</div>
+          <!-- System Selector -->
+          <div v-if="authStore.user?.systems?.length > 1" class="px-4 mb-4">
+            <q-select
+              filled
+              dense
+              options-dense
+              v-model="systemModel"
+              :options="systemOptions"
+              option-label="display_name"
+              label="Cambiar Sistema"
+              class="bg-gray-50 rounded-lg"
+              @update:model-value="onSystemChange"
+            >
+              <template v-slot:prepend>
+                <q-icon name="apps" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-4 mb-2">Menú Principal ({{ authStore.currentSystem }})</div>
 
           <!-- Admin Routes -->
           <template v-if="authStore.isLoggedIn">
@@ -110,20 +128,20 @@
         </div>
 
     <!-- Footer - SIMPLE STYLE -->
-        <div class="p-6 border-t border-gray-100 mt-auto bg-gray-50">
-          <div class="flex items-center gap-3 mb-4">
+        <div class="p-6 border-t border-gray-100 bg-gray-50">
+          <div class="row items-center no-wrap gap-3 mb-4">
             <div
-              class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-lg shadow-sm border border-primary/20"
+              class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shadow-sm border border-primary/20 shrink-0"
             >
               {{ authStore.currentUser?.nombres?.[0] || 'A' }}
             </div>
-            <div class="leading-tight">
-              <div class="font-bold text-gray-900 text-sm uppercase">
+            <div class="column leading-tight overflow-hidden">
+              <div class="font-bold text-gray-900 text-[11px] uppercase truncate">
                 {{ authStore.currentUser?.nombres || 'Usuario' }}
                 {{ authStore.currentUser?.apellidos || '' }}
               </div>
-              <div class="text-xs text-gray-500">
-                {{ authStore.currentUser?.rol?.nombre || 'Administrador' }}
+              <div class="text-[10px] text-gray-500 truncate">
+                {{ authStore.currentUser?.rol?.name || authStore.currentUser?.rol?.nombre || 'Administrador' }}
               </div>
             </div>
           </div>
@@ -172,6 +190,11 @@ import ChangePasswordModal from 'src/components/auth/ChangePasswordModal.vue'
 const authStore = useAuthStore()
 useInactivity() // Ahora usa el default de 30 minutos definido en el composable
 
+// El sistema se mantiene siempre en SISPO (estamos en su frontend)
+if (authStore.currentSystem !== 'SISPO') {
+  authStore.setSystem('SISPO')
+}
+
 const leftDrawerOpen = ref(false)
 const route = useRoute()
 const router = useRouter()
@@ -182,7 +205,8 @@ const handleHomeClick = () => {
     return
   }
 
-  if (authStore.currentUser?.rol?.nombre === 'ADMINISTRADOR') {
+  const rolName = authStore.currentUser?.rol?.name?.toUpperCase() || ''
+  if (['ADMINISTRADOR', 'SUPER ADMIN'].includes(rolName)) {
     router.push('/admin')
   } else {
     router.push('/admin/postulaciones')
@@ -199,12 +223,42 @@ const today = new Date().toLocaleDateString('es-ES', {
   month: 'long',
 })
 
+const systemOptions = computed(() => {
+  return authStore.user?.systems || []
+})
+
+const systemModel = ref(null)
+
+// Initialize system dropdown
+watch(() => authStore.currentSystem, (newSystem) => {
+  if (authStore.user?.systems) {
+    systemModel.value = authStore.user.systems.find(s => s.name === newSystem) || authStore.user.systems[0]
+  }
+}, { immediate: true })
+
+const onSystemChange = (val) => {
+  if (val) {
+    if (val.name === 'SIGVA') {
+      // SIGVA es un frontend separado — redirigir con token para SSO
+      // NO cambiamos currentSystem para que SISPO mantenga su menú al volver
+      const token = localStorage.getItem('token')
+      const sigvaUrl = 'http://localhost:5173' // Puerto de SIGVA-FRONT (ajustar en producción)
+      window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
+    } else {
+      authStore.setSystem('SISPO')
+      router.push('/admin') // Ir al dashboard de SISPO
+    }
+  }
+}
+
 const adminMenuItems = computed(() => {
   const user = authStore.currentUser
-  const rolName = user?.rol?.nombre?.toUpperCase() || ''
+  const currentSystem = authStore.currentSystem // 'SISPO', 'SIGVA', etc.
+  const rolName = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase() || ''
   const userPermisos = user?.permisos || []
 
-  const allItems = [
+  // --- MENU ITEMS FOR SISPO ---
+  const sispoItems = [
     { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
     { key: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
     { key: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
@@ -212,25 +266,61 @@ const adminMenuItems = computed(() => {
     { key: 'sedes', label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
     { key: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
     { key: 'requisitos', label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
-    { key: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
-    { key: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
   ]
 
-  // Super Admin siempre ve todo
-  if (rolName === 'SUPER ADMIN') return allItems
+  // --- MENU ITEMS FOR SIGVA ---
+  const sigvaItems = [
+    { key: 'sigva_dashboard', label: 'Dashboard Vacaciones', icon: 'beach_access', to: '/admin/vacaciones' },
+    { key: 'solicitudes', label: 'Solicitudes', icon: 'assignment', to: '/admin/vacaciones/solicitudes' },
+    { key: 'kardex', label: 'Kardex', icon: 'badge', to: '/admin/vacaciones/kardex' },
+    { key: 'calendario', label: 'Calendario', icon: 'calendar_month', to: '/admin/vacaciones/calendario' },
+    { key: 'reportes', label: 'Reportes', icon: 'bar_chart', to: '/admin/vacaciones/reportes' },
+  ]
 
-  // Si tiene permisos específicos definidos, filtramos por esos keys
+  // Shared Admin Items (Users/Roles usually global or system specific but managed here)
+  const adminItems = [
+      { key: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
+      { key: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
+  ]
+
+  let items = []
+
+  // 1. Filter by System
+  if (currentSystem === 'SIGVA') {
+    items = [...sigvaItems]
+  } else {
+    // Default to SISPO
+    items = [...sispoItems]
+  }
+
+  // 2. Add Admin Items if applicable (Usually for SISPO or Global Admin)
+  // For now, let's show Admin items only in SISPO or if Super Admin
+  if (currentSystem === 'SISPO' || rolName === 'SUPER ADMIN') {
+     items = [...items, ...adminItems]
+  }
+
+  // 3. Permission Filtering
+  // Super Admin / Administrador sees everything in the current system context
+  if (['ADMINISTRADOR', 'SUPER ADMIN'].includes(rolName)) return items
+
+  // If specific permissions exist
   if (userPermisos && userPermisos.length > 0) {
-    return allItems.filter(item => userPermisos.includes(item.key))
+    return items.filter(item => userPermisos.includes(item.key))
   }
 
-  // Si no tiene permisos específicos, aplicamos lógica por defecto por rol
+  // Fallback Roles logic
   if (rolName === 'USUARIO') {
-    return allItems.filter(item => ['postulaciones', 'evaluaciones'].includes(item.key))
+    if (currentSystem === 'SISPO') return items.filter(item => ['postulaciones', 'evaluaciones'].includes(item.key))
+    if (currentSystem === 'SIGVA') return items.filter(item => ['solicitudes', 'kardex'].includes(item.key))
   }
 
-  // Por defecto (Administrador sin permisos específicos)
-  return allItems.filter(item => !['usuarios', 'roles'].includes(item.key) || rolName === 'ADMINISTRADOR')
+  // Admin logic (hides users/roles if strictly strictly enforced, but here we added them conditionally above)
+  const restrictedKeys = ['usuarios', 'roles']
+  if (rolName !== 'ADMINISTRADOR' && rolName !== 'SUPER ADMIN') {
+      return items.filter(item => !restrictedKeys.includes(item.key))
+  }
+
+  return items
 })
 
 const setAdminSection = (path) => {

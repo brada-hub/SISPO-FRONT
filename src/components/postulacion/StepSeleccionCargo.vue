@@ -73,7 +73,7 @@
               </div>
 
               <div v-for="sede in sedesDelDepartamento" :key="sede.id" class="mb-8">
-                <div class="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                <div class="text-[14px] font-black text-primary uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                   <span>UBICACIÓN: {{ sede.nombre }}</span>
                   <div class="h-[1px] bg-primary/20 flex-grow"></div>
                 </div>
@@ -96,8 +96,24 @@
                           <q-icon name="group" size="xs" /> {{ cargo.vacantes }} vacante(s)
                         </div>
                       </div>
-                      <q-btn flat round color="primary" icon="chevron_right" dense />
+                      <div class="flex flex-col md:flex-row items-center gap-2">
+                        <q-btn
+                          unelevated
+                          color="indigo-1"
+                          text-color="primary"
+                          icon-right="launch"
+                          label="Ver requisitos de la convocatoria"
+                          class="text-[15px] font-bold px-3 py-1 rounded-md"
+                          :href="'#/convocatoria/' + cargo.convocatoria_id"
+                          target="_blank"
+                          no-caps
+                        />
+                        <q-btn flat round :color="isSelected(cargo.oferta_id) ? 'negative' : 'primary'" :icon="isSelected(cargo.oferta_id) ? 'remove_circle' : 'add_circle'" dense />
+                      </div>
                     </div>
+
+                    <!-- EXPANDABLE DETAILS SECTION -->
+
                   </div>
                 </div>
               </div>
@@ -208,6 +224,8 @@ const toggleCargo = (cargo, sede) => {
 const removeCargo = (ofertaId) => {
   store.removeCargo(ofertaId)
 }
+
+
 </script>
 
 <style scoped>
@@ -266,5 +284,33 @@ const removeCargo = (ofertaId) => {
 .list-leave-to {
   opacity: 0;
   transform: translateX(30px);
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* POSE STYLES FOR HTML CONTENT */
+:deep(.prose) ul {
+  list-style-type: disc;
+  padding-left: 1.2em;
+  margin-bottom: 0.5em;
+}
+:deep(.prose) ol {
+  list-style-type: decimal;
+  padding-left: 1.2em;
+  margin-bottom: 0.5em;
+}
+:deep(.prose) p {
+  margin-bottom: 0.5em;
+}
+:deep(.prose) strong {
+  color: #1a202c;
+  font-weight: 700;
 }
 </style>

@@ -384,18 +384,13 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   }
 
   /**
-   * Auto-select all cargos for a given convocatoria ID
+   * Only fetches offers, does NOT select them automatically anymore.
+   * Logic changed per user request.
    */
-  function autoSelectConvocatoria(convocatoriaId) {
-    ofertasActivas.value.forEach(sede => {
-      sede.cargos.forEach(cargo => {
-        if (cargo.convocatoria_id == convocatoriaId) {
-          if (!isCargoSelected(cargo.oferta_id)) {
-            toggleCargo(cargo, sede)
-          }
-        }
-      })
-    })
+  function autoSelectConvocatoria() {
+    // Ensuring we have the active offers is enough.
+    // We clear previous selections to start fresh.
+    cargosSeleccionados.value = []
   }
 
   return {
