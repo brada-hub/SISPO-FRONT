@@ -141,8 +141,8 @@ onMounted(async () => {
             await authStore.loginWithGoogle(user, token)
             $q.notify({ type: 'positive', message: 'Bienvenido ' + (user.nombres || user.name) })
 
-            const rol = (user.rol?.name || user.rol?.nombre)?.toUpperCase()
-            if (rol === 'USUARIO') {
+            const hasAdminPerms = user.permisos?.some(p => ['dashboard', 'usuarios', 'roles'].includes(p))
+            if (user.permisos?.includes('postulaciones') && !hasAdminPerms) {
                 router.push('/admin/postulaciones')
             } else {
                 router.push('/admin')
@@ -162,15 +162,56 @@ const handleLogin = async () => {
 
     $q.notify({ type: 'positive', message: 'Bienvenido al Sistema' })
 
-    // Redirect based on role
-    const rol = (authStore.currentUser?.rol?.name || authStore.currentUser?.rol?.nombre)?.toUpperCase()
-    if (rol === 'SUPERADMIN' || rol === 'ADMIN') {
+    // Redirección Inteligente basada en Permisos
+    const user = authStore.user || authStore.currentUser || {}
+    const perms = user.permisos || []
+
+    // 1. Administrative Personnel (Access to sensitive management)
+    const isAdmin = perms.includes('usuarios') || perms.includes('roles') || perms.includes('dashboard')
+
+    if (isAdmin) {
         router.push('/admin')
+        return
+    }
+
+    // 2. Specialized Personnel: Check where they have real access
+    const systems = user.systems || []
+
+    // If they have "SISTEMA DE POSTULACION" access or specific SISPO permissions
+    const hasSispo = systems.includes('SISTEMA DE POSTULACION') || perms.includes('postulaciones') || perms.includes('evaluaciones')
+
+    if (hasSispo) {
+        if (perms.includes('postulaciones')) {
+            router.push('/admin/postulaciones')
+        } else if (perms.includes('evaluaciones')) {
+            router.push('/admin/evaluaciones')
+        } else {
+            router.push('/admin') // Fallback to admin home
+        }
     } else {
-        router.push('/admin/postulaciones')
+        // 3. SIGVA Fallback
+        const hasSigva = systems.includes('SISTEMA DE GESTIÓN DE VACACIONES') || perms.some(p => ['solicitudes', 'vacaciones_dashboard'].includes(p))
+
+        if (hasSigva) {
+            const sigvaUrl = import.meta.env.PROD
+                ? 'https://sigva.xpertiaplus.com/admin/dashboard'
+                : 'http://localhost:5173/admin/dashboard'
+            window.location.href = `${sigvaUrl}?token=${authStore.token}`
+        } else {
+            console.error('User has no relevant permissions:', { perms, systems })
+            $q.notify({ type: 'warning', message: 'No tienes permisos asignados para acceder a este sistema.' })
+            router.push('/login')
+        }
     }
   } catch (error) {
     console.error(error)
+    // Feedback visual para el usuario
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Usuario o contraseña incorrectos',
+      position: 'top',
+      timeout: 3000
+    })
   } finally {
     loading.value = false
   }

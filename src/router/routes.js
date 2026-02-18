@@ -47,57 +47,57 @@ const routes = [
         path: '',
         name: 'admin_dashboard',
         component: () => import('pages/admin/DashboardHome.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN', 'ADMINISTRADOR'] }
+        meta: { permissions: ['dashboard'] }
       },
       {
         path: 'sedes',
         component: () => import('pages/admin/SedesPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['sedes'] }
+        meta: { permissions: ['sedes'] }
       },
       {
         path: 'cargos',
         component: () => import('pages/admin/CargosPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['cargos'] }
+        meta: { permissions: ['cargos'] }
       },
       {
         path: 'requisitos',
         component: () => import('pages/admin/TiposDocumentoPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['requisitos'] }
+        meta: { permissions: ['requisitos'] }
       },
       {
         path: 'convocatorias',
         component: () => import('pages/admin/ConvocatoriasPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['convocatorias'] }
+        meta: { permissions: ['convocatorias'] }
       },
       {
         path: 'postulaciones',
         component: () => import('pages/admin/PostulacionesPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN', 'USUARIO'], permissions: ['postulaciones'] }
+        meta: { permissions: ['postulaciones'] }
       },
       {
         path: 'expediente/:id',
         component: () => import('pages/admin/ExpedientePage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN', 'ADMINISTRADOR', 'USUARIO'] }
+        meta: { permissions: ['postulaciones'] }
       },
       {
         path: 'evaluaciones',
         component: () => import('pages/admin/EvaluacionesListPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN', 'USUARIO'], permissions: ['evaluaciones'] }
+        meta: { permissions: ['evaluaciones'] }
       },
       {
         path: 'evaluacion-tabla',
         component: () => import('pages/admin/EvaluacionTablaPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN', 'ADMINISTRADOR', 'USUARIO'] }
+        meta: { permissions: ['evaluaciones'] }
       },
       {
         path: 'usuarios',
         component: () => import('pages/admin/UsuariosPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['usuarios'] }
+        meta: { permissions: ['usuarios'] }
       },
       {
         path: 'roles',
         component: () => import('pages/admin/RolesPage.vue'),
-        meta: { roles: ['SUPERADMIN', 'ADMIN'], permissions: ['roles'] }
+        meta: { permissions: ['roles'] }
       },
     ],
   },

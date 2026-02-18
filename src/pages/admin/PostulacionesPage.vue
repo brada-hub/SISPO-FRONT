@@ -8,7 +8,7 @@
           Seleccione una convocatoria y filtre por sede y cargo para gestionar los postulantes.
         </p>
       </div>
-      <div v-if="isAdmin" class="flex gap-3">
+      <div v-if="canManageAll" class="flex gap-3">
         <q-btn
           label="Importar desde Excel"
           icon="upload_file"
@@ -294,7 +294,7 @@
                 push
               />
               <q-btn
-                v-if="isAdmin"
+                v-if="canManageAll"
                 icon="delete"
                 size="sm"
                 color="red-2"
@@ -393,7 +393,7 @@ const convocatorias = ref([])
 const selectedConvocatoria = ref(null)
 const loading = ref(false)
 
-const isAdmin = computed(() => authStore.user?.rol?.nombre === 'ADMINISTRADOR')
+const canManageAll = computed(() => authStore.can('usuarios') || authStore.can('roles'))
 
 
 // Modals state

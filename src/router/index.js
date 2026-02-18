@@ -89,6 +89,7 @@ export default defineRouter(function ({ store }) {
                 api.defaults.headers.common['Authorization'] = `Bearer ${token}`
                 const response = await api.get('/me')
                 if (response.data?.success) {
+                    console.log('User recovered via API:', response.data.data)
                     authStore.user = response.data.data
                     localStorage.setItem('user', JSON.stringify(authStore.user))
                 }
@@ -106,18 +107,32 @@ export default defineRouter(function ({ store }) {
     // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
-    // SSO Check: If user is authenticated but doesn't have SISPO access, send to SIGVA
-    // Only do this if they are trying to access a protected (/admin) route
+    // SSO Check: Enforce Redirect if NO SISPO access but HAS SIGVA access
     if (token && user && requiresAuth) {
         const systems = user.systems || []
         const hasAccessToSISPO = systems.some(s => s.name === 'SISPO')
         const hasAccessToSIGVA = systems.some(s => s.name === 'SIGVA')
+        // Check permissions explicitly as fallback if systems array is empty but permissions exist
+        const hasSispoPerms = user.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias'].includes(p))
 
-        if (!hasAccessToSISPO && hasAccessToSIGVA) {
-            console.log('GlobalGuard: Redirecting to SIGVA (No SISPO access to this protected route)')
-            const sigvaUrl = 'http://localhost:5173'
-            window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
-            return
+        // El usuario es valido si tiene acceso a sistemas O si es SUPERA ADMIN/ADMINISTRADOR
+        const isAdmin = ['ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
+
+        if (!hasAccessToSISPO && !hasSispoPerms && !isAdmin) {
+            if (hasAccessToSIGVA) {
+                console.log('GlobalGuard: Acceso solo a SIGVA detectado. Redirigiendo...')
+                const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
+                window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
+                return
+            } else {
+                // CASO SIN SALIDA: Ni SISPO ni SIGVA
+                console.warn('GlobalGuard: Usuario sin sistemas asignados. Cerrando sesión.')
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                // Usamos window.location para asegurar limpieza total
+                window.location.href = '/#/login?error=Usuario%20sin%20sistemas%20asignados'
+                return
+            }
         }
     }
 
@@ -137,13 +152,8 @@ export default defineRouter(function ({ store }) {
       // If no SISPO access, we stay at /login to allow the component to clear the session
     }
 
-    // 3. Role-based AND Permission-based Access Control
-    // Find if any matched record has restrictions
-    const requiredRoles = to.matched.reduce((acc, record) => {
-      if (record.meta.roles) acc = record.meta.roles
-      return acc
-    }, null)
-
+    // 3. Permission-based Access Control
+    // Find if any matched record has specific permission requirements
     const requiredPermissions = to.matched.reduce((acc, record) => {
       if (record.meta.permissions) acc = record.meta.permissions
       return acc
@@ -153,35 +163,49 @@ export default defineRouter(function ({ store }) {
 
     let accessGranted = true
 
-    // Only check if specific restrictions are defined
-    if (requiredRoles || requiredPermissions) {
-      const hasRole = requiredRoles ? requiredRoles.includes(userRole) : false
-      const hasPermission = requiredPermissions
-        ? requiredPermissions.some(p => userPermissions.includes(p))
-        : false
-
-      // Grant access if either Role OR Permission matches
-      if (!hasRole && !hasPermission) {
-        accessGranted = false
-      }
+    // Only check if specific permissions are defined
+    if (requiredPermissions) {
+       // Must have at least one of the required permissions
+       const hasPermission = requiredPermissions.some(p => userPermissions.includes(p))
+       if (!hasPermission) {
+           accessGranted = false
+       }
     }
 
     if (!accessGranted) {
-      console.warn(`Access restricted for role ${userRole} to ${to.path}`)
+      console.warn(`Access restricted to ${to.path} - Missing required permissions: ${requiredPermissions}`)
 
-      // EMERGENCY BREAK: Infinite Loop Protection
-      // If we are already being redirected to a default page and it still fails,
-      // it means the default page itself is restricted or the user has NO valid role.
-      if (to.path === '/admin/postulaciones' || to.path === '/admin') {
-          console.error('Infinite redirect detected (Default page denied). Forcing Logout.')
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          return next('/login')
+      const perms = userPermissions || []
+
+      // 1. SISPO: Buscar ruta válida específica
+      if (perms.includes('dashboard')) {
+          if (to.path !== '/admin' && to.path !== '/admin/') return next('/admin')
+      }
+      if (perms.includes('postulaciones') && to.path !== '/admin/postulaciones') return next('/admin/postulaciones')
+      if (perms.includes('convocatorias') && to.path !== '/admin/convocatorias') return next('/admin/convocatorias')
+      if (perms.includes('sedes') && to.path !== '/admin/sedes') return next('/admin/sedes')
+      if (perms.includes('cargos') && to.path !== '/admin/cargos') return next('/admin/cargos')
+      if (perms.includes('requisitos') && to.path !== '/admin/requisitos') return next('/admin/requisitos')
+      if (perms.includes('evaluaciones') && to.path !== '/admin/evaluaciones') return next('/admin/evaluaciones')
+      if (perms.includes('usuarios') && to.path !== '/admin/usuarios') return next('/admin/usuarios')
+      if (perms.includes('roles') && to.path !== '/admin/roles') return next('/admin/roles')
+
+      // 2. SIGVA Redirección
+      const sigvaPerms = ['solicitudes', 'vacaciones_dashboard', 'calendario', 'reportes', 'documentacion', 'feriados', 'empleados']
+      if (perms.some(p => sigvaPerms.includes(p))) {
+          const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
+          // Evitar bucle si ya estamos intentando ir a SIGVA desde una URL que ya falló allí
+          if (!window.location.href.includes('sigva.xpertiaplus.com')) {
+              window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
+              return
+          }
       }
 
-      // Redirect to a safe default page for the user role
-      if (userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRADOR') return next('/admin')
-      return next('/admin/postulaciones')
+      // 3. Logout (Fallback total si llegamos aquí es porque no tiene permisos para su ruta actual ni para las de su rol)
+      console.warn('GlobalGuard: Fallback total. Cerrando sesión.')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      return next('/login?error=Permiso_denegado')
     }
 
     next()

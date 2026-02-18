@@ -578,8 +578,7 @@ import { ref, onMounted, computed, watch } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import AficheV2 from 'components/AficheV2.vue'
-import * as htmlToImage from 'html-to-image'
-import { jsPDF } from 'jspdf'
+// Imports dinámicos se usarán dentro de las funciones para evitar conflictos con Vite
 
 const $q = useQuasar()
 const rows = ref([])
@@ -901,22 +900,42 @@ const aficheFontScale = computed(() => {
   return 1.0
 })
 
+const loadHtmlToImageFromCDN = () => {
+  return new Promise((resolve, reject) => {
+    if (window.htmlToImage) return resolve(window.htmlToImage)
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js'
+    script.onload = () => resolve(window.htmlToImage)
+    script.onerror = () => reject(new Error('Error loading html-to-image from CDN'))
+    document.head.appendChild(script)
+  })
+}
+
 const downloadPDF = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Renderizando PDF...' })
+  $q.loading.show({ message: 'Renderizando PDF (Calidad HD)...' })
   try {
+    // Cargar librerías: html-to-image desde CDN (bypass Vite) y jspdf local
+    const htmlToImage = await loadHtmlToImageFromCDN()
+    const { jsPDF } = await import('jspdf')
+
     await document.fonts.ready
     await new Promise(resolve => setTimeout(resolve, 1000))
     el.style.display = 'flex'; el.style.visibility = 'visible'
+
+    // Configuración exacta que funcionaba antes
     const scale = 3
     const param = {
         height: el.scrollHeight * scale,
         width: 794 * scale,
         style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
-        quality: 1, backgroundColor: '#ffffff', cacheBust: true
+        quality: 1, backgroundColor: '#ffffff', cacheBust: true, pixelRatio: 1
     }
+
+    // Usamos la librería original que renderiza bien
     const dataUrl = await htmlToImage.toPng(el, param)
+
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const imgProps = pdf.getImageProperties(dataUrl)
     const pdfWidth = pdf.internal.pageSize.getWidth()
@@ -935,17 +954,22 @@ const downloadPDF = async () => {
 const downloadImage = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Generando Imagen...' })
+  $q.loading.show({ message: 'Generando Imagen HD...' })
   try {
+    const htmlToImage = await loadHtmlToImageFromCDN()
+
     await document.fonts.ready
     await new Promise(resolve => setTimeout(resolve, 1000))
     el.style.display = 'flex'; el.style.visibility = 'visible'
+
+    // Configuración exacta que funcionaba antes
     const scale = 3
     const param = {
         height: el.scrollHeight * scale, width: 794 * scale,
         style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
-        quality: 1, backgroundColor: '#ffffff', cacheBust: true
+        quality: 1, backgroundColor: '#ffffff', cacheBust: true, pixelRatio: 1
     }
+
     const dataUrl = await htmlToImage.toPng(el, param)
     const link = document.createElement('a')
     link.download = `Afiche_${form.value.titulo}.png`; link.href = dataUrl; link.click()

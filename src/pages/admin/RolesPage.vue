@@ -289,7 +289,7 @@ const openPermissionsDialog = async (role) => {
     // Group by system
     const groups = {}
     res.data.all_permissions.forEach(p => {
-      const systemName = p.systems?.display_name || 'Global'
+      const systemName = p.system || 'Global'
       if (!groups[systemName]) groups[systemName] = []
       groups[systemName].push(p)
     })

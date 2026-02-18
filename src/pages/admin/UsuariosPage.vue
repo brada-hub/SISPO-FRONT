@@ -42,7 +42,7 @@
         <template v-slot:body-cell-rol="props">
           <q-td :props="props">
             <q-chip outline color="primary" icon="security" size="sm" class="text-weight-bold">
-              {{ props.row.rol?.nombre || 'S/R' }}
+              {{ props.row.rol?.name || props.row.rol?.nombre || 'S/R' }}
             </q-chip>
           </q-td>
         </template>
@@ -138,7 +138,7 @@
               </div>
               <div class="col-12 col-sm-4">
                 <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Rol de Sistema</label>
-                <q-select v-model="form.rol_id" :options="rolesOptions" option-value="id" option-label="nombre" outlined dense emit-value map-options :rules="[val => !!val || 'Campo requerido']" />
+                <q-select v-model="form.rol_id" :options="rolesOptions" option-value="id" :option-label="opt => opt.nombre || opt.name || '---'" outlined dense emit-value map-options :rules="[val => !!val || 'Campo requerido']" />
               </div>
               <div class="col-12 col-sm-4">
                 <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Sede Asignada</label>
@@ -418,7 +418,7 @@ const openPermissionsDialog = async (user) => {
     // Group by system
     const groups = {}
     allAvailablePermissions.value.forEach(p => {
-      const systemName = p.systems?.display_name || 'Global'
+      const systemName = p.system || 'Global'
       if (!groups[systemName]) groups[systemName] = []
       groups[systemName].push(p)
     })

@@ -29,14 +29,15 @@ export const useAuthStore = defineStore('auth', {
     return {
       token: localStorage.getItem('token') || null,
       user: storedUser,
-      currentSystem: localStorage.getItem('currentSystem') || 'SISPO', // Por defecto SISPO
+      currentSystem: localStorage.getItem('currentSystem') || 'SISTEMA DE POSTULACION', // Por defecto el sistema de postulaciones
       returnUrl: null
     };
   },
 
   getters: {
     isLoggedIn: (state) => !!state.token,
-    currentUser: (state) => state.user
+    currentUser: (state) => state.user,
+    can: (state) => (permission) => state.user?.permisos?.includes(permission)
   },
 
   actions: {
@@ -46,8 +47,11 @@ export const useAuthStore = defineStore('auth', {
         const response = await api.post('/login', { login_input: loginInput, password })
 
         if (response.data.success) {
+            console.log('LOGIN SUCCESS! FULL RESPONSE:', response.data)
             const token = response.data.data.token
             const user = response.data.data.user
+            console.log('USER RECEIVED:', user)
+            console.log('USER ROL:', user.rol)
 
             this.token = token
             this.user = user
@@ -55,9 +59,9 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('token', token)
             localStorage.setItem('user', JSON.stringify(user))
 
-            // Si el usuario tiene acceso a sistemas, establecer uno por defecto o nulo
+            // Si el usuario tiene acceso a sistemas, establecer uno por defecto
             if (user.systems && user.systems.length > 0) {
-              const defaultSystem = user.systems[0].name
+              const defaultSystem = user.systems[0] // Ahora es un string directo
               this.currentSystem = defaultSystem
               localStorage.setItem('currentSystem', defaultSystem)
             }

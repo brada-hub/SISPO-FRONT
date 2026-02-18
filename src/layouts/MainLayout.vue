@@ -70,7 +70,7 @@
           <div class="flex items-center gap-2 font-bold text-xl tracking-tight">
              <img src="~assets/logo_unitepc.png" class="h-10" alt="UNITEPC" />
           </div>
-          <div class="text-sm text-gray-400">Sistema de Postulaciones</div>
+          <div class="text-sm text-gray-400">Sistema de Gestión de Talento Humano</div>
         </div>
 
         <!-- Menu items -->
@@ -90,9 +90,8 @@
               filled
               dense
               options-dense
-              v-model="systemModel"
+              v-model="authStore.currentSystem"
               :options="systemOptions"
-              option-label="display_name"
               label="Cambiar Sistema"
               class="bg-gray-50 rounded-lg"
               @update:model-value="onSystemChange"
@@ -190,9 +189,9 @@ import ChangePasswordModal from 'src/components/auth/ChangePasswordModal.vue'
 const authStore = useAuthStore()
 useInactivity() // Ahora usa el default de 30 minutos definido en el composable
 
-// El sistema se mantiene siempre en SISPO (estamos en su frontend)
-if (authStore.currentSystem !== 'SISPO') {
-  authStore.setSystem('SISPO')
+// El sistema se mantiene siempre en el de postulación (estamos en su frontend)
+if (authStore.currentSystem !== 'SISTEMA DE POSTULACION') {
+  authStore.setSystem('SISTEMA DE POSTULACION')
 }
 
 const leftDrawerOpen = ref(false)
@@ -205,8 +204,8 @@ const handleHomeClick = () => {
     return
   }
 
-  const rolName = authStore.currentUser?.rol?.name?.toUpperCase() || ''
-  if (['ADMINISTRADOR', 'SUPER ADMIN'].includes(rolName)) {
+  // Redirect based on administrative permissions instead of role names
+  if (authStore.can('usuarios') || authStore.can('roles') || authStore.can('dashboard')) {
     router.push('/admin')
   } else {
     router.push('/admin/postulaciones')
@@ -227,25 +226,15 @@ const systemOptions = computed(() => {
   return authStore.user?.systems || []
 })
 
-const systemModel = ref(null)
-
-// Initialize system dropdown
-watch(() => authStore.currentSystem, (newSystem) => {
-  if (authStore.user?.systems) {
-    systemModel.value = authStore.user.systems.find(s => s.name === newSystem) || authStore.user.systems[0]
-  }
-}, { immediate: true })
-
 const onSystemChange = (val) => {
   if (val) {
-    if (val.name === 'SIGVA') {
-      // SIGVA es un frontend separado — redirigir con token para SSO
-      // NO cambiamos currentSystem para que SISPO mantenga su menú al volver
+    if (val === 'SISTEMA DE GESTIÓN DE VACACIONES' || val === 'SIGVA') {
+      // Redirigir con token para SSO
       const token = localStorage.getItem('token')
-      const sigvaUrl = 'http://localhost:5173' // Puerto de SIGVA-FRONT (ajustar en producción)
+      const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
       window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
     } else {
-      authStore.setSystem('SISPO')
+      authStore.setSystem('SISTEMA DE POSTULACION')
       router.push('/admin') // Ir al dashboard de SISPO
     }
   }
@@ -253,74 +242,24 @@ const onSystemChange = (val) => {
 
 const adminMenuItems = computed(() => {
   const user = authStore.currentUser
-  const currentSystem = authStore.currentSystem // 'SISPO', 'SIGVA', etc.
-  const rolName = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase() || ''
   const userPermisos = user?.permisos || []
 
-  // --- MENU ITEMS FOR SISPO ---
+  // --- MENU ITEMS FOR SISPO (Strict RBAC) ---
   const sispoItems = [
-    { key: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
-    { key: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
-    { key: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
-    { key: 'evaluaciones', label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
-    { key: 'sedes', label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
-    { key: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
-    { key: 'requisitos', label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
+    { permission: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
+    { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
+    { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
+    { permission: 'evaluaciones', label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
+    { permission: 'sedes', label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
+    { permission: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
+    { permission: 'requisitos', label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
+    { permission: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
+    { permission: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
   ]
 
-  // --- MENU ITEMS FOR SIGVA ---
-  const sigvaItems = [
-    { key: 'sigva_dashboard', label: 'Dashboard Vacaciones', icon: 'beach_access', to: '/admin/vacaciones' },
-    { key: 'solicitudes', label: 'Solicitudes', icon: 'assignment', to: '/admin/vacaciones/solicitudes' },
-    { key: 'kardex', label: 'Kardex', icon: 'badge', to: '/admin/vacaciones/kardex' },
-    { key: 'calendario', label: 'Calendario', icon: 'calendar_month', to: '/admin/vacaciones/calendario' },
-    { key: 'reportes', label: 'Reportes', icon: 'bar_chart', to: '/admin/vacaciones/reportes' },
-  ]
-
-  // Shared Admin Items (Users/Roles usually global or system specific but managed here)
-  const adminItems = [
-      { key: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
-      { key: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
-  ]
-
-  let items = []
-
-  // 1. Filter by System
-  if (currentSystem === 'SIGVA') {
-    items = [...sigvaItems]
-  } else {
-    // Default to SISPO
-    items = [...sispoItems]
-  }
-
-  // 2. Add Admin Items if applicable (Usually for SISPO or Global Admin)
-  // For now, let's show Admin items only in SISPO or if Super Admin
-  if (currentSystem === 'SISPO' || rolName === 'SUPER ADMIN') {
-     items = [...items, ...adminItems]
-  }
-
-  // 3. Permission Filtering
-  // Super Admin / Administrador sees everything in the current system context
-  if (['ADMINISTRADOR', 'SUPER ADMIN'].includes(rolName)) return items
-
-  // If specific permissions exist
-  if (userPermisos && userPermisos.length > 0) {
-    return items.filter(item => userPermisos.includes(item.key))
-  }
-
-  // Fallback Roles logic
-  if (rolName === 'USUARIO') {
-    if (currentSystem === 'SISPO') return items.filter(item => ['postulaciones', 'evaluaciones'].includes(item.key))
-    if (currentSystem === 'SIGVA') return items.filter(item => ['solicitudes', 'kardex'].includes(item.key))
-  }
-
-  // Admin logic (hides users/roles if strictly strictly enforced, but here we added them conditionally above)
-  const restrictedKeys = ['usuarios', 'roles']
-  if (rolName !== 'ADMINISTRADOR' && rolName !== 'SUPER ADMIN') {
-      return items.filter(item => !restrictedKeys.includes(item.key))
-  }
-
-  return items
+  // Filter items based on user permissions
+  // NO BYPASS FOR ADMINS - They must have the permission assigned effectively in DB (which they do via Seeder)
+  return sispoItems.filter(item => userPermisos.includes(item.permission))
 })
 
 const setAdminSection = (path) => {
