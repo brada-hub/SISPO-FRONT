@@ -20,6 +20,11 @@ const routes = [
         component: () => import('pages/IndexPage.vue'),
       },
       {
+        path: 'hoja-de-vida-directa',
+        name: 'registro_directo',
+        component: () => import('pages/RegistroDirectoPage.vue'),
+      },
+      {
         path: 'seguimiento',
         name: 'seguimiento',
         component: () => import('pages/ConsultaEstado.vue'),
@@ -47,57 +52,69 @@ const routes = [
         path: '',
         name: 'admin_dashboard',
         component: () => import('pages/admin/DashboardHome.vue'),
-        meta: { permissions: ['dashboard'] }
+        meta: { permissions: ['dashboard'] },
       },
       {
         path: 'sedes',
         component: () => import('pages/admin/SedesPage.vue'),
-        meta: { permissions: ['sedes'] }
+        meta: { permissions: ['sedes'] },
       },
       {
         path: 'cargos',
         component: () => import('pages/admin/CargosPage.vue'),
-        meta: { permissions: ['cargos'] }
+        meta: { permissions: ['cargos'] },
       },
       {
         path: 'requisitos',
         component: () => import('pages/admin/TiposDocumentoPage.vue'),
-        meta: { permissions: ['requisitos'] }
+        meta: { permissions: ['requisitos'] },
       },
       {
         path: 'convocatorias',
         component: () => import('pages/admin/ConvocatoriasPage.vue'),
-        meta: { permissions: ['convocatorias'] }
+        meta: { permissions: ['convocatorias'] },
       },
       {
         path: 'postulaciones',
         component: () => import('pages/admin/PostulacionesPage.vue'),
-        meta: { permissions: ['postulaciones'] }
+        meta: { permissions: ['postulaciones'] },
       },
       {
         path: 'expediente/:id',
         component: () => import('pages/admin/ExpedientePage.vue'),
-        meta: { permissions: ['postulaciones'] }
+        meta: { permissions: ['postulaciones'] },
       },
       {
         path: 'evaluaciones',
         component: () => import('pages/admin/EvaluacionesListPage.vue'),
-        meta: { permissions: ['evaluaciones'] }
+        meta: { permissions: ['evaluaciones'] },
       },
       {
         path: 'evaluacion-tabla',
         component: () => import('pages/admin/EvaluacionTablaPage.vue'),
-        meta: { permissions: ['evaluaciones'] }
+        meta: { permissions: ['evaluaciones'] },
       },
       {
         path: 'usuarios',
         component: () => import('pages/admin/UsuariosPage.vue'),
-        meta: { permissions: ['usuarios'] }
+        meta: { permissions: ['usuarios'] },
       },
       {
         path: 'roles',
         component: () => import('pages/admin/RolesPage.vue'),
-        meta: { permissions: ['roles'] }
+        meta: { permissions: ['roles'] },
+      },
+      {
+        path: 'mi-legajo',
+        name: 'mi_legajo',
+        component: () => import('pages/admin/MiLegajoPage.vue'),
+        meta: { permissions: ['ver_mi_legajo'] },
+      },
+      {
+        path: 'expedientes',
+        name: 'expedientes',
+        component: () => import('pages/admin/ExpedientesPage.vue'),
+        meta: { permissions: ['ver_todo_personal'] }
       },
     ],
   },

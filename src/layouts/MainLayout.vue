@@ -155,11 +155,11 @@
             </button>
 
             <button
-              @click="logout"
-              class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-red-50 border border-red-100 text-red-600 hover:bg-red-600 hover:text-white transition-all group"
+              @click="volverAlPortal"
+              class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-gradient-to-r hover:from-primary hover:to-secondary hover:text-white hover:border-transparent transition-all group"
             >
-              <q-icon name="logout" size="18px" class="rotate-180 group-hover:-translate-x-1 transition-all" />
-              <span class="font-bold text-sm">Cerrar Sesión</span>
+              <q-icon name="home" size="18px" class="group-hover:scale-110 transition-all" />
+              <span class="font-bold text-sm">Volver al Portal</span>
             </button>
           </div>
         </div>
@@ -247,14 +247,13 @@ const adminMenuItems = computed(() => {
   // --- MENU ITEMS FOR SISPO (Strict RBAC) ---
   const sispoItems = [
     { permission: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
+    { permission: 'ver_mi_legajo', label: 'Mi Hoja de Vida', icon: 'assignment_ind', to: '/admin/mi-legajo' },
+    { permission: 'ver_todo_personal', label: 'Expedientes', icon: 'folder_shared', to: '/admin/expedientes' },
     { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
     { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
     { permission: 'evaluaciones', label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
-    { permission: 'sedes', label: 'Sedes', icon: 'apartment', to: '/admin/sedes' },
     { permission: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
     { permission: 'requisitos', label: 'Tipos Documento', icon: 'folder_special', to: '/admin/requisitos' },
-    { permission: 'usuarios', label: 'Usuarios', icon: 'manage_accounts', to: '/admin/usuarios' },
-    { permission: 'roles', label: 'Roles', icon: 'security', to: '/admin/roles' },
   ]
 
   // Filter items based on user permissions
@@ -267,9 +266,9 @@ const setAdminSection = (path) => {
   leftDrawerOpen.value = false
 }
 
-const logout = async () => {
-  await authStore.logout()
-  router.push('/login')
+const volverAlPortal = () => {
+  const ssoUrl = process.env.DEV ? 'http://localhost:9000' : 'https://sigeth.xpertiaplus.com'
+  window.location.href = ssoUrl
 }
 
 // Password Change Logic

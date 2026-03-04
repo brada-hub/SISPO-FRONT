@@ -9,7 +9,7 @@
           <h1 class="header-title">UNITEPC</h1>
           <h2 class="header-subtitle">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h2>
           <h3 class="header-cv">CURRICULUM VITAE</h3>
-          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo }}</h4>
+          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</h4>
         </div>
 
         <div class="seccion-reporte row items-center no-wrap mb-4 px-10">
@@ -40,10 +40,10 @@
               <td class="value name-value">{{ postulacion?.postulante?.nombres }} {{ postulacion?.postulante?.apellidos }}</td>
             </tr>
             <tr>
-              <td class="label">CARGO AL QUE POSTULA:</td>
+              <td class="label">{{ (postulacion?.tipo === 'staff' || postulacion?.rol_id) ? 'CARGO INSTITUCIONAL:' : 'CARGO AL QUE POSTULA:' }}</td>
               <td class="value cargo-value">
-                {{ postulacion?.oferta?.cargo?.nombre }}
-                <span class="sede-text">({{ postulacion?.oferta?.sede?.nombre }})</span>
+                {{ postulacion?.oferta?.cargo?.nombre || postulacion?.rol?.nombre || 'Personal / Postulante' }}
+                <span class="sede-text">({{ postulacion?.oferta?.sede?.nombre || postulacion?.sede?.nombre || '---' }})</span>
               </td>
             </tr>
             <tr>
@@ -73,10 +73,16 @@
               <td class="value">{{ postulacion?.postulante?.celular }}</td>
             </tr>
             <tr>
-              <td class="label">CORREO ELECTRÓNICO:</td>
+              <td class="label">CORREO PERSONAL:</td>
               <td class="value email-value">{{ postulacion?.postulante?.email }}</td>
             </tr>
-            <tr>
+            <tr v-if="postulacion?.email || postulacion?.postulante?.email_institucional">
+              <td class="label">CORREO INSTITUCIONAL:</td>
+              <td class="value" style="color: #663399; font-weight: bold;">
+                {{ postulacion?.email || postulacion?.postulante?.email_institucional }}
+              </td>
+            </tr>
+            <tr v-if="postulacion?.postulante?.carta_postulacion_path && !postulacion?.rol_id">
               <td class="label">CARTA DE POSTULACIÓN:</td>
               <td class="value">
                 <div class="flex justify-center">
@@ -99,27 +105,20 @@
             <tr>
               <td class="label">REFERENCIA PERSONAL:</td>
               <td class="value">
-                Celular: {{ postulacion?.postulante?.ref_personal_celular }} -
+                Telf: {{ postulacion?.postulante?.ref_personal_celular }} -
                 Relación: {{ postulacion?.postulante?.ref_personal_parentesco }}
               </td>
             </tr>
-            <tr>
-              <td class="label">REFERENCIA LABORAL:</td>
-              <td class="value">
-                Celular: {{ postulacion?.postulante?.ref_laboral_celular }} -
-                Detalle: {{ postulacion?.postulante?.ref_laboral_detalle }}
-              </td>
-            </tr>
-            <tr>
+            <tr v-if="postulacion?.pretension_salarial && !postulacion?.rol_id">
               <td class="label">PRETENSIÓN SALARIAL:</td>
               <td class="value font-bold" style="color: #663399;">
                 {{ postulacion?.pretension_salarial ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.` : '---' }}
               </td>
             </tr>
-            <tr>
+            <tr v-if="postulacion?.porque_cargo && !postulacion?.rol_id">
               <td class="label">POR QUÉ EL CARGO:</td>
               <td class="value italic">
-                {{ postulacion?.porque_cargo || '---' }}
+                {{ postulacion?.porque_cargo }}
               </td>
             </tr>
           </table>

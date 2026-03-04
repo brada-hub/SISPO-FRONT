@@ -141,9 +141,31 @@
                 <q-select v-model="form.rol_id" :options="rolesOptions" option-value="id" :option-label="opt => opt.nombre || opt.name || '---'" outlined dense emit-value map-options :rules="[val => !!val || 'Campo requerido']" />
               </div>
               <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Sede Asignada</label>
-                <q-select v-model="form.sede_id" :options="sedesOptions" option-value="id" option-label="nombre" outlined dense emit-value map-options clearable hint="Vacio = Nacional" />
+                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Sede Primaria</label>
+                <q-select v-model="form.sede_id" :options="sedesOptions" option-value="id" option-label="nombre" outlined dense emit-value map-options clearable hint="Donde trabaja físicamente" />
               </div>
+            </div>
+
+            <div class="row">
+               <div class="col-12">
+                 <label class="text-caption text-weight-bold text-indigo font-black uppercase tracking-widest q-mb-xs block">Jurisdicción (Sedes que puede Ver/Administrar)</label>
+                 <q-select
+                   v-model="form.jurisdiccion"
+                   :options="sedesOptions"
+                   option-value="id"
+                   option-label="nombre"
+                   multiple
+                   use-chips
+                   outlined
+                   dense
+                   emit-value
+                   map-options
+                   bg-color="indigo-50"
+                   hint="Si se deja vacío, solo administrará su Sede Primaria"
+                 >
+                   <template v-slot:prepend><q-icon name="visibility" color="indigo" /></template>
+                 </q-select>
+               </div>
             </div>
 
             <div class="flex items-center justify-between q-mt-md bg-grey-1 q-pa-md rounded-lg">
@@ -273,7 +295,8 @@ const form = ref({
   apellido_materno: '',
   ci: '',
   activo: true,
-  must_change_password: false
+  must_change_password: false,
+  jurisdiccion: []
 })
 
 const columns = [
@@ -323,7 +346,8 @@ const openDialog = (item = null) => {
       apellido_materno: '',
       ci: '',
       activo: true,
-      must_change_password: false
+      must_change_password: false,
+      jurisdiccion: []
     }
   }
   dialog.value = true
@@ -342,7 +366,8 @@ const save = async () => {
         apellido_paterno: form.value.apellido_paterno,
         apellido_materno: form.value.apellido_materno,
         ci: form.value.ci,
-        activo: form.value.activo
+        activo: form.value.activo,
+        jurisdiccion: form.value.jurisdiccion
     }
 
     if (isEdit.value) {

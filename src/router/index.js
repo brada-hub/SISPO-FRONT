@@ -48,31 +48,31 @@ export default defineRouter(function ({ store }) {
         return next({ path: '/login', replace: true })
     }
 
-    // --- SSO: Procesar token de la URL (cuando volvemos de SIGVA) ---
+    // --- SSO: Procesar token de la URL (cuando volvemos del Portal SSO) ---
     const urlToken = to.query.token
-    if (urlToken) {
+    const userEncoded = to.query.user
+    if (urlToken && userEncoded) {
         console.log('SSO: Token detected in URL. Authenticating in SISPO...')
         localStorage.setItem('token', urlToken)
-        authStore.token = urlToken // Asegurar que el store tenga el token para la petición
+        authStore.token = urlToken
 
-        // Intentar cargar el usuario de inmediato para evitar fallos en validaciones de roles
         try {
+            // Decodificación segura de base64
+            const decodedStr = decodeURIComponent(escape(atob(userEncoded)))
+            const userData = JSON.parse(decodedStr)
+            authStore.user = userData
+            localStorage.setItem('user', JSON.stringify(userData))
+
+            // Set header for future requests
             const { api } = await import('boot/axios')
             api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`
-            const response = await api.get('/me')
-            if (response.data?.success) {
-                const userData = response.data.data
-                authStore.user = userData
-                localStorage.setItem('user', JSON.stringify(userData))
-            }
-        } catch (e) {
-            console.error('SSO: Failed to fetch user data in SISPO', e)
-        }
 
-        // Redirigir limpiando el token de la URL
-        const cleanQuery = { ...to.query }
-        delete cleanQuery.token
-        return next({ path: to.path, query: cleanQuery, replace: true })
+            // ¡CLAVE! Redirigir a /admin DIRECTAMENTE, no quedarse en /login
+            console.log('SSO: Authentication successful. Redirecting to admin...')
+            return next({ path: '/admin', replace: true })
+        } catch (e) {
+            console.error('SSO: Token/User processing failed', e)
+        }
     }
 
     const token = localStorage.getItem('token')
@@ -81,49 +81,41 @@ export default defineRouter(function ({ store }) {
     if (token && !authStore.user) {
         const storedUser = localStorage.getItem('user')
         if (storedUser && storedUser !== 'undefined') {
-            authStore.user = JSON.parse(storedUser)
-        } else {
-            // Último recurso: Pedir al servidor
             try {
-                const { api } = await import('boot/axios')
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-                const response = await api.get('/me')
-                if (response.data?.success) {
-                    console.log('User recovered via API:', response.data.data)
-                    authStore.user = response.data.data
-                    localStorage.setItem('user', JSON.stringify(authStore.user))
-                }
-            } catch (e) {
-                console.warn('Failed to recover user session', e)
+                authStore.user = JSON.parse(storedUser)
+            } catch (error) {
+                console.warn('Failed to parse stored user, clearing session', error)
                 localStorage.removeItem('token')
+                localStorage.removeItem('user')
                 return next('/login')
             }
+        } else {
+            console.warn('No user in storage, clearing session')
+            localStorage.removeItem('token')
+            return next('/login')
         }
     }
 
     const user = authStore.user
     const userRole = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase()
+    const isAdmin = ['ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
+    const hasSispoPerms = user?.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias'].includes(p)) || false
 
     // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
     // SSO Check: Enforce Redirect if NO SISPO access but HAS SIGVA access
     if (token && user && requiresAuth) {
-        const systems = user.systems || []
-        const hasAccessToSISPO = systems.some(s => s.name === 'SISPO')
-        const hasAccessToSIGVA = systems.some(s => s.name === 'SIGVA')
-        // Check permissions explicitly as fallback if systems array is empty but permissions exist
-        const hasSispoPerms = user.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias'].includes(p))
-
-        // El usuario es valido si tiene acceso a sistemas O si es SUPERA ADMIN/ADMINISTRADOR
-        const isAdmin = ['ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
+        const systems = user.applications || user.systems || []
+        const hasAccessToSISPO = systems.some(s => s.nombre === 'SISPO' || s.name === 'SISPO')
+        const hasAccessToSIGVA = systems.some(s => s.nombre === 'SIGVA' || s.name === 'SIGVA')
 
         if (!hasAccessToSISPO && !hasSispoPerms && !isAdmin) {
             if (hasAccessToSIGVA) {
                 console.log('GlobalGuard: Acceso solo a SIGVA detectado. Redirigiendo...')
                 const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
                 window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
-                return
+                return next(false)
             } else {
                 // CASO SIN SALIDA: Ni SISPO ni SIGVA
                 console.warn('GlobalGuard: Usuario sin sistemas asignados. Cerrando sesión.')
@@ -131,7 +123,7 @@ export default defineRouter(function ({ store }) {
                 localStorage.removeItem('user')
                 // Usamos window.location para asegurar limpieza total
                 window.location.href = '/#/login?error=Usuario%20sin%20sistemas%20asignados'
-                return
+                return next(false)
             }
         }
     }
@@ -142,10 +134,10 @@ export default defineRouter(function ({ store }) {
 
     // 2. Logic for already authenticated users trying to access login
     if (to.path === '/login' && token) {
-      const systems = user?.systems || []
-      const hasAccessToSISPO = systems.some(s => s.name === 'SISPO')
+      const systems = user?.applications || user?.systems || []
+      const hasAccessToSISPO = systems.some(s => s.nombre === 'SISPO' || s.name === 'SISPO')
 
-      if (hasAccessToSISPO) {
+      if (hasAccessToSISPO || isAdmin || hasSispoPerms) {
         if (userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRADOR') return next('/admin')
         return next('/admin/postulaciones')
       }
@@ -197,7 +189,7 @@ export default defineRouter(function ({ store }) {
           // Evitar bucle si ya estamos intentando ir a SIGVA desde una URL que ya falló allí
           if (!window.location.href.includes('sigva.xpertiaplus.com')) {
               window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
-              return
+              return next(false)
           }
       }
 

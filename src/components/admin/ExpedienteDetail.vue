@@ -13,7 +13,7 @@
           <h1 class="header-title">UNITEPC</h1>
           <h2 class="header-subtitle">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h2>
           <h3 class="header-cv">CURRICULUM VITAE</h3>
-          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo }}</h4>
+          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</h4>
         </div>
 
         <!-- PHOTO & LOGO -->
@@ -45,10 +45,10 @@
               <td class="value font-bold text-lg text-[#663399]">{{ postulacion?.postulante?.nombres }} {{ postulacion?.postulante?.apellidos }}</td>
             </tr>
             <tr>
-              <td class="label">CARGO AL QUE POSTULA:</td>
+              <td class="label">{{ (postulacion?.tipo === 'staff' || postulacion?.rol_id) ? 'CARGO INSTITUCIONAL:' : 'CARGO AL QUE POSTULA:' }}</td>
               <td class="value uppercase font-bold">
-                {{ postulacion?.oferta?.cargo?.nombre }}
-                <span class="text-[#663399] ml-2 font-normal">({{ postulacion?.oferta?.sede?.nombre }})</span>
+                {{ postulacion?.oferta?.cargo?.nombre || postulacion?.rol?.nombre || 'Personal / Postulante' }}
+                <span class="text-[#663399] ml-2 font-normal">({{ postulacion?.oferta?.sede?.nombre || postulacion?.sede?.nombre || '---' }})</span>
               </td>
             </tr>
             <tr>
@@ -81,10 +81,16 @@
               <td class="value">{{ postulacion?.postulante?.celular }}</td>
             </tr>
             <tr>
-              <td class="label">CORREO ELECTRÓNICO:</td>
+              <td class="label">CORREO PERSONAL:</td>
               <td class="value text-blue-8 underline">{{ postulacion?.postulante?.email }}</td>
             </tr>
-            <tr>
+            <tr v-if="postulacion?.email || postulacion?.postulante?.email_institucional">
+              <td class="label">CORREO INSTITUCIONAL:</td>
+              <td class="value text-[#663399] font-bold">
+                {{ postulacion?.email || postulacion?.postulante?.email_institucional }}
+              </td>
+            </tr>
+            <tr v-if="postulacion?.postulante?.carta_postulacion_path && !postulacion?.rol_id">
               <td class="label">CARTA DE POSTULACIÓN:</td>
               <td class="value">
                 <div class="row no-wrap items-center gap-4">
@@ -113,27 +119,20 @@
             <tr>
               <td class="label">REFERENCIA PERSONAL:</td>
               <td class="value">
-                Celular: {{ postulacion?.postulante?.ref_personal_celular }} -
+                Telf: {{ postulacion?.postulante?.ref_personal_celular }} -
                 Relación: {{ postulacion?.postulante?.ref_personal_parentesco }}
               </td>
             </tr>
-            <tr>
-              <td class="label">REFERENCIA LABORAL:</td>
-              <td class="value">
-                Celular: {{ postulacion?.postulante?.ref_laboral_celular }} -
-                Detalle: {{ postulacion?.postulante?.ref_laboral_detalle }}
-              </td>
-            </tr>
-            <tr>
+            <tr v-if="postulacion?.pretension_salarial && !postulacion?.rol_id">
               <td class="label">PRETENSIÓN SALARIAL:</td>
               <td class="value font-bold text-teal-8">
                 {{ postulacion?.pretension_salarial ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.` : '---' }}
               </td>
             </tr>
-            <tr>
+            <tr v-if="postulacion?.porque_cargo && !postulacion?.rol_id">
               <td class="label">POR QUÉ EL CARGO:</td>
               <td class="value italic">
-                {{ postulacion?.porque_cargo || '---' }}
+                {{ postulacion?.porque_cargo }}
               </td>
             </tr>
           </table>
@@ -267,8 +266,13 @@ const loadExpediente = async () => {
   if (!props.postulacionId) return
   loading.value = true
   try {
-    const { data } = await api.get(`/postulaciones/${props.postulacionId}/expediente`)
-    postulacion.value = data
+    // If ID contains 'u' or 'p', it's a general expediente. Otherwise it's a postulación ID.
+    const endpoint = (String(props.postulacionId).includes('u') || String(props.postulacionId).includes('p'))
+       ? `/expedientes/${props.postulacionId}`
+       : `/postulaciones/${props.postulacionId}/expediente`
+
+    const { data } = await api.get(endpoint)
+    postulacion.value = data.data || data
   } catch (error) {
     console.error(error)
   } finally {
@@ -279,17 +283,29 @@ const loadExpediente = async () => {
 watch(() => props.postulacionId, loadExpediente, { immediate: true })
 
 const filteredMeritos = computed(() => {
-  if (!postulacion.value?.postulante?.meritos || !postulacion.value?.oferta?.convocatoria?.config_requisitos_ids) return []
+  if (!postulacion.value?.postulante?.meritos) return []
 
-  const allowedIds = postulacion.value.oferta.convocatoria.config_requisitos_ids.map(id => Number(id))
+  const merits = postulacion.value.postulante.meritos
+  const configRequisitos = postulacion.value?.oferta?.convocatoria?.config_requisitos_ids
+
+  let allowedMerits = merits
+
+  // If we have a convocatoria context, filter by its requirements. Otherwise show all with files.
+  if (configRequisitos && Array.isArray(configRequisitos)) {
+     const allowedIds = configRequisitos.map(id => Number(id))
+     allowedMerits = merits.filter(m => allowedIds.includes(Number(m.tipo_documento_id)))
+  }
+
   const groups = {}
-
-  postulacion.value.postulante.meritos.forEach(merito => {
-    const tid = merito.tipo_documento_id
-    if (!allowedIds.includes(tid)) return
+  allowedMerits.forEach(merito => {
     if (!merito.archivos || merito.archivos.length === 0) return
-
-    if (!groups[tid]) groups[tid] = { tipo: merito.tipo_documento, items: [] }
+    const tid = merito.tipo_documento_id
+    if (!groups[tid]) {
+      groups[tid] = {
+        tipo: merito.tipo_documento || merito.tipoDocumento,
+        items: []
+      }
+    }
     groups[tid].items.push(merito)
   })
 
