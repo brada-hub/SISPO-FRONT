@@ -147,14 +147,6 @@
 
           <div class="flex flex-col gap-2">
             <button
-              @click="openManualPasswordChange"
-              class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:text-primary hover:border-primary/30 hover:shadow-sm transition-all group"
-            >
-              <q-icon name="lock" size="18px" class="text-gray-400 group-hover:text-primary group-hover:rotate-12 transition-all" />
-              <span class="font-bold text-sm">Cambiar Contraseña</span>
-            </button>
-
-            <button
               @click="volverAlPortal"
               class="w-full flex items-center gap-3 px-4 py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-gradient-to-r hover:from-primary hover:to-secondary hover:text-white hover:border-transparent transition-all group"
             >
@@ -171,20 +163,16 @@
       <router-view />
     </q-page-container>
 
-    <!-- Standalone Password Change Modal -->
-    <change-password-modal
-      v-model="pwdModal.show"
-      :mandatory="pwdModal.mandatory"
-    />
+
   </q-layout>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from 'src/stores/auth-store'
 import { useInactivity } from 'src/composables/useInactivity'
-import ChangePasswordModal from 'src/components/auth/ChangePasswordModal.vue'
+
 
 const authStore = useAuthStore()
 useInactivity() // Ahora usa el default de 30 minutos definido en el composable
@@ -231,7 +219,7 @@ const onSystemChange = (val) => {
     if (val === 'SISTEMA DE GESTIÓN DE VACACIONES' || val === 'SIGVA') {
       // Redirigir con token para SSO
       const token = localStorage.getItem('token')
-      const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
+      const sigvaUrl = import.meta.env.VITE_SIGVA_FRONT_URL
       window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
     } else {
       authStore.setSystem('SISTEMA DE POSTULACION')
@@ -267,27 +255,9 @@ const setAdminSection = (path) => {
 }
 
 const volverAlPortal = () => {
-  const ssoUrl = process.env.DEV ? 'http://localhost:9000' : 'https://sigeth.xpertiaplus.com'
+  const ssoUrl = import.meta.env.VITE_SSO_FRONT_URL
   window.location.href = ssoUrl
 }
 
-// Password Change Logic
-const pwdModal = ref({
-  show: false,
-  mandatory: false
-})
 
-const openManualPasswordChange = () => {
-  pwdModal.value = { show: true, mandatory: false }
-}
-
-watch(
-  () => authStore.user,
-  (newUser) => {
-    if (newUser?.must_change_password) {
-      pwdModal.value = { show: true, mandatory: true }
-    }
-  },
-  { immediate: true, deep: true },
-)
 </script>

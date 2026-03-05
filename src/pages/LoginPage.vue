@@ -12,7 +12,7 @@ import { onMounted } from 'vue'
 
 onMounted(() => {
   const currentUrl = window.location.origin + window.location.pathname
-  const ssoUrl = import.meta.env.DEV ? 'http://localhost:9000/#/login' : 'https://sigeth.xpertiaplus.com/#/login'
+  const ssoUrl = `${import.meta.env.VITE_SSO_FRONT_URL}/#/login`
 
   // ReturnTo parameter set to the admin dashboard of SISPO
   const returnToUrl = encodeURIComponent(`${currentUrl}#/admin`)

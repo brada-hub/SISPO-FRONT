@@ -9,8 +9,8 @@ import axios from 'axios'
 // for each client)
 const api = axios.create({
   baseURL: process.env.DEV
-    ? 'http://127.0.0.1:8001/api'
-    : 'https://api.sipost.xpertiaplus.com/api'
+    ? '/api'
+    : `${import.meta.env.VITE_SISPO_BACK_URL}/api`
 })
 
 // Request Interceptor to add Token

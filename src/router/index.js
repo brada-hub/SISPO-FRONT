@@ -113,7 +113,7 @@ export default defineRouter(function ({ store }) {
         if (!hasAccessToSISPO && !hasSispoPerms && !isAdmin) {
             if (hasAccessToSIGVA) {
                 console.log('GlobalGuard: Acceso solo a SIGVA detectado. Redirigiendo...')
-                const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
+                const sigvaUrl = import.meta.env.VITE_SIGVA_FRONT_URL
                 window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
                 return next(false)
             } else {
@@ -185,7 +185,7 @@ export default defineRouter(function ({ store }) {
       // 2. SIGVA Redirección
       const sigvaPerms = ['solicitudes', 'vacaciones_dashboard', 'calendario', 'reportes', 'documentacion', 'feriados', 'empleados']
       if (perms.some(p => sigvaPerms.includes(p))) {
-          const sigvaUrl = process.env.DEV ? 'http://localhost:5173' : 'https://sigva.xpertiaplus.com'
+          const sigvaUrl = import.meta.env.VITE_SIGVA_FRONT_URL
           // Evitar bucle si ya estamos intentando ir a SIGVA desde una URL que ya falló allí
           if (!window.location.href.includes('sigva.xpertiaplus.com')) {
               window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
