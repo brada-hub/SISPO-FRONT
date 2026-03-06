@@ -98,8 +98,8 @@ export default defineRouter(function ({ store }) {
 
     const user = authStore.user
     const userRole = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase()
-    const isAdmin = ['ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
-    const hasSispoPerms = user?.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias'].includes(p)) || false
+    const isAdmin = ['ADMINISTRADOR DEL SISTEMA', 'ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
+    const hasSispoPerms = user?.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all'].includes(p)) || false
 
     // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
@@ -137,8 +137,8 @@ export default defineRouter(function ({ store }) {
       const systems = user?.applications || user?.systems || []
       const hasAccessToSISPO = systems.some(s => s.nombre === 'SISPO' || s.name === 'SISPO')
 
-      if (hasAccessToSISPO || isAdmin || hasSispoPerms) {
-        if (userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'ADMINISTRADOR') return next('/admin')
+      if (hasAccessToSISPO || isAdmin || hasSispoPerms || userPermissions.includes('all')) {
+        if (isAdmin || userPermissions.includes('all') || userPermissions.includes('dashboard')) return next('/admin')
         return next('/admin/postulaciones')
       }
       // If no SISPO access, we stay at /login to allow the component to clear the session
@@ -157,10 +157,14 @@ export default defineRouter(function ({ store }) {
 
     // Only check if specific permissions are defined
     if (requiredPermissions) {
-       // Must have at least one of the required permissions
-       const hasPermission = requiredPermissions.some(p => userPermissions.includes(p))
-       if (!hasPermission) {
-           accessGranted = false
+       if (userPermissions.includes('all')) {
+           accessGranted = true;
+       } else {
+           // Must have at least one of the required permissions
+           const hasPermission = requiredPermissions.some(p => userPermissions.includes(p))
+           if (!hasPermission) {
+               accessGranted = false
+           }
        }
     }
 
@@ -191,6 +195,10 @@ export default defineRouter(function ({ store }) {
               window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
               return next(false)
           }
+      }
+
+      if (userPermissions.includes('all')) {
+           return next('/admin')
       }
 
       // 3. Logout (Fallback total si llegamos aquí es porque no tiene permisos para su ruta actual ni para las de su rol)

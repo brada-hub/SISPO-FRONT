@@ -37,8 +37,11 @@ api.interceptors.response.use(
 
       // Redirigir al login y recargar para limpiar estado de Pinia
       if (!window.location.hash.includes('/login')) {
-         window.location.href = '#/login'
-         window.location.reload()
+         window.location.href = '#/login?sesion_exp=true'
+         // Use setTimeout to ensure the hash change is registered before reloading, or better yet, since we are using Vue Router, we don't necessarily need a hard reload if we clear the state, but let's be safe.
+         setTimeout(() => {
+             window.location.reload()
+         }, 100)
       }
     }
     return Promise.reject(error)
