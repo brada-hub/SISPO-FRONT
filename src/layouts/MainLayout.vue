@@ -84,25 +84,7 @@
             <span class="font-bold text-gray-700 group-hover:text-white">Ver Portal Público</span>
           </div>
 
-          <!-- System Selector -->
-          <div v-if="authStore.user?.systems?.length > 1" class="px-4 mb-4">
-            <q-select
-              filled
-              dense
-              options-dense
-              v-model="authStore.currentSystem"
-              :options="systemOptions"
-              label="Cambiar Sistema"
-              class="bg-gray-50 rounded-lg"
-              @update:model-value="onSystemChange"
-            >
-              <template v-slot:prepend>
-                <q-icon name="apps" color="primary" />
-              </template>
-            </q-select>
-          </div>
-
-          <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-4 mb-2">Menú Principal ({{ authStore.currentSystem }})</div>
+          <div class="text-[10px] text-gray-400 font-bold uppercase tracking-widest ml-4 mb-2">Menú Principal (Sistema de Postulación)</div>
 
           <!-- Admin Routes -->
           <template v-if="authStore.isLoggedIn">
@@ -210,23 +192,7 @@ const today = new Date().toLocaleDateString('es-ES', {
   month: 'long',
 })
 
-const systemOptions = computed(() => {
-  return authStore.user?.systems || []
-})
 
-const onSystemChange = (val) => {
-  if (val) {
-    if (val === 'SISTEMA DE GESTIÓN DE VACACIONES' || val === 'SIGVA') {
-      // Redirigir con token para SSO
-      const token = localStorage.getItem('token')
-      const sigvaUrl = import.meta.env.VITE_SIGVA_FRONT_URL
-      window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
-    } else {
-      authStore.setSystem('SISTEMA DE POSTULACION')
-      router.push('/admin') // Ir al dashboard de SISPO
-    }
-  }
-}
 
 const adminMenuItems = computed(() => {
   const user = authStore.currentUser
