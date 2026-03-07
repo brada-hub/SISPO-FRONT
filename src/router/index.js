@@ -99,7 +99,8 @@ export default defineRouter(function ({ store }) {
     const user = authStore.user
     const userRole = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase()
     const isAdmin = ['ADMINISTRADOR DEL SISTEMA', 'ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
-    const hasSispoPerms = user?.permisos?.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all'].includes(p)) || false
+    const userPermissions = user?.permisos || []
+    const hasSispoPerms = userPermissions.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all'].includes(p))
 
     // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
@@ -107,8 +108,20 @@ export default defineRouter(function ({ store }) {
     // SSO Check: Enforce Redirect if NO SISPO access but HAS SIGVA access
     if (token && user && requiresAuth) {
         const systems = user.applications || user.systems || []
-        const hasAccessToSISPO = systems.some(s => s.nombre === 'SISPO' || s.name === 'SISPO')
-        const hasAccessToSIGVA = systems.some(s => s.nombre === 'SIGVA' || s.name === 'SIGVA')
+        // FIX: Use includes() for partial matching because SSO returns names like
+        // 'SISPO - Postulaciones' not just 'SISPO'
+        const checkSystemAccess = (systemName) => systems.some(s => {
+            const nameUpper = systemName.toUpperCase()
+            if (typeof s === 'string') return s.toUpperCase().includes(nameUpper)
+            if (s && s.nombre) return s.nombre.toUpperCase().includes(nameUpper)
+            if (s && s.name) return s.name.toUpperCase().includes(nameUpper)
+            if (s && s.key) return s.key.toUpperCase() === nameUpper
+            return false
+        })
+        const hasAccessToSISPO = checkSystemAccess('SISPO')
+        const hasAccessToSIGVA = checkSystemAccess('SIGVA')
+
+        console.log('GlobalGuard: Systems check -', { systems, hasAccessToSISPO, hasAccessToSIGVA, hasSispoPerms, isAdmin })
 
         if (!hasAccessToSISPO && !hasSispoPerms && !isAdmin) {
             if (hasAccessToSIGVA) {
@@ -121,7 +134,6 @@ export default defineRouter(function ({ store }) {
                 console.warn('GlobalGuard: Usuario sin sistemas asignados. Cerrando sesión.')
                 localStorage.removeItem('token')
                 localStorage.removeItem('user')
-                // Usamos window.location para asegurar limpieza total
                 window.location.href = '/#/login?error=Usuario%20sin%20sistemas%20asignados'
                 return next(false)
             }
@@ -134,14 +146,9 @@ export default defineRouter(function ({ store }) {
 
     // 2. Logic for already authenticated users trying to access login
     if (to.path === '/login' && token) {
-      const systems = user?.applications || user?.systems || []
-      const hasAccessToSISPO = systems.some(s => s.nombre === 'SISPO' || s.name === 'SISPO')
-
-      if (hasAccessToSISPO || isAdmin || hasSispoPerms || userPermissions.includes('all')) {
-        if (isAdmin || userPermissions.includes('all') || userPermissions.includes('dashboard')) return next('/admin')
-        return next('/admin/postulaciones')
+      if (isAdmin || hasSispoPerms || userPermissions.includes('all')) {
+        return next('/admin')
       }
-      // If no SISPO access, we stay at /login to allow the component to clear the session
     }
 
     // 3. Permission-based Access Control
@@ -151,12 +158,10 @@ export default defineRouter(function ({ store }) {
       return acc
     }, null)
 
-    const userPermissions = user?.permisos || []
-
     let accessGranted = true
 
-    // Only check if specific permissions are defined
-    if (requiredPermissions) {
+    // Only check if specific permissions are defined and user is not admin
+    if (requiredPermissions && !isAdmin) {
        if (userPermissions.includes('all')) {
            accessGranted = true;
        } else {
