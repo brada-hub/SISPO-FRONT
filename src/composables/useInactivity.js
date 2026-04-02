@@ -30,8 +30,8 @@ export function useInactivity(timeoutMs = 1800000) { // Default 30 minutos
     // Limpiar localmente primero para que sea instantáneo
     authStore.token = null
     authStore.user = null
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    localStorage.removeItem('sispo_token')
+    localStorage.removeItem('sispo_user')
 
     $q.notify({
       type: 'warning',

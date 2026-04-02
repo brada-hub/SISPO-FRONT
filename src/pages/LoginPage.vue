@@ -11,8 +11,10 @@ const ssoBaseUrl = import.meta.env.VITE_SSO_FRONT_URL
 const currentOrigin = window.location.origin + window.location.pathname
 
 const goToSSO = () => {
+    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
+    const force = urlParams.get('force') === 'true';
     const returnToUrl = encodeURIComponent(`${currentOrigin}#/admin`)
-    window.location.href = `${ssoBaseUrl}/#/login?returnTo=${returnToUrl}`
+    window.location.href = `${ssoBaseUrl}/#/login?returnTo=${returnToUrl}${force ? '&force=true' : ''}`
 }
 
 onMounted(() => {
@@ -25,8 +27,8 @@ onMounted(() => {
   if (token && userBase64) {
     try {
       const user = JSON.parse(decodeURIComponent(escape(atob(userBase64))));
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('sispo_token', token);
+      localStorage.setItem('sispo_user', JSON.stringify(user));
       window.location.href = '#/admin';
       return;
     } catch (e) {
@@ -35,7 +37,7 @@ onMounted(() => {
   }
 
   // Si ya tiene token en localStorage, ir al admin
-  const existingToken = localStorage.getItem('token')
+  const existingToken = localStorage.getItem('sispo_token')
   if (existingToken) {
     window.location.href = '#/admin';
     return;

@@ -328,7 +328,7 @@ const existingFiles = ref({
 const meritos = ref([])
 const tiposDocumento = ref([])
 const sedesOptions = ref([])
-const baseUrl = process.env.VUE_APP_API_URL || 'http://localhost:8000'
+const baseUrl = import.meta.env.VITE_SISPO_BACK_URL || 'http://localhost:8002'
 
 const getFileUrl = (path) => {
    if (!path) return ''

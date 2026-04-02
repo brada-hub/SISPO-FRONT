@@ -201,8 +201,7 @@ const adminMenuItems = computed(() => {
   // --- MENU ITEMS FOR SISPO (Strict RBAC) ---
   const sispoItems = [
     { permission: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
-    { permission: 'ver_mi_legajo', label: 'Mi Hoja de Vida', icon: 'assignment_ind', to: '/admin/mi-legajo' },
-    { permission: 'ver_todo_personal', label: 'Expedientes', icon: 'folder_shared', to: '/admin/expedientes' },
+
     { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
     { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
     { permission: 'evaluaciones', label: 'Evaluación Méritos', icon: 'fact_check', to: '/admin/evaluaciones' },

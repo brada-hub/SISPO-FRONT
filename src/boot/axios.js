@@ -10,12 +10,15 @@ import axios from 'axios'
 const api = axios.create({
   baseURL: process.env.DEV
     ? '/api'
-    : `${import.meta.env.VITE_SISPO_BACK_URL}/api`
+    : `${import.meta.env.VITE_SISPO_BACK_URL}/api`,
+  headers: {
+    'Accept': 'application/json'
+  }
 })
 
 // Request Interceptor to add Token
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
+  const token = localStorage.getItem('sispo_token')
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -28,17 +31,30 @@ api.interceptors.request.use(config => {
 api.interceptors.response.use(
   response => response,
   error => {
-    if (error.response && error.response.status === 401) {
-      console.error('Sesión expirada o no autorizada. Redirigiendo al login...')
+    if (error.response?.status === 401) {
+      console.error('Sesión SISPO expirada o no autorizada. Revisando bucle de redirección...')
+
+      // --- GUARDRAIL: Evitar bucle infinito de redirección 401 ---
+      const now = Date.now()
+      const lastRedirect = parseInt(localStorage.getItem('sispo_last_401') || '0')
+      const redirectCount = parseInt(localStorage.getItem('sispo_401_count') || '0')
+      
+      if (now - lastRedirect < 10000 && redirectCount >= 3) {
+          console.error('API 401: Detectado bucle de redirección. Deteniendo para evitar crasheo.')
+          alert('Error de autenticación SISPO: Se ha detectado un bucle. Limpia la caché y vuelve a entrar.')
+          return Promise.reject(error)
+      }
+
+      localStorage.setItem('sispo_last_401', now.toString())
+      localStorage.setItem('sispo_401_count', (redirectCount + 1).toString())
 
       // Limpiar datos locales
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      localStorage.removeItem('sispo_token')
+      localStorage.removeItem('sispo_user')
 
-      // Redirigir al login y recargar para limpiar estado de Pinia
+      // Redirigir al login de SISPO (el cual redirigirá al SSO con force=true para romper el bucle)
       if (!window.location.hash.includes('/login')) {
-         window.location.href = '#/login?sesion_exp=true'
-         // Use setTimeout to ensure the hash change is registered before reloading, or better yet, since we are using Vue Router, we don't necessarily need a hard reload if we clear the state, but let's be safe.
+         window.location.href = '#/login?force=true'
          setTimeout(() => {
              window.location.reload()
          }, 100)

@@ -328,7 +328,7 @@ const loading = ref(true)
 const saving = ref(false)
 const loadingDocs = ref(false)
 const userRole = ref('')
-const baseUrl = process.env.VUE_APP_API_URL || 'http://localhost:8000'
+const baseUrl = import.meta.env.VITE_SISPO_BACK_URL || 'http://localhost:8002'
 
 // Data models
 const form = ref({})

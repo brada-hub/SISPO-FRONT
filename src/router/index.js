@@ -40,8 +40,9 @@ export default defineRouter(function ({ store }) {
 
     // --- Global Logout: Si venimos de otro sistema pidiendo cerrar sesión ---
     if (to.query.logout === 'true') {
-        console.log('GlobalLogout: Clearing session requested via URL.')
-        localStorage.clear()
+        console.log('GlobalLogout: Clearing SISPO session requested via URL.')
+        localStorage.removeItem('sispo_token')
+        localStorage.removeItem('sispo_user')
         authStore.token = null
         authStore.user = null
         // Limpiar la URL y seguir al login
@@ -53,20 +54,15 @@ export default defineRouter(function ({ store }) {
     const userEncoded = to.query.user
     if (urlToken && userEncoded) {
         console.log('SSO: Token detected in URL. Authenticating in SISPO...')
-        localStorage.setItem('token', urlToken)
         authStore.token = urlToken
-
+        localStorage.setItem('sispo_token', urlToken)
         try {
             // Decodificación segura de base64
             const decodedStr = decodeURIComponent(escape(atob(userEncoded)))
             const userData = JSON.parse(decodedStr)
-            authStore.user = userData
-            localStorage.setItem('user', JSON.stringify(userData))
-
-            // Set header for future requests
-            const { api } = await import('boot/axios')
-            api.defaults.headers.common['Authorization'] = `Bearer ${urlToken}`
-
+            authStore.setToken(urlToken)
+            authStore.setUser(userData)
+            
             // ¡CLAVE! Redirigir a /admin DIRECTAMENTE, no quedarse en /login
             console.log('SSO: Authentication successful. Redirecting to admin...')
             return next({ path: '/admin', replace: true })
@@ -75,67 +71,70 @@ export default defineRouter(function ({ store }) {
         }
     }
 
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('sispo_token')
 
-    // Si hay token pero no hay usuario en el store, intentar recuperarlo de localStorage o API
-    if (token && !authStore.user) {
-        const storedUser = localStorage.getItem('user')
+    // Restore session from localStorage if needed
+    if (!authStore.user && token) {
+        const storedUser = localStorage.getItem('sispo_user')
         if (storedUser && storedUser !== 'undefined') {
             try {
                 authStore.user = JSON.parse(storedUser)
             } catch (error) {
                 console.warn('Failed to parse stored user, clearing session', error)
-                localStorage.removeItem('token')
-                localStorage.removeItem('user')
+                localStorage.removeItem('sispo_token')
+                localStorage.removeItem('sispo_user')
                 return next('/login')
             }
         } else {
-            console.warn('No user in storage, clearing session')
-            localStorage.removeItem('token')
+            console.warn('Token present but no user in storage, forcing re-login.')
+            localStorage.removeItem('sispo_token')
             return next('/login')
         }
     }
 
     const user = authStore.user
-    const userRole = (user?.rol?.name || user?.rol?.nombre)?.toUpperCase()
-    const isAdmin = ['ADMINISTRADOR DEL SISTEMA', 'ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN'].includes(userRole)
-    const userPermissions = user?.permisos || []
-    const hasSispoPerms = userPermissions.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all'].includes(p))
+    
+    // SSO Payload compatibility (SIGETH returns access_metadata grouping by system keys)
+    const accessMetadata = user?.access_metadata || {}
+    const sispoAccess = accessMetadata['sispo'] || accessMetadata['SISPO'] || { roles: [], permissions: [] }
+    
+    // Check for roles in both system-specific and global structures
+    const sispoRoles = (sispoAccess.roles || []).map(r => r.toUpperCase())
+    const globalRoles = (user?.roles || []).map(r => (r.nombres || r).toUpperCase())
+    const allRoles = [...sispoRoles, ...globalRoles]
+
+    const isAdmin = allRoles.some(role => 
+        ['ADMINISTRADOR DEL SISTEMA', 'ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN', 'DIRECTOR'].includes(role)
+    )
+
+    const userPermissions = sispoAccess.permissions || []
+    const hasSispoPerms = userPermissions.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all', 'admin'].includes(p))
 
     // 1. Check if route requires auth
     const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
 
     // SSO Check: Enforce Redirect if NO SISPO access but HAS SIGVA access
-    if (token && user && requiresAuth) {
-        const systems = user.applications || user.systems || []
-        // FIX: Use includes() for partial matching because SSO returns names like
-        // 'SISPO - Postulaciones' not just 'SISPO'
-        const checkSystemAccess = (systemName) => systems.some(s => {
-            const nameUpper = systemName.toUpperCase()
-            if (typeof s === 'string') return s.toUpperCase().includes(nameUpper)
-            if (s && s.nombre) return s.nombre.toUpperCase().includes(nameUpper)
-            if (s && s.name) return s.name.toUpperCase().includes(nameUpper)
-            if (s && s.key) return s.key.toUpperCase() === nameUpper
-            return false
-        })
-        const hasAccessToSISPO = checkSystemAccess('SISPO')
-        const hasAccessToSIGVA = checkSystemAccess('SIGVA')
+    if (token && user && requiresAuth && !isAdmin) {
+        const hasAccessToSISPO = !!accessMetadata['sispo'] || !!accessMetadata['SISPO'] || hasSispoPerms
+        const hasAccessToSIGVA = !!accessMetadata['sigva'] || !!accessMetadata['SIGVA']
 
-        console.log('GlobalGuard: Systems check -', { systems, hasAccessToSISPO, hasAccessToSIGVA, hasSispoPerms, isAdmin })
+        console.log('GlobalGuard: Systems check -', { hasAccessToSISPO, hasAccessToSIGVA, hasSispoPerms, isAdmin })
 
-        if (!hasAccessToSISPO && !hasSispoPerms && !isAdmin) {
+        if (!hasAccessToSISPO && !hasSispoPerms) {
             if (hasAccessToSIGVA) {
-                console.log('GlobalGuard: Acceso solo a SIGVA detectado. Redirigiendo...')
+                console.log('GlobalGuard: User only has SIGVA access. Redirecting.')
                 const sigvaUrl = import.meta.env.VITE_SIGVA_FRONT_URL
-                window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}`
-                return next(false)
+                // Avoid infinite redirect if we are already coming from a failed auth
+                if (!to.query.token) {
+                    const userEncoded = btoa(unescape(encodeURIComponent(JSON.stringify(user))))
+                    window.location.href = `${sigvaUrl}/admin/dashboard?token=${token}&user=${userEncoded}`
+                    return next(false)
+                }
             } else {
-                // CASO SIN SALIDA: Ni SISPO ni SIGVA
-                console.warn('GlobalGuard: Usuario sin sistemas asignados. Cerrando sesión.')
-                localStorage.removeItem('token')
-                localStorage.removeItem('user')
-                window.location.href = '/#/login?error=Usuario%20sin%20sistemas%20asignados'
-                return next(false)
+                console.warn('GlobalGuard: User has no assigned systems. Logging out SISPO.')
+                localStorage.removeItem('sispo_token')
+                localStorage.removeItem('sispo_user')
+                return next('/login?error=Usuario%20sin%20sistemas%20asignados')
             }
         }
     }
@@ -207,9 +206,9 @@ export default defineRouter(function ({ store }) {
       }
 
       // 3. Logout (Fallback total si llegamos aquí es porque no tiene permisos para su ruta actual ni para las de su rol)
-      console.warn('GlobalGuard: Fallback total. Cerrando sesión.')
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+      console.warn('GlobalGuard: Fallback total. Cerrando sesión SISPO.')
+      localStorage.removeItem('sispo_token')
+      localStorage.removeItem('sispo_user')
       return next('/login?error=Permiso_denegado')
     }
 
