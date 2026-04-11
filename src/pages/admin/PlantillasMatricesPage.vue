@@ -180,7 +180,7 @@ const loadData = async () => {
   try {
     const res = await api.get('/plantillas-matrices')
     rows.value = res.data
-  } catch (error) {
+  } catch {
     $q.notify({ type: 'negative', message: 'Error al cargar plantillas' })
   } finally {
     loading.value = false
@@ -222,7 +222,7 @@ const save = async () => {
     }
     dialog.value = false
     loadData()
-  } catch (error) {
+  } catch {
     $q.notify({ type: 'negative', message: 'Error al guardar plantilla' })
   } finally {
     saving.value = false
