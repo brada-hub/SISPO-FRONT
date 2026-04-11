@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="flex justify-between items-center mb-10">
       <div>
-        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Gestión de Postulaciones</h1>
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Gestion de Postulaciones</h1>
         <p class="text-gray-500 font-medium">
           Seleccione una convocatoria y filtre por sede y cargo para gestionar los postulantes.
         </p>
@@ -35,7 +35,7 @@
 
            <div class="relative z-10 w-full">
              <div class="bg-white/20 backdrop-blur-md rounded-lg px-3 py-1 text-white text-[10px] font-black w-fit mb-3 uppercase tracking-tighter">
-               Gestión {{ conv.gestion || 2026 }}
+               Gestion {{ conv.gestion || 2026 }}
              </div>
              <h3 class="text-white text-xl font-black leading-tight uppercase group-hover:translate-x-1 transition-transform">
                {{ conv.titulo }}
@@ -135,7 +135,7 @@
         <div class="lg:col-span-9" v-if="filterSede">
           <div class="text-[11px] font-black text-primary uppercase tracking-[2px] mb-4 flex items-center gap-2">
             <div class="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center">2</div>
-            Seleccione Carrera / Cargo
+            Seleccione Cargo
           </div>
           <div class="flex gap-4 flex-wrap">
              <div
@@ -165,7 +165,7 @@
       </div>
 
       <!-- 3. Final Table (Visible after selection) -->
-      <div v-if="filterSede && filterCargo" class="animate-fade-in">
+      <div v-if="filterSede && filterCargo && filteredRows.length > 0" class="animate-fade-in">
         <!-- Table Header Info -->
         <div class="bg-teal-700 text-white p-6 rounded-t-3xl flex justify-between items-center shadow-lg">
            <div class="flex items-center gap-4">
@@ -308,6 +308,28 @@
         </q-table>
       </div>
 
+      <div
+        v-else-if="selectedConvocatoria && !loading && rows.length === 0"
+        class="flex flex-col items-center justify-center p-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 text-gray-400"
+      >
+         <q-icon name="folder_off" size="64px" class="mb-4 opacity-30" />
+         <div class="text-lg font-black uppercase tracking-widest opacity-60">Sin postulaciones registradas</div>
+         <div class="text-sm mt-2 text-center max-w-xl">
+           La convocatoria seleccionada no tiene postulaciones disponibles para tu alcance actual.
+         </div>
+      </div>
+
+      <div
+        v-else-if="filterSede && filterCargo && filteredRows.length === 0"
+        class="flex flex-col items-center justify-center p-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 text-gray-400"
+      >
+         <q-icon name="filter_alt_off" size="64px" class="mb-4 opacity-30" />
+         <div class="text-lg font-black uppercase tracking-widest opacity-60">Sin resultados para el filtro actual</div>
+         <div class="text-sm mt-2 text-center max-w-xl">
+           Prueba cambiando la sede, el cargo o la busqueda para ver otras postulaciones.
+         </div>
+      </div>
+
       <!-- Empty State for Step 3 -->
       <div v-else-if="filterSede" class="flex flex-col items-center justify-center p-20 bg-white rounded-3xl border-2 border-dashed border-gray-100 text-gray-400">
          <q-icon name="mouse" size="64px" class="mb-4 opacity-20" />
@@ -414,9 +436,9 @@ const refreshData = () => {
 }
 const statusLabels = {
   enviada: 'Postulado',
-  en_revision: 'En Evaluación',
-  validada: 'Pre-seleccionado',
-  observada: 'Con Observación',
+  en_revision: 'En evaluacion',
+  validada: 'Preseleccionado',
+  observada: 'Con observacion',
   rechazada: 'No Seleccionado',
 }
 const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
@@ -535,14 +557,14 @@ const columns = [
   },
   {
     name: 'fecha_postulacion',
-    label: 'Fecha Postulación',
+    label: 'Fecha Postulacion',
     field: 'fecha_postulacion',
     sortable: true,
     align: 'left',
   },
   {
     name: 'pretension_salarial',
-    label: 'Pretensión Salarial',
+    label: 'Pretension Salarial',
     field: 'pretension_salarial',
     sortable: true,
     align: 'center',
@@ -585,6 +607,9 @@ const loadConvocatorias = async () => {
   try {
     const { data } = await api.get('/admin/convocatorias-con-postulantes')
     convocatorias.value = data
+    if (data.length === 1) {
+      await selectConvocatoria(data[0])
+    }
   } catch (error) {
     console.error(error)
     $q.notify({ type: 'negative', message: 'Error al cargar las convocatorias' })
@@ -594,6 +619,7 @@ const loadConvocatorias = async () => {
 }
 
 const selectConvocatoria = async (convocatoria) => {
+  clearFilters()
   selectedConvocatoria.value = convocatoria
   loading.value = true
   try {
@@ -601,7 +627,7 @@ const selectConvocatoria = async (convocatoria) => {
     rows.value = data
     // Si solo hay una sede, seleccionarla automáticamente
     const sedes = [...new Set(data.map(r => r.oferta?.sede?.nombre).filter(Boolean))]
-    if (sedes.length === 1) {
+    if (sedes.length > 0) {
       filterSede.value = sedes[0]
     }
   } catch (error) {
@@ -628,8 +654,8 @@ const viewExpediente = (row) => {
 
 const deletePostulante = (row) => {
   $q.dialog({
-    title: 'Confirmar Eliminación',
-    message: `¿Está seguro de eliminar a ${row.postulante.nombres} ${row.postulante.apellidos}? Esta acción no se puede deshacer.`,
+    title: 'Confirmar eliminacion',
+    message: `Esta seguro de eliminar a ${row.postulante.nombres} ${row.postulante.apellidos}? Esta acción no se puede deshacer.`,
     persistent: true,
     ok: {
       label: 'Eliminar',
@@ -715,7 +741,7 @@ const processImport = async () => {
 
     $q.notify({
       type: 'positive',
-      message: `¡Importación completada! ${data.imported} registros procesados.`,
+      message: `Importacion completada: ${data.imported} registros procesados.`,
       position: 'top',
     })
 
@@ -795,3 +821,4 @@ onMounted(loadConvocatorias)
   font-weight: 500;
 }
 </style>
+

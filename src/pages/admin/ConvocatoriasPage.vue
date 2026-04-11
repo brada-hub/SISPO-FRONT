@@ -463,6 +463,75 @@
                   </q-card-section>
                 </q-card>
               </q-expansion-item>
+
+              <q-separator />
+
+              <!-- SECTION 5: MATRIZ DE EVALUACIÓN -->
+              <q-expansion-item
+                v-model="expandMatriz"
+                icon="assessment"
+                label="5. Matriz de Evaluación"
+                caption="Criterios y puntajes"
+                header-class="bg-grey-1 font-bold text-primary"
+              >
+                <q-card>
+                  <q-card-section class="py-4 space-y-3">
+                    <div class="flex items-center justify-between mb-4">
+                       <div class="text-[11px] font-bold text-gray-500 uppercase">Configuración de Matriz</div>
+                       <div class="flex gap-2">
+                          <q-btn-dropdown outline color="indigo" label="Cargar Plantilla" size="sm" icon="cloud_download" auto-close v-if="catalogPlantillas && catalogPlantillas.length > 0">
+                            <q-list separator>
+                               <q-item v-for="p in catalogPlantillas" :key="p.id" clickable @click="cargarPlantillaEnConvocatoria(p)">
+                                 <q-item-section>
+                                    <q-item-label class="font-bold text-xs">{{ p.nombre }}</q-item-label>
+                                    <q-item-label caption class="text-[10px]">{{ p.matriz ? p.matriz.length : 0 }} Secciones</q-item-label>
+                                 </q-item-section>
+                               </q-item>
+                            </q-list>
+                          </q-btn-dropdown>
+                          <q-btn outline color="primary" label="Añadir Sección" icon="add" size="sm" @click="addSeccion" />
+                       </div>
+                    </div>
+
+                    <div v-for="(sec, sIdx) in form.matriz_evaluacion" :key="sIdx" class="border border-gray-200 rounded-xl p-3 bg-gray-50/50 relative">
+                       <q-btn round flat icon="close" size="xs" color="negative" class="absolute top-2 right-2" @click="removeSeccion(sIdx)" />
+                       
+                       <q-input v-model="sec.seccion" label="Nombre de Sección (Ej: FORMACIÓN PROFESIONAL)" outlined dense class="mb-3 w-11/12 text-weight-bold" bg-color="white" :rules="[val => !!val || '*']" />
+                       
+                       <div class="text-[10px] font-bold text-gray-400 mb-2 uppercase">Criterios de Evaluación:</div>
+                       <div class="space-y-2">
+                          <div v-for="(crit, cIdx) in sec.criterios" :key="cIdx" class="row q-col-gutter-sm items-start">
+                             <div class="col-4">
+                                <q-input v-model="crit.nombre" label="Criterio" dense outlined bg-color="white" placeholder="Ej: Título Académico" :rules="[val => !!val || '*']"/>
+                             </div>
+                             <div class="col-2">
+                                <q-input v-model.number="crit.puntaje" label="Pts Máx" type="number" dense outlined bg-color="white" />
+                             </div>
+                             <div class="col-5">
+                                <q-input v-model="crit.descripcion" label="Descripción / Base" dense outlined bg-color="white" />
+                             </div>
+                             <div class="col-1 flex flex-center">
+                                <q-btn icon="delete" flat round color="negative" size="sm" @click="removeCriterio(sIdx, cIdx)" />
+                             </div>
+                          </div>
+                       </div>
+                       
+                       <q-btn flat color="teal" label="Añadir Criterio" icon="add" size="sm" class="mt-2" @click="addCriterio(sIdx)" />
+                       
+                       <div class="text-right text-xs font-bold text-primary mt-2">
+                          Subtotal: {{ sec.criterios.reduce((acc, c) => acc + (Number(c.puntaje) || 0), 0) }} pts
+                       </div>
+                    </div>
+                    
+                    <div v-if="form.matriz_evaluacion && form.matriz_evaluacion.length > 0" class="bg-primary/10 text-primary p-3 rounded-lg text-center font-bold text-sm mt-4">
+                       PUNTAJE TOTAL CONVOCATORIA: {{ form.matriz_evaluacion.reduce((acc, sec) => acc + sec.criterios.reduce((a, c) => a + (Number(c.puntaje) || 0), 0), 0) }} PTS
+                    </div>
+                    <div v-else class="text-center text-gray-400 text-xs py-4 italic">
+                       No se ha definido una matriz. Añade una sección para empezar.
+                    </div>
+                  </q-card-section>
+                </q-card>
+              </q-expansion-item>
             </q-list>
           </div>
 
@@ -585,6 +654,7 @@ const rows = ref([])
 const catalogSedes = ref([])
 const catalogCargos = ref([])
 const catalogRequisitos = ref([])
+const catalogPlantillas = ref([])
 const loading = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
@@ -599,6 +669,7 @@ const expandBasic = ref(true)
 const expandOffers = ref(false)
 const expandReqs = ref(false)
 const expandContent = ref(false)
+const expandMatriz = ref(false)
 const copied = ref(false)
 
 // Multiselect logic for Section 2
@@ -659,7 +730,26 @@ watch(() => quickCargo.value.nombre, (newVal) => {
   if (!manualSiglaCargo.value) quickCargo.value.sigla = helperGenerarSigla(newVal)
 })
 
-const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} })
+const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {}, matriz_evaluacion: [] })
+
+const addSeccion = () => {
+  if (!form.value.matriz_evaluacion) form.value.matriz_evaluacion = [];
+  form.value.matriz_evaluacion.push({ seccion: '', criterios: [ { nombre: '', puntaje: 0, descripcion: '' } ] });
+}
+const removeSeccion = (i) => { form.value.matriz_evaluacion.splice(i, 1) }
+const addCriterio = (sIdx) => { form.value.matriz_evaluacion[sIdx].criterios.push({ nombre: '', puntaje: 0, descripcion: '' }) }
+const removeCriterio = (sIdx, cIdx) => { form.value.matriz_evaluacion[sIdx].criterios.splice(cIdx, 1) }
+
+const cargarPlantillaEnConvocatoria = (plantilla) => {
+  $q.dialog({
+    title: 'Cargar Plantilla',
+    message: 'Esto reemplazará los criterios que hayas configurado. ¿Estás seguro?',
+    cancel: true
+  }).onOk(() => {
+    form.value.matriz_evaluacion = plantilla.matriz ? JSON.parse(JSON.stringify(plantilla.matriz)) : [];
+    $q.notify({ type: 'positive', message: 'Plantilla cargada con éxito', color: 'indigo' });
+  })
+}
 
 const syncOffers = (newMany) => {
   if (!buildOne.value) return
@@ -787,11 +877,18 @@ watch(() => form.value.ofertas, (newOffers) => {
 const loadData = async () => {
   loading.value = true
   try {
-    const [convRes, sedeRes, cargoRes, reqRes] = await Promise.all([api.get('/convocatorias'), api.get('/sedes'), api.get('/cargos'), api.get('/tipos-documento')])
+    const [convRes, sedeRes, cargoRes, reqRes, plantillasRes] = await Promise.all([
+       api.get('/convocatorias'), 
+       api.get('/sedes'), 
+       api.get('/cargos'), 
+       api.get('/tipos-documento'),
+       api.get('/plantillas-matrices')
+    ])
     rows.value = convRes.data
     catalogSedes.value = sedeRes.data
     catalogCargos.value = cargoRes.data
     catalogRequisitos.value = reqRes.data
+    catalogPlantillas.value = plantillasRes.data
   } catch {
     $q.notify({ type: 'negative', message: 'Error cargando catálogos' })
   } finally {
@@ -812,11 +909,12 @@ const openDialog = (item = null) => {
       config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
       requisitos_opcionales: Array.isArray(item.requisitos_opcionales) ? item.requisitos_opcionales : [],
       requisitos_afiche: item.requisitos_afiche || {},
+      matriz_evaluacion: Array.isArray(item.matriz_evaluacion) ? item.matriz_evaluacion : [],
       ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []
     }
   } else {
     isEdit.value = false
-    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {} }
+    form.value = { id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {}, matriz_evaluacion: [] }
   }
   manualCodigoInterno.value = false; dialog.value = true
 }
@@ -830,6 +928,7 @@ const viewAfiche = (item) => {
     config_requisitos_ids: Array.isArray(item.config_requisitos_ids) ? item.config_requisitos_ids : [],
     requisitos_opcionales: Array.isArray(item.requisitos_opcionales) ? item.requisitos_opcionales : [],
     requisitos_afiche: item.requisitos_afiche || {},
+    matriz_evaluacion: Array.isArray(item.matriz_evaluacion) ? item.matriz_evaluacion : [],
     ofertas: item.ofertas?.map(o => ({ sede_id: o.sede_id, cargo_id: o.cargo_id, vacantes: o.vacantes })) || []
   }
   dialog.value = true

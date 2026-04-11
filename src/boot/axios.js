@@ -8,9 +8,7 @@ import axios from 'axios'
 // "export default () => {}" function below (which runs individually
 // for each client)
 const api = axios.create({
-  baseURL: process.env.DEV
-    ? '/api'
-    : `${import.meta.env.VITE_SISPO_BACK_URL}/api`,
+  baseURL: `${import.meta.env.VITE_SISPO_BACK_URL}/api`,
   headers: {
     'Accept': 'application/json'
   }

@@ -160,31 +160,48 @@
                     <th rowspan="2" class="header-v bg-grey-2">Año Título</th>
                     <th rowspan="2" class="header-v bg-grey-2">Pretensión Salarial</th>
 
-                    <th colspan="4" class="bg-primary text-white area-title">FORMACIÓN PROFESIONAL (20 pts)</th>
-                    <th colspan="4" class="bg-secondary text-white area-title">PERFECCIONAMIENTO PROFESIONAL (20 pts)</th>
-                    <th colspan="5" class="bg-primary text-white area-title">EXPERIENCIA ACADEMICA (50 pts)</th>
-                    <th colspan="3" class="bg-secondary text-white area-title">OTROS MERITOS (10 pts)</th>
+                    <template v-if="currentMatriz">
+                        <th v-for="(sec, sIdx) in currentMatriz" :key="'sec'+sIdx" :colspan="sec.criterios.length" class="text-white area-title" :class="sIdx % 2 === 0 ? 'bg-primary' : 'bg-secondary'">
+                           {{ sec.seccion }} ({{ sec.criterios.reduce((acc, c) => acc + (Number(c.puntaje)||0), 0) }} pts)
+                        </th>
+                    </template>
+                    <template v-else>
+                        <th colspan="4" class="bg-primary text-white area-title">FORMACIÓN PROFESIONAL (20 pts)</th>
+                        <th colspan="4" class="bg-secondary text-white area-title">PERFECCIONAMIENTO PROFESIONAL (20 pts)</th>
+                        <th colspan="5" class="bg-primary text-white area-title">EXPERIENCIA ACADEMICA (50 pts)</th>
+                        <th colspan="3" class="bg-secondary text-white area-title">OTROS MERITOS (10 pts)</th>
+                    </template>
 
                     <th rowspan="2" class="bg-primary text-white final-score-header">PUNTAJE FINAL</th>
                     <th rowspan="2" class="header-cell" style="min-width: 250px;">OBSERVACIONES</th>
                   </tr>
                   <tr class="sub-headers">
-                    <th class="sub-h">Diplomado (3 pts)</th>
-                    <th class="sub-h">Especialización (4 pts)</th>
-                    <th class="sub-h">Maestría (6 pts)</th>
-                    <th class="sub-h">Doctorado (7 pts)</th>
-                    <th class="sub-h">Cursos area > 120 hrs (3 p/c max 9)</th>
-                    <th class="sub-h">Cursillos/Semin. > 20 hrs (1 p max 5)</th>
-                    <th class="sub-h">Disertante congresos (1 p max 3)</th>
-                    <th class="sub-h">Formación Pedagóg. (1 p max 3)</th>
-                    <th class="sub-h">Ejercicio Profesional (1 p/año max 15)</th>
-                    <th class="sub-h">Docencia Ejercida (1 p/sem max 10)</th>
-                    <th class="sub-h">Tutoría de Tesis (1 p max 5)</th>
-                    <th class="sub-h">Docente Postgrado (1 p max 5)</th>
-                    <th class="sub-h">Cargos Similares (max 15)</th>
-                    <th class="sub-h">Revistas Indexadas (1 p max 3)</th>
-                    <th class="sub-h">Libros/Textos (1 p max 3)</th>
-                    <th class="sub-h">Distinciones Honoríf. (1 p max 4)</th>
+                    <template v-if="currentMatriz">
+                        <th v-for="col in dynamicColumns" :key="'col'+col.id" class="sub-h cursor-help">
+                            {{ col.nombre }} ({{ col.puntaje }} pts)
+                            <q-tooltip class="bg-primary text-white text-subtitle2" anchor="top middle" self="bottom middle" :offset="[10, 10]">
+                              {{ col.nombre }} (Máximo: {{ col.puntaje }} pts)
+                            </q-tooltip>
+                        </th>
+                    </template>
+                    <template v-else>
+                        <th class="sub-h cursor-help">Diplomado (3 pts)<q-tooltip class="bg-primary text-white text-subtitle2">Diplomado (Máx: 3 pts)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Especialización (4 pts)<q-tooltip class="bg-primary text-white text-subtitle2">Especialización (Máx: 4 pts)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Maestría (6 pts)<q-tooltip class="bg-primary text-white text-subtitle2">Maestría (Máx: 6 pts)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Doctorado (7 pts)<q-tooltip class="bg-primary text-white text-subtitle2">Doctorado (Máx: 7 pts)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Cursos area > 120 hrs (3 p/c max 9)<q-tooltip class="bg-primary text-white text-subtitle2">Cursos area > 120 hrs (3 p/c max 9)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Cursillos/Semin. > 20 hrs (1 p max 5)<q-tooltip class="bg-primary text-white text-subtitle2">Cursillos/Semin. > 20 hrs (1 p max 5)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Disertante congresos (1 p max 3)<q-tooltip class="bg-primary text-white text-subtitle2">Disertante congresos (1 p max 3)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Formación Pedagóg. (1 p max 3)<q-tooltip class="bg-primary text-white text-subtitle2">Formación Pedagóg. (1 p max 3)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Ejercicio Profesional (1 p/año max 15)<q-tooltip class="bg-primary text-white text-subtitle2">Ejercicio Profesional (1 p/año max 15)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Docencia Ejercida (1 p/sem max 10)<q-tooltip class="bg-primary text-white text-subtitle2">Docencia Ejercida (1 p/sem max 10)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Tutoría de Tesis (1 p max 5)<q-tooltip class="bg-primary text-white text-subtitle2">Tutoría de Tesis (1 p max 5)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Docente Postgrado (1 p max 5)<q-tooltip class="bg-primary text-white text-subtitle2">Docente Postgrado (1 p max 5)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Cargos Similares (max 15)<q-tooltip class="bg-primary text-white text-subtitle2">Cargos Similares (max 15)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Revistas Indexadas (1 p max 3)<q-tooltip class="bg-primary text-white text-subtitle2">Revistas Indexadas (1 p max 3)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Libros/Textos (1 p max 3)<q-tooltip class="bg-primary text-white text-subtitle2">Libros/Textos (1 p max 3)</q-tooltip></th>
+                        <th class="sub-h cursor-help">Distinciones Honoríf. (1 p max 4)<q-tooltip class="bg-primary text-white text-subtitle2">Distinciones Honoríf. (1 p max 4)</q-tooltip></th>
+                    </template>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,7 +220,7 @@
                     <td class="text-center bg-grey-1 font-bold">{{ row.extraInfo.anio }}</td>
                     <td class="text-center bg-teal-1 font-bold text-secondary cursor-pointer">
                       Bs. <br>{{ Math.round(row.pretension_salarial || 0) }}
-                      <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope">
+                      <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope" @save="saveRow(row)">
                         <q-input
                           v-model.number="scope.value"
                           dense
@@ -216,20 +233,33 @@
                       </q-popup-edit>
                     </td>
 
-                    <td v-for="field in meritFields" :key="field" class="score-cell">
-                      <div class="cell-val" :class="getFieldColorClass(field)">{{ row.evalData[field] }}</div>
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <div class="bg-grey-9 text-white q-pa-sm text-center text-weight-bold" style="font-size: 11px;">{{ getFieldLabel(field) }}</div>
-                        <div class="q-pa-xs bg-white shadow-10 rounded-borders row justify-center" style="max-width: 250px">
-                          <q-btn v-for="v in getOptionsForField(field)" :key="v" dense unelevated :label="v" :color="row.evalData[field] === v ? 'primary' : 'grey-2'" :text-color="row.evalData[field] === v ? 'white' : 'black'" class="q-ma-xs btn-fixed" @click="row.evalData[field] = v" v-close-popup />
-                        </div>
-                      </q-popup-proxy>
-                    </td>
+                    <template v-if="currentMatriz">
+                       <td v-for="col in dynamicColumns" :key="col.id" class="score-cell">
+                         <div class="cell-val" :class="col.sectionIndex % 2 === 0 ? 'text-primary' : 'text-secondary'">{{ row.evalData[col.id] }}</div>
+                         <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                           <div class="bg-grey-9 text-white q-pa-sm text-center text-weight-bold" style="font-size: 11px;">{{ col.nombre }}</div>
+                           <div class="q-pa-xs bg-white shadow-10 rounded-borders row justify-center" style="max-width: 250px">
+                             <q-btn v-for="v in getDynamicOptions(col.puntaje)" :key="v" dense unelevated :label="v" :color="row.evalData[col.id] === v ? 'primary' : 'grey-2'" :text-color="row.evalData[col.id] === v ? 'white' : 'black'" class="q-ma-xs btn-fixed" @click="updateFieldAndSave(row, col.id, v)" v-close-popup />
+                           </div>
+                         </q-popup-proxy>
+                       </td>
+                    </template>
+                    <template v-else>
+                       <td v-for="field in meritFields" :key="field" class="score-cell">
+                         <div class="cell-val" :class="getFieldColorClass(field)">{{ row.evalData[field] }}</div>
+                         <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                           <div class="bg-grey-9 text-white q-pa-sm text-center text-weight-bold" style="font-size: 11px;">{{ getFieldLabel(field) }}</div>
+                           <div class="q-pa-xs bg-white shadow-10 rounded-borders row justify-center" style="max-width: 250px">
+                             <q-btn v-for="v in getOptionsForField(field)" :key="v" dense unelevated :label="v" :color="row.evalData[field] === v ? 'primary' : 'grey-2'" :text-color="row.evalData[field] === v ? 'white' : 'black'" class="q-ma-xs btn-fixed" @click="updateFieldAndSave(row, field, v)" v-close-popup />
+                           </div>
+                         </q-popup-proxy>
+                       </td>
+                    </template>
 
                     <td class="text-center text-weight-bolder text-h6 bg-grey-2" :class="calculateTotal(row) < 51 ? 'text-red' : 'text-secondary'">
                       {{ calculateTotal(row) }}
                     </td>
-                    <td class="bg-white"><textarea v-model="row.evalData.observaciones" class="cell-textarea" rows="2"></textarea></td>
+                    <td class="bg-white"><textarea v-model="row.evalData.observaciones" class="cell-textarea" rows="2" @input="debouncedSaveRow(row)"></textarea></td>
                   </tr>
                 </tbody>
               </table>
@@ -292,6 +322,7 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import ExcelJS from 'exceljs'
 import { saveAs } from 'file-saver'
+import { debounce } from 'quasar'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 
 const route = useRoute()
@@ -418,8 +449,40 @@ const headerInfo = ref({
   nombre: '',
   gestion: '',
   fecha_inicio: '',
-  fecha_cierre: ''
+  fecha_cierre: '',
+  matriz: null,
 })
+
+const currentMatriz = computed(() => {
+  if (headerInfo.value.matriz && Array.isArray(headerInfo.value.matriz) && headerInfo.value.matriz.length > 0) {
+     return headerInfo.value.matriz
+  }
+  return null
+})
+
+const dynamicColumns = computed(() => {
+   if (!currentMatriz.value) return []
+   let cols = []
+   currentMatriz.value.forEach((sec, sIdx) => {
+     sec.criterios.forEach((crit, cIdx) => {
+        cols.push({
+           id: `s${sIdx}_c${cIdx}`,
+           nombre: crit.nombre,
+           puntaje: Number(crit.puntaje) || 0,
+           sectionIndex: sIdx
+        })
+     })
+   })
+   return cols
+})
+
+const getDynamicOptions = (maxPuntaje) => {
+   let opts = []
+   for(let i=0; i<=maxPuntaje; i++) {
+     opts.push(i)
+   }
+   return opts
+}
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '-'
@@ -548,6 +611,7 @@ const loadData = async () => {
           headerInfo.value.gestion = convo.gestion
           headerInfo.value.fecha_inicio = convo.fecha_inicio
           headerInfo.value.fecha_cierre = convo.fecha_cierre
+          headerInfo.value.matriz = convo.matriz_evaluacion
         }
       } catch (e) {
         console.error('Error fetching convocatoria info:', e)
@@ -564,6 +628,7 @@ const loadData = async () => {
         headerInfo.value.gestion = convoData.gestion
         headerInfo.value.fecha_inicio = convoData.fecha_inicio
         headerInfo.value.fecha_cierre = convoData.fecha_cierre
+        headerInfo.value.matriz = convoData.matriz_evaluacion
       }
     }
 
@@ -578,29 +643,42 @@ const loadData = async () => {
       const area = formacion?.respuestas?.profesion || '-'
       const anioRaw = formacion?.respuestas?.fecha_titulo || ''
       const anio = anioRaw ? anioRaw.split('-')[0] : '-'
+      
+      let evalData = {}
+      if (headerInfo.value.matriz && headerInfo.value.matriz.length > 0) {
+          headerInfo.value.matriz.forEach((sec, sIdx) => {
+             sec.criterios.forEach((crit, cIdx) => {
+                let key = `s${sIdx}_c${cIdx}`
+                evalData[key] = existing[key] !== undefined ? existing[key] : 0
+             })
+          })
+          evalData.observaciones = postulacion.evaluacion?.observaciones || ''
+      } else {
+          evalData = {
+              a1_diplomado: existing.a1_diplomado || 0,
+              a1_especialidad: existing.a1_especialidad || 0,
+              a1_maestria: existing.a1_maestria || 0,
+              a1_doctorado: existing.a1_doctorado || 0,
+              a2_cursos_120: existing.a2_cursos_120 || 0,
+              a2_cursos_20: existing.a2_cursos_20 || 0,
+              a2_disertante: existing.a2_disertante || 0,
+              a2_pedagogico: existing.a2_pedagogico || 0,
+              a3_ejercicio_prof: existing.a3_ejercicio_prof || 0,
+              a3_docencia: existing.a3_docencia || 0,
+              a3_tutorias: existing.a3_tutorias || 0,
+              a3_docente_post: existing.a3_docente_post || 0,
+              a3_cargos_sim: existing.a3_cargos_sim || 0,
+              a4_revistas: existing.a4_revistas || 0,
+              a4_libros: existing.a4_libros || 0,
+              a4_distinciones: existing.a4_distinciones || 0,
+              observaciones: postulacion.evaluacion?.observaciones || '',
+          }
+      }
 
       return {
         ...postulacion,
         extraInfo: { area, anio },
-        evalData: {
-          a1_diplomado: existing.a1_diplomado || 0,
-          a1_especialidad: existing.a1_especialidad || 0,
-          a1_maestria: existing.a1_maestria || 0,
-          a1_doctorado: existing.a1_doctorado || 0,
-          a2_cursos_120: existing.a2_cursos_120 || 0,
-          a2_cursos_20: existing.a2_cursos_20 || 0,
-          a2_disertante: existing.a2_disertante || 0,
-          a2_pedagogico: existing.a2_pedagogico || 0,
-          a3_ejercicio_prof: existing.a3_ejercicio_prof || 0,
-          a3_docencia: existing.a3_docencia || 0,
-          a3_tutorias: existing.a3_tutorias || 0,
-          a3_docente_post: existing.a3_docente_post || 0,
-          a3_cargos_sim: existing.a3_cargos_sim || 0,
-          a4_revistas: existing.a4_revistas || 0,
-          a4_libros: existing.a4_libros || 0,
-          a4_distinciones: existing.a4_distinciones || 0,
-          observaciones: postulacion.evaluacion?.observaciones || '',
-        },
+        evalData: evalData
       }
     })
 
@@ -618,12 +696,20 @@ const loadData = async () => {
 }
 
 const calculateTotal = (row) => {
-  const d = row.evalData
-  const area1 = Math.min((d.a1_diplomado || 0) + (d.a1_especialidad || 0) + (d.a1_maestria || 0) + (d.a1_doctorado || 0), 20)
-  const area2 = Math.min((d.a2_cursos_120 || 0) + (d.a2_cursos_20 || 0) + (d.a2_disertante || 0) + (d.a2_pedagogico || 0), 20)
-  const area3 = Math.min((d.a3_ejercicio_prof || 0) + (d.a3_docencia || 0) + (d.a3_tutorias || 0) + (d.a3_docente_post || 0) + (d.a3_cargos_sim || 0), 50)
-  const area4 = Math.min((d.a4_revistas || 0) + (d.a4_libros || 0) + (d.a4_distinciones || 0), 10)
-  return area1 + area2 + area3 + area4
+  if (currentMatriz.value) {
+     let sum = 0
+     dynamicColumns.value.forEach(col => {
+       sum += (Number(row.evalData[col.id]) || 0)
+     })
+     return sum
+  } else {
+      const d = row.evalData
+      const area1 = Math.min((d.a1_diplomado || 0) + (d.a1_especialidad || 0) + (d.a1_maestria || 0) + (d.a1_doctorado || 0), 20)
+      const area2 = Math.min((d.a2_cursos_120 || 0) + (d.a2_cursos_20 || 0) + (d.a2_disertante || 0) + (d.a2_pedagogico || 0), 20)
+      const area3 = Math.min((d.a3_ejercicio_prof || 0) + (d.a3_docencia || 0) + (d.a3_tutorias || 0) + (d.a3_docente_post || 0) + (d.a3_cargos_sim || 0), 50)
+      const area4 = Math.min((d.a4_revistas || 0) + (d.a4_libros || 0) + (d.a4_distinciones || 0), 10)
+      return area1 + area2 + area3 + area4
+  }
 }
 
 const exportToPDF = (targetGroup = null) => {
@@ -884,23 +970,7 @@ const saveGroup = async (items) => {
   saving.value = true
   try {
     for (const row of items) {
-      const d = row.evalData
-      const t1 = Math.min((d.a1_diplomado || 0) + (d.a1_especialidad || 0) + (d.a1_maestria || 0) + (d.a1_doctorado || 0), 20)
-      const t2 = Math.min((d.a2_cursos_120 || 0) + (d.a2_cursos_20 || 0) + (d.a2_disertante || 0) + (d.a2_pedagogico || 0), 20)
-      const t3 = Math.min((d.a3_ejercicio_prof || 0) + (d.a3_docencia || 0) + (d.a3_tutorias || 0) + (d.a3_docente_post || 0) + (d.a3_cargos_sim || 0), 50)
-      const t4 = Math.min((d.a4_revistas || 0) + (d.a4_libros || 0) + (d.a4_distinciones || 0), 10)
-
-      await api.post('/evaluaciones-meritos', {
-        postulacion_id: row.id,
-        puntaje_formacion: t1,
-        puntaje_perfeccionamiento: t2,
-        puntaje_experiencia: t3,
-        puntaje_otros: t4,
-        puntaje_total: t1 + t2 + t3 + t4,
-        detalle_evaluacion: d,
-        observaciones: d.observaciones,
-        pretension_salarial: row.pretension_salarial
-      })
+       await saveRow(row, true)
     }
     $q.notify({ color: 'positive', message: 'Tabla guardada correctamente' })
   } catch (error) {
@@ -911,27 +981,55 @@ const saveGroup = async (items) => {
   }
 }
 
+const saveRow = async (row, silent = false) => {
+    try {
+      let t1 = 0, t2 = 0, t3 = 0, t4 = 0, puntajeTotal = 0;
+      
+      if (currentMatriz.value) {
+         puntajeTotal = calculateTotal(row)
+      } else {
+         const d = row.evalData
+         t1 = Math.min((d.a1_diplomado || 0) + (d.a1_especialidad || 0) + (d.a1_maestria || 0) + (d.a1_doctorado || 0), 20)
+         t2 = Math.min((d.a2_cursos_120 || 0) + (d.a2_cursos_20 || 0) + (d.a2_disertante || 0) + (d.a2_pedagogico || 0), 20)
+         t3 = Math.min((d.a3_ejercicio_prof || 0) + (d.a3_docencia || 0) + (d.a3_tutorias || 0) + (d.a3_docente_post || 0) + (d.a3_cargos_sim || 0), 50)
+         t4 = Math.min((d.a4_revistas || 0) + (d.a4_libros || 0) + (d.a4_distinciones || 0), 10)
+         puntajeTotal = t1 + t2 + t3 + t4
+      }
+
+      await api.post('/evaluaciones-meritos', {
+        postulacion_id: row.id,
+        puntaje_formacion: t1,
+        puntaje_perfeccionamiento: t2,
+        puntaje_experiencia: t3,
+        puntaje_otros: t4,
+        puntaje_total: puntajeTotal,
+        detalle_evaluacion: row.evalData,
+        observaciones: row.evalData.observaciones,
+        pretension_salarial: row.pretension_salarial
+      })
+      if (!silent) {
+         $q.notify({ color: 'positive', message: 'Fila guardada', icon: 'check', position: 'bottom-right', timeout: 500 })
+      }
+    } catch (error) {
+      console.error(error);
+      if (!silent) {
+        $q.notify({ color: 'negative', message: 'Error al auto-guardar', position: 'bottom-right' })
+      }
+    }
+}
+
+const updateFieldAndSave = (row, field, v) => {
+    row.evalData[field] = v
+    saveRow(row)
+}
+
+const debouncedSaveRow = debounce((row) => saveRow(row), 1000)
+
 const saveAll = async () => {
     saving.value = true
     try {
         for (const row of localRows.value) {
-            const d = row.evalData
-            const t1 = Math.min((d.a1_diplomado || 0) + (d.a1_especialidad || 0) + (d.a1_maestria || 0) + (d.a1_doctorado || 0), 20)
-            const t2 = Math.min((d.a2_cursos_120 || 0) + (d.a2_cursos_20 || 0) + (d.a2_disertante || 0) + (d.a2_pedagogico || 0), 20)
-            const t3 = Math.min((d.a3_ejercicio_prof || 0) + (d.a3_docencia || 0) + (d.a3_tutorias || 0) + (d.a3_docente_post || 0) + (d.a3_cargos_sim || 0), 50)
-            const t4 = Math.min((d.a4_revistas || 0) + (d.a4_libros || 0) + (d.a4_distinciones || 0), 10)
-
-            await api.post('/evaluaciones-meritos', {
-                postulacion_id: row.id,
-                puntaje_formacion: t1,
-                puntaje_perfeccionamiento: t2,
-                puntaje_experiencia: t3,
-                puntaje_otros: t4,
-                puntaje_total: t1 + t2 + t3 + t4,
-                detalle_evaluacion: d,
-                observaciones: d.observaciones,
-                pretension_salarial: row.pretension_salarial
-            })
+            await saveRow(row, true)
         }
         $q.notify({ color: 'positive', message: '¡Todo guardado!' })
     } catch (error) {

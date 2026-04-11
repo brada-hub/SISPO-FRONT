@@ -133,19 +133,19 @@
             <q-card-section class="bg-primary text-white py-4">
               <div class="flex items-center gap-2">
                 <q-icon name="timer" size="24px" />
-                <div class="text-lg font-bold">Cierres Próximos (7 días)</div>
+                <div class="text-lg font-bold">Cierres Próximos (7 dias)</div>
               </div>
             </q-card-section>
 
             <q-list separator>
               <q-item v-if="stats.cierres_criticos.length === 0" class="py-8">
-                <q-item-section class="text-center text-gray-400 italic">No hay cierres críticos próximos</q-item-section>
+                <q-item-section class="text-center text-gray-400 italic">No hay cierres criticos proximos</q-item-section>
               </q-item>
 
               <q-item v-for="conc in stats.cierres_criticos" :key="conc.id" class="py-4 hover:bg-gray-50 transition-colors">
                 <q-item-section>
                   <q-item-label class="font-bold text-gray-800">{{ conc.titulo }}</q-item-label>
-                  <q-item-label caption>En {{ getDaysRemaining(conc.fecha_cierre) }} días</q-item-label>
+                  <q-item-label caption>En {{ getDaysRemaining(conc.fecha_cierre) }} dias</q-item-label>
                 </q-item-section>
                 <q-item-section side>
                   <q-badge :color="getBadgeColor(conc.fecha_cierre)" rounded class="px-3 py-1 font-bold">
@@ -406,3 +406,4 @@ h1, p, div, span, table {
   transform: scale(1.1);
 }
 </style>
+

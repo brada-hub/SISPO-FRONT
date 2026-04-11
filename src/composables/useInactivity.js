@@ -2,83 +2,147 @@ import { onMounted, onUnmounted, watch } from 'vue'
 import { useAuthStore } from 'src/stores/auth-store'
 import { useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { api } from 'boot/axios'
+import { sessionTimeoutManager } from 'src/shared/sessionTimeoutManager'
 
-export function useInactivity(timeoutMs = 1800000) { // Default 30 minutos
+const LAST_ACTIVITY_KEY = 'sispo_last_activity'
+const LOGOUT_BROADCAST_KEY = 'sispo_logout_broadcast'
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000
+const WARNING_MS = 14 * 60 * 1000
+const ACTIVITY_EVENTS = ['click', 'keydown', 'mousemove', 'scroll', 'touchstart']
+
+export function useInactivity() {
   const authStore = useAuthStore()
   const router = useRouter()
   const $q = useQuasar()
-  let timer = null
+  let intervalId = null
+  let warningShown = false
+  let logoutInProgress = false
 
-  const resetTimer = () => {
-    if (timer) clearTimeout(timer)
-
-    // Solo configurar el timer si el usuario estÃ¡ logueado
-    if (authStore.isLoggedIn) {
-      timer = setTimeout(() => {
-        logoutUser()
-      }, timeoutMs)
-    }
+  const isPublicRoute = () => {
+    const path = router.currentRoute.value.path || ''
+    return path === '/' || path === '/login' || path.startsWith('/postular') || path.startsWith('/convocatoria') || path.startsWith('/seguimiento') || path.startsWith('/hoja-de-vida-directa')
   }
 
-  const logoutUser = async () => {
-    // Si ya no estÃ¡ logueado, no hacer nada
-    if (!authStore.isLoggedIn) return
+  const touchActivity = () => {
+    if (!authStore.isLoggedIn || isPublicRoute()) return
 
-    console.log('Inactividad detectada. Cerrando sesiÃ³n...')
+    localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()))
+    warningShown = false
+    sessionTimeoutManager.hideWarning()
+  }
 
-    // Limpiar localmente primero para que sea instantÃ¡neo
-    authStore.token = null
-    authStore.user = null
-    localStorage.removeItem('sispo_token')
-    localStorage.removeItem('sispo_user')
+  const forceLogout = async (message, broadcast = true) => {
+    if (logoutInProgress || !authStore.isLoggedIn) return
 
-    $q.notify({
-      type: 'warning',
-      message: 'Su sesiÃ³n ha expirado por inactividad',
-      position: 'top',
-      timeout: 5000
-    })
+    logoutInProgress = true
 
-    // Intentar cerrar sesiÃ³n en el servidor pero no esperar por ello si falla
-    // (Ya limpiamos localmente)
+    if (broadcast) {
+      localStorage.setItem(LOGOUT_BROADCAST_KEY, String(Date.now()))
+    }
+
     try {
-      api.post('/logout').catch(() => {
-        /* silenciamos error server */
+      await authStore.logout()
+    } catch (error) {
+      console.error('Error al cerrar sesión automáticamente:', error)
+    } finally {
+      sessionTimeoutManager.hideWarning()
+      $q.notify({
+        type: 'warning',
+        message,
+        position: 'top',
+        timeout: 5000,
       })
-    } catch (err) {
-      console.warn('Silent logout error:', err)
-    }
 
-    router.push('/login')
+      if (router.currentRoute.value.path !== '/login') {
+        router.push('/login')
+      }
+
+      logoutInProgress = false
+    }
   }
 
-  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'visibilitychange']
+  const checkInactivity = async () => {
+    if (!authStore.isLoggedIn || isPublicRoute()) return
+
+    const lastActivity = Number(localStorage.getItem(LAST_ACTIVITY_KEY) || Date.now())
+    const elapsed = Date.now() - lastActivity
+
+    if (elapsed >= INACTIVITY_LIMIT_MS) {
+      await forceLogout('La sesión se cerró por 15 minutos de inactividad.')
+      return
+    }
+
+    if (elapsed >= WARNING_MS && !warningShown) {
+      warningShown = true
+      sessionTimeoutManager.showWarning(Math.max(1, Math.ceil((INACTIVITY_LIMIT_MS - elapsed) / 1000)))
+    }
+
+    if (warningShown) {
+      sessionTimeoutManager.updateCountdown(Math.max(1, Math.ceil((INACTIVITY_LIMIT_MS - elapsed) / 1000)))
+    }
+  }
+
+  sessionTimeoutManager.configure({
+    onContinue: async () => {
+      touchActivity()
+      $q.notify({
+        type: 'positive',
+        message: 'La sesión continúa activa.',
+        position: 'top',
+        timeout: 2500,
+      })
+    },
+    onLogout: async () => {
+      await forceLogout('La sesión fue cerrada por seguridad.')
+    },
+  })
+
+  const handleStorage = (event) => {
+    if (event.key === LOGOUT_BROADCAST_KEY && authStore.isLoggedIn) {
+      void forceLogout('La sesión se cerró desde otra pestaña.', false)
+      return
+    }
+
+    if (event.key === LAST_ACTIVITY_KEY) {
+      warningShown = false
+    }
+  }
 
   onMounted(() => {
-    events.forEach(event => {
-      window.addEventListener(event, resetTimer, { passive: true })
+    ACTIVITY_EVENTS.forEach((eventName) => {
+      window.addEventListener(eventName, touchActivity, { passive: true })
     })
 
-    // Iniciar el timer si ya estÃ¡ logueado al montar
-    if (authStore.isLoggedIn) {
-      resetTimer()
+    window.addEventListener('storage', handleStorage)
+
+    if (authStore.isLoggedIn && !isPublicRoute()) {
+      touchActivity()
     }
+
+    intervalId = window.setInterval(() => {
+      void checkInactivity()
+    }, 30000)
   })
 
   onUnmounted(() => {
-    events.forEach(event => {
-      window.removeEventListener(event, resetTimer)
+    ACTIVITY_EVENTS.forEach((eventName) => {
+      window.removeEventListener(eventName, touchActivity)
     })
-    if (timer) clearTimeout(timer)
+
+    window.removeEventListener('storage', handleStorage)
+
+    if (intervalId) {
+      window.clearInterval(intervalId)
+    }
   })
 
-  // Observar cambios en el estado de login para activar/desactivar el timer
   watch(() => authStore.isLoggedIn, (isLoggedIn) => {
-    if (isLoggedIn) {
-      resetTimer()
-    } else {
-      if (timer) clearTimeout(timer)
+    if (isLoggedIn && !isPublicRoute()) {
+      touchActivity()
+      return
     }
+
+    sessionTimeoutManager.hideWarning()
+    warningShown = false
   })
 }

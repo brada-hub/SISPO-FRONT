@@ -1,26 +1,16 @@
 <template>
   <q-page class="p-6 bg-gray-50/50">
-    <!-- Header -->
     <div class="flex justify-between items-center mb-10">
       <div>
-        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Gestión de Usuarios</h1>
-        <p class="text-gray-500 font-medium">Administra los accesos y perfiles del personal</p>
-      </div>
-      <div class="flex gap-3">
-        <q-btn
-          unelevated
-          color="deep-purple-8"
-          icon="person_add"
-          label="Nuevo Usuario"
-          no-caps
-          rounded
-          class="shadow-md hover:shadow-lg transition-all"
-          @click="openDialog()"
-        />
+        <h1 class="text-3xl font-black text-gray-900 tracking-tight">Usuarios con Acceso a SISPO</h1>
+        <p class="text-gray-500 font-medium">Aqu� solo gestionas a qu� convocatorias espec�ficas puede entrar cada usuario del sistema.</p>
       </div>
     </div>
 
-    <!-- Tabla -->
+    <q-banner rounded class="bg-indigo-50 text-indigo-10 q-mb-lg">
+      Los usuarios, roles y permisos base se administran en el SSO/SIGETH. En SISPO solo se restringe el alcance interno por convocatoria.
+    </q-banner>
+
     <q-card class="table-card">
       <q-table
         :rows="rows"
@@ -30,30 +20,35 @@
         flat
         :pagination="{ rowsPerPage: 15 }"
       >
-        <template v-slot:body-cell-nombre_completo="props">
+        <template v-slot:body-cell-usuario="props">
           <q-td :props="props">
-            <div class="column">
-              <span class="text-weight-bold text-primary">{{ props.row.nombres }} {{ props.row.apellido_paterno }} {{ props.row.apellido_materno }}</span>
-              <span class="text-caption text-grey-7">CI: {{ props.row.ci }}</span>
+            <div class="row items-center no-wrap q-gutter-sm">
+              <q-avatar size="42px" color="primary" text-color="white">
+                <q-img v-if="getUserPhoto(props.row)" :src="getUserPhoto(props.row)" />
+                <span v-else>{{ getDisplayFullName(props.row).charAt(0) }}</span>
+              </q-avatar>
+              <div class="column">
+                <span class="text-weight-bold text-primary">{{ getDisplayFullName(props.row) }}</span>
+                <span class="text-caption text-grey-7">CI: {{ getDisplayCi(props.row) }}</span>
+              </div>
             </div>
           </q-td>
         </template>
 
-        <template v-slot:body-cell-rol="props">
+        <template v-slot:body-cell-convocatorias="props">
           <q-td :props="props">
-            <q-chip outline color="primary" icon="security" size="sm" class="text-weight-bold">
-              {{ props.row.rol?.name || props.row.rol?.nombre || 'S/R' }}
-            </q-chip>
-          </q-td>
-        </template>
-
-        <template v-slot:body-cell-sede="props">
-          <q-td :props="props">
-            <div v-if="props.row.sede" class="flex items-center gap-1">
-              <q-icon name="apartment" color="secondary" size="xs" />
-              <span class="text-body2">{{ props.row.sede?.nombre }}</span>
+            <div v-if="(props.row.convocatoria_scope || []).length" class="column q-gutter-xs">
+              <q-chip
+                v-for="convocatoriaId in props.row.convocatoria_scope"
+                :key="convocatoriaId"
+                dense
+                outline
+                color="deep-purple"
+              >
+                {{ convocatoriaMap.get(convocatoriaId) || `Convocatoria #${convocatoriaId}` }}
+              </q-chip>
             </div>
-            <q-badge v-else color="grey-3" text-color="grey-8" label="NACIONAL" class="q-px-sm" />
+            <q-badge v-else color="grey-3" text-color="grey-8" label="Sin restricci�n espec�fica" class="q-px-sm" />
           </q-td>
         </template>
 
@@ -65,196 +60,73 @@
           </q-td>
         </template>
 
-        <template v-slot:body-cell-password_actual="props">
-          <q-td :props="props" align="center">
-            <div class="flex items-center justify-center gap-2">
-              <template v-if="!props.row.password_segura">
-                <code class="bg-red-50 text-red-700 px-2 py-1 rounded border border-red-100 font-mono text-xs">{{ props.row.password_actual }}</code>
-                <q-icon name="report_problem" color="warning" size="xs">
-                  <q-tooltip>Insegura: Igual al CI</q-tooltip>
-                </q-icon>
-              </template>
-              <template v-else>
-                <q-icon name="verified_user" color="positive" size="xs">
-                  <q-tooltip>Contraseña Personalizada</q-tooltip>
-                </q-icon>
-                <q-btn flat round dense size="xs" color="orange" icon="refresh" @click="resetPassword(props.row)" :loading="resettingId === props.row.id">
-                   <q-tooltip>Resetear a CI</q-tooltip>
-                </q-btn>
-              </template>
-            </div>
-          </q-td>
-        </template>
-
         <template v-slot:body-cell-acciones="props">
           <q-td :props="props" align="center">
-            <div class="flex gap-2 justify-center">
-              <q-btn flat round color="orange" icon="rule" size="sm" @click="openPermissionsDialog(props.row)">
-                <q-tooltip>Permisos Individuales</q-tooltip>
-              </q-btn>
-              <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
-                <q-tooltip>Editar Usuario</q-tooltip>
-              </q-btn>
-              <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
-                <q-tooltip>Eliminar Usuario</q-tooltip>
-              </q-btn>
-            </div>
+            <q-btn flat round color="primary" icon="edit" size="sm" @click="openDialog(props.row)">
+              <q-tooltip>Gestionar alcance por convocatoria</q-tooltip>
+            </q-btn>
           </q-td>
         </template>
       </q-table>
     </q-card>
 
-    <!-- Modal Form -->
     <q-dialog v-model="dialog" persistent transition-show="scale" transition-hide="scale">
-      <q-card style="min-width: 700px; border-radius: 20px;">
+      <q-card style="min-width: 760px; max-width: 95vw; border-radius: 20px;">
         <q-card-section class="bg-primary text-white q-pa-lg">
           <div class="text-h6 text-weight-bold flex items-center gap-3">
-             <q-icon :name="isEdit ? 'manage_accounts' : 'person_add'" size="md" />
-             {{ isEdit ? 'Actualizar Usuario' : 'Registrar Nuevo Usuario' }}
+            <q-icon name="manage_accounts" size="md" />
+            Gestionar Alcance de Convocatorias
           </div>
         </q-card-section>
 
-        <q-card-section class="q-pa-xl">
-          <q-form ref="userForm" @submit="save" class="q-gutter-y-lg">
-            <div class="row q-col-gutter-lg">
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Nombres</label>
-                <q-input v-model="form.nombres" outlined dense placeholder="Nombres" :rules="[val => !!val || 'Campo requerido']" />
-              </div>
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Primer Apellido</label>
-                <q-input v-model="form.apellido_paterno" outlined dense placeholder="Apellido Paterno" :rules="[val => !!val || 'Campo requerido']" />
-              </div>
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Segundo Apellido</label>
-                <q-input v-model="form.apellido_materno" outlined dense placeholder="Apellido Materno" />
-              </div>
+        <q-card-section class="q-pa-xl q-gutter-y-lg">
+          <div class="row q-col-gutter-lg">
+            <div class="col-12 col-md-8">
+              <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Usuario</label>
+              <q-input :model-value="selectedUser ? getDisplayFullName(selectedUser) : ''" outlined dense readonly />
             </div>
+            <div class="col-12 col-md-4">
+              <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">CI</label>
+              <q-input :model-value="selectedUser ? getDisplayCi(selectedUser) : ''" outlined dense readonly />
+            </div>
+          </div>
 
-            <div class="row q-col-gutter-lg">
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">CI (Usuario)</label>
-                <q-input v-model="form.ci" outlined dense placeholder="Documento de Identidad" :rules="[val => !!val || 'Campo requerido']" />
-              </div>
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Rol de Sistema</label>
-                <q-select v-model="form.rol_id" :options="rolesOptions" option-value="id" :option-label="opt => opt.nombre || opt.name || '---'" outlined dense emit-value map-options :rules="[val => !!val || 'Campo requerido']" />
-              </div>
-              <div class="col-12 col-sm-4">
-                <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Sede Primaria</label>
-                <q-select v-model="form.sede_id" :options="sedesOptions" option-value="id" option-label="nombre" outlined dense emit-value map-options clearable hint="Donde trabaja físicamente" />
-              </div>
+          <div class="row q-col-gutter-lg">
+            <div class="col-12 col-md-6">
+              <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Estado</label>
+              <q-toggle v-model="form.activo" label="Usuario habilitado" color="positive" />
             </div>
+            <div class="col-12 col-md-6">
+              <label class="text-caption text-weight-bold text-grey-7 uppercase tracking-wider q-mb-xs block">Rol heredado del SSO</label>
+              <q-input :model-value="selectedUser?.rol?.nombre || selectedUser?.rol?.name || 'Sin rol visible'" outlined dense readonly />
+            </div>
+          </div>
 
-            <div class="row">
-               <div class="col-12">
-                 <label class="text-caption text-weight-bold text-indigo font-black uppercase tracking-widest q-mb-xs block">Jurisdicción (Sedes que puede Ver/Administrar)</label>
-                 <q-select
-                   v-model="form.jurisdiccion"
-                   :options="sedesOptions"
-                   option-value="id"
-                   option-label="nombre"
-                   multiple
-                   use-chips
-                   outlined
-                   dense
-                   emit-value
-                   map-options
-                   bg-color="indigo-50"
-                   hint="Si se deja vacío, solo administrará su Sede Primaria"
-                 >
-                   <template v-slot:prepend><q-icon name="visibility" color="indigo" /></template>
-                 </q-select>
-               </div>
-            </div>
-
-            <div class="flex items-center justify-between q-mt-md bg-grey-1 q-pa-md rounded-lg">
-              <q-toggle v-model="form.activo" label="Usuario Habilitado" color="positive" />
-              <div v-if="!isEdit" class="text-caption text-grey-6 flex items-center gap-1">
-                <q-icon name="info" /> Pass inicial: CI
-              </div>
-            </div>
-          </q-form>
+          <div>
+            <label class="text-caption text-weight-bold text-deep-purple uppercase tracking-widest q-mb-xs block">Convocatorias espec�ficas</label>
+            <q-select
+              v-model="form.convocatoria_scope"
+              :options="convocatoriasOptions"
+              option-value="id"
+              :option-label="formatConvocatoriaLabel"
+              multiple
+              use-chips
+              outlined
+              dense
+              emit-value
+              map-options
+              clearable
+              bg-color="deep-purple-1"
+              hint="Si seleccionas convocatorias, el usuario solo ver� esas convocatorias y sus postulaciones relacionadas. Si queda vac�o, ver� las convocatorias permitidas por su acceso base."
+            >
+              <template v-slot:prepend><q-icon name="campaign" color="deep-purple" /></template>
+            </q-select>
+          </div>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-lg border-t">
           <q-btn flat label="Cancelar" color="grey-8" v-close-popup rounded no-caps class="q-px-md" />
-          <q-btn label="Guardar Usuario" color="primary" @click="save" :loading="saving" rounded unelevated no-caps class="q-px-xl text-weight-bold" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <!-- Modal de Permisos Individuales -->
-    <q-dialog v-model="permDialog" persistent transition-show="rotate" transition-hide="rotate">
-      <q-card style="min-width: 750px; border-radius: 20px;">
-        <q-card-section class="bg-primary text-white q-pa-lg shadow-5">
-          <div class="flex items-center gap-4">
-            <div class="q-pa-sm bg-white/20 rounded-xl">
-              <q-icon name="admin_panel_settings" size="md" />
-            </div>
-            <div>
-              <div class="text-h6 text-weight-bold uppercase tracking-tighter">Permisos Personalizados</div>
-              <div class="text-subtitle2 opacity-80">{{ selectedUser?.nombres }} {{ selectedUser?.apellido_paterno }} {{ selectedUser?.apellido_materno }}</div>
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-section class="q-pa-xl bg-grey-1" style="max-height: 65vh; overflow-y: auto;">
-          <div v-if="permLoading" class="flex flex-center q-pa-xl">
-            <q-spinner-tail color="primary" size="64px" />
-          </div>
-
-          <div v-else>
-            <div class="bg-indigo-50 q-pa-md rounded-xl border border-indigo-100 mb-8 flex items-center gap-3">
-               <q-icon name="info" color="primary" size="sm" />
-               <span class="text-caption text-indigo-900">Los permisos en <strong class="bg-primary/20 px-1 rounded">VIOLETA</strong> están heredados por el rol actual. Puedes añadir excepciones aquí.</span>
-            </div>
-
-            <div v-for="(perms, system) in groupedPermissions" :key="system" class="mb-10 animate-fade">
-              <div class="text-subtitle2 font-bold text-primary flex items-center gap-2 mb-4 border-b pb-2 uppercase tracking-widest">
-                <q-icon name="apps" size="xs" />
-                SISTEMA: {{ system }}
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div
-                  v-for="perm in perms"
-                  :key="perm.id"
-                  class="flex items-center justify-between p-4 rounded-xl transition-all border-2"
-                  :class="isInherited(perm.id) ? 'bg-primary/5 border-primary/20' : 'bg-white border-transparent shadow-sm'"
-                >
-                  <div class="column">
-                    <span class="text-weight-bold" :class="isInherited(perm.id) ? 'text-primary' : 'text-grey-9'">
-                      {{ perm.name }}
-                    </span>
-                    <span class="text-[10px] text-grey-6 leading-tight">{{ perm.description }}</span>
-                  </div>
-
-                  <q-toggle
-                    v-model="individualPermIds"
-                    :val="perm.id"
-                    color="primary"
-                    size="sm"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-actions align="right" class="q-pa-lg bg-white">
-          <q-btn flat label="Cerrar" color="grey-8" v-close-popup rounded no-caps />
-          <q-btn
-            label="Aplicar Cambios"
-            color="primary"
-            @click="saveIndividualPermissions"
-            :loading="savingPerms"
-            rounded
-            unelevated
-            no-caps
-            class="q-px-xl text-weight-bold"
-          />
+          <q-btn label="Guardar alcance" color="primary" @click="save" :loading="saving" rounded unelevated no-caps class="q-px-xl text-weight-bold" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -262,218 +134,121 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
+const SHARED_ASSET_URL = String(import.meta.env.VITE_SHARED_ASSET_URL || '').replace(/\/+$/, '')
 const rows = ref([])
-const rolesOptions = ref([])
+const convocatoriasOptions = ref([])
 const loading = ref(false)
 const dialog = ref(false)
 const saving = ref(false)
-const isEdit = ref(false)
-const userForm = ref(null)
-const resettingId = ref(null)
-
-// Permisos Individuales
-const permDialog = ref(false)
-const permLoading = ref(false)
-const savingPerms = ref(false)
 const selectedUser = ref(null)
-const individualPermIds = ref([])
-const rolePermIds = ref([])
-const allAvailablePermissions = ref([])
-const groupedPermissions = ref({})
 
 const form = ref({
   id: null,
-  rol_id: null,
-  sede_id: null,
-  nombres: '',
-  apellido_paterno: '',
-  apellido_materno: '',
-  ci: '',
   activo: true,
-  must_change_password: false,
-  jurisdiccion: []
+  convocatoria_scope: [],
 })
 
 const columns = [
-  { name: 'nombre_completo', label: 'Funcionario / Usuario', align: 'left', sortable: true },
-  { name: 'rol', label: 'Rol Asignado', align: 'left', sortable: true },
-  { name: 'sede', label: 'Sede', align: 'left', sortable: true },
-  { name: 'password_actual', label: 'Seguridad', align: 'center' },
-  { name: 'activo', label: 'Estado', align: 'center' },
-  { name: 'acciones', label: 'Acciones', align: 'center' }
+  { name: 'usuario', label: 'Usuario SISPO', field: 'nombres', align: 'left' },
+  { name: 'convocatorias', label: 'Convocatorias permitidas', field: 'convocatoria_scope', align: 'left' },
+  { name: 'activo', label: 'Estado', field: 'activo', align: 'center' },
+  { name: 'acciones', label: 'Acciones', field: 'acciones', align: 'center' },
 ]
 
-const sedesOptions = ref([])
+const convocatoriaMap = computed(() => new Map(
+  convocatoriasOptions.value.map(item => [item.id, formatConvocatoriaLabel(item)])
+))
+
+const resolveSharedAssetBase = () => {
+  if (SHARED_ASSET_URL) return SHARED_ASSET_URL
+  return `${window.location.protocol}//${window.location.hostname}`
+}
+
+const normalizePhotoUrl = (photo) => {
+  if (!photo) return null
+
+  if (String(photo).startsWith('http://') || String(photo).startsWith('https://')) {
+    return photo
+  }
+
+  if (String(photo).startsWith('/')) {
+    return `${resolveSharedAssetBase()}${photo}`
+  }
+
+  return `${resolveSharedAssetBase()}/${String(photo).replace(/^\/+/, '')}`
+}
+
+const formatConvocatoriaLabel = (opt) => {
+  if (!opt) return '---'
+  const codigo = opt.codigo_interno ? ` (${opt.codigo_interno})` : ''
+  return `${opt.titulo || 'Convocatoria'}${codigo}`
+}
+
+const getDisplayFullName = (row) => {
+  return [
+    row?.persona?.nombres,
+    row?.persona?.apellido_paterno,
+    row?.persona?.apellido_materno,
+    row?.nombres,
+    row?.apellido_paterno,
+    row?.apellido_materno,
+  ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || 'Usuario'
+}
+
+const getDisplayCi = (row) => row?.persona?.ci || row?.ci || row?.username || 'S/D'
+const getUserPhoto = (row) => normalizePhotoUrl(row?.persona?.foto_url || row?.persona?.foto || null)
+
+const getUserId = (row) => row?.id || row?.id_user
 
 const loadData = async () => {
   loading.value = true
   try {
-    const [userRes, rolesRes, sedesRes] = await Promise.all([
+    const [userRes, convocatoriasRes] = await Promise.all([
       api.get('/usuarios'),
-      api.get('/roles'),
-      api.get('/sedes')
+      api.get('/convocatorias')
     ])
-    rows.value = userRes.data
-    rolesOptions.value = rolesRes.data
-    sedesOptions.value = sedesRes.data
-  } catch {
-    $q.notify({ type: 'negative', message: 'Error al cargar datos' })
+    rows.value = userRes.data || []
+    convocatoriasOptions.value = convocatoriasRes.data || []
+  } catch (error) {
+    console.error(error)
+    $q.notify({ type: 'negative', message: 'Error al cargar usuarios de SISPO' })
   } finally {
     loading.value = false
   }
 }
 
-const openDialog = (item = null) => {
-  if (item) {
-    isEdit.value = true
-    form.value = {
-      ...item,
-      password: ''
-    }
-  } else {
-    isEdit.value = false
-    form.value = {
-      id: null,
-      rol_id: null,
-      sede_id: null,
-      nombres: '',
-      apellido_paterno: '',
-      apellido_materno: '',
-      ci: '',
-      activo: true,
-      must_change_password: false,
-      jurisdiccion: []
-    }
+const openDialog = (item) => {
+  selectedUser.value = item
+  form.value = {
+    id: getUserId(item),
+    activo: !!item.activo,
+    convocatoria_scope: item.convocatoria_scope || [],
   }
   dialog.value = true
 }
 
 const save = async () => {
-  const valid = await userForm.value.validate()
-  if (!valid) return
-
   saving.value = true
   try {
-    const dataToSend = {
-        rol_id: form.value.rol_id,
-        sede_id: form.value.sede_id,
-        nombres: form.value.nombres,
-        apellido_paterno: form.value.apellido_paterno,
-        apellido_materno: form.value.apellido_materno,
-        ci: form.value.ci,
-        activo: form.value.activo,
-        jurisdiccion: form.value.jurisdiccion
-    }
+    await api.put(`/usuarios/${form.value.id}`, {
+      activo: form.value.activo,
+      convocatoria_scope: form.value.convocatoria_scope,
+    })
 
-    if (isEdit.value) {
-      await api.put(`/usuarios/${form.value.id}`, dataToSend)
-      $q.notify({ type: 'positive', message: 'Usuario actualizado correctamente' })
-    } else {
-      await api.post('/usuarios', dataToSend)
-      $q.notify({ type: 'positive', message: 'Usuario creado correctamente' })
-    }
+    $q.notify({ type: 'positive', message: 'Alcance por convocatoria actualizado correctamente' })
     dialog.value = false
-    loadData()
+    await loadData()
   } catch (error) {
     console.error(error)
-    const msg = error.response?.data?.message || 'Error al guardar datos'
+    const msg = error.response?.data?.message || 'No se pudo guardar el alcance del usuario'
     $q.notify({ type: 'negative', message: msg })
   } finally {
     saving.value = false
-  }
-}
-
-const confirmDelete = (item) => {
-  $q.dialog({
-    title: 'Confirmar eliminación',
-    message: `¿Deseas eliminar al usuario ${item.nombres}?`,
-    cancel: { label: 'Cancelar', flat: true },
-    ok: { label: 'Eliminar', color: 'negative', unelevated: true },
-    persistent: true
-  }).onOk(async () => {
-    try {
-      await api.delete(`/usuarios/${item.id}`)
-      $q.notify({ type: 'positive', message: 'Usuario eliminado' })
-      loadData()
-    } catch {
-      $q.notify({ type: 'negative', message: 'No se pudo eliminar' })
-    }
-  })
-}
-
-const resetPassword = async (user) => {
-  $q.dialog({
-    title: 'Resetear Contraseña',
-    message: `¿Resetear la contraseña de ${user.nombres} a su CI (${user.ci})?`,
-    cancel: { label: 'Cancelar', flat: true },
-    ok: { label: 'Sí, Resetear', color: 'orange', unelevated: true },
-    persistent: true
-  }).onOk(async () => {
-    resettingId.value = user.id
-    try {
-      const res = await api.post(`/usuarios/${user.id}/reset-password`)
-      $q.notify({
-        type: 'positive',
-        message: `Contraseña reseteada a: ${res.data.nueva_password}`
-      })
-      loadData()
-    } catch {
-      $q.notify({ type: 'negative', message: 'Error al resetear contraseña' })
-    } finally {
-      resettingId.value = null
-    }
-  })
-}
-
-const openPermissionsDialog = async (user) => {
-  selectedUser.value = user
-  permDialog.value = true
-  permLoading.value = true
-  try {
-    const res = await api.get(`/usuarios/${user.id}/permissions`)
-    allAvailablePermissions.value = res.data.all_permissions
-    individualPermIds.value = res.data.individual_permission_ids
-    rolePermIds.value = res.data.role_permission_ids
-
-    // Group by system
-    const groups = {}
-    allAvailablePermissions.value.forEach(p => {
-      const systemName = p.system || 'Global'
-      if (!groups[systemName]) groups[systemName] = []
-      groups[systemName].push(p)
-    })
-    groupedPermissions.value = groups
-  } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: 'Error al cargar permisos' })
-    permDialog.value = false
-  } finally {
-    permLoading.value = false
-  }
-}
-
-const isInherited = (permId) => {
-  return rolePermIds.value.includes(permId)
-}
-
-const saveIndividualPermissions = async () => {
-  savingPerms.value = true
-  try {
-    await api.post(`/usuarios/${selectedUser.value.id}/permissions`, {
-      permissions: individualPermIds.value
-    })
-    $q.notify({ type: 'positive', message: 'Permisos individuales guardados' })
-    permDialog.value = false
-    loadData()
-  } catch {
-    $q.notify({ type: 'negative', message: 'Error al guardar permisos' })
-  } finally {
-    savingPerms.value = false
   }
 }
 
@@ -481,7 +256,6 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-/* Table Card */
 .table-card {
   border-radius: 16px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -501,9 +275,5 @@ onMounted(loadData)
   text-transform: uppercase;
   color: #475569;
   letter-spacing: 0.5px;
-}
-
-.block {
-  display: block;
 }
 </style>

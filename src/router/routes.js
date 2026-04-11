@@ -1,5 +1,5 @@
 const routes = [
-  // Public Routes (Portal, Login, Postulación) with CLEAN Layout
+  // Public Routes (Portal, Login, Postulacion) with CLEAN Layout
   {
     path: '/',
     component: () => import('layouts/PublicLayout.vue'),
@@ -75,6 +75,11 @@ const routes = [
         meta: { permissions: ['convocatorias'] },
       },
       {
+        path: 'plantillas-matrices',
+        component: () => import('pages/admin/PlantillasMatricesPage.vue'),
+        meta: { permissions: ['convocatorias'] },
+      },
+      {
         path: 'postulaciones',
         component: () => import('pages/admin/PostulacionesPage.vue'),
         meta: { permissions: ['postulaciones'] },
@@ -127,3 +132,4 @@ const routes = [
 ]
 
 export default routes
+

@@ -1,111 +1,189 @@
 import { defineStore } from 'pinia'
 import { api } from 'boot/axios'
 
+const BACK_URL = String(import.meta.env.VITE_SISPO_BACK_URL || '').replace(/\/+$/, '')
+const SHARED_ASSET_URL = String(import.meta.env.VITE_SHARED_ASSET_URL || '').replace(/\/+$/, '')
+
+const resolveSharedAssetBase = () => {
+  if (SHARED_ASSET_URL) return SHARED_ASSET_URL
+
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.hostname}`
+  }
+
+  return ''
+}
+
+const normalizePhotoUrl = (photo) => {
+  if (!photo) return null
+
+  if (String(photo).startsWith('http://') || String(photo).startsWith('https://')) {
+    return photo
+  }
+
+  if (String(photo).startsWith('/')) {
+    const base = String(photo).startsWith('/storage/')
+      ? resolveSharedAssetBase()
+      : BACK_URL
+
+    return base ? `${base}${photo}` : photo
+  }
+
+  const normalizedPhoto = String(photo).replace(/^\/+/, '')
+  const base = normalizedPhoto.startsWith('storage/')
+    ? resolveSharedAssetBase()
+    : BACK_URL
+
+  return base ? `${base}/${normalizedPhoto}` : photo
+}
+
+const normalizePersona = (persona) => {
+  if (!persona) return null
+
+  return {
+    ...persona,
+    apellido_paterno: persona.apellido_paterno || persona.primer_apellido || null,
+    apellido_materno: persona.apellido_materno || persona.segundo_apellido || null,
+    foto_url: normalizePhotoUrl(persona.foto_url || persona.foto || null),
+  }
+}
+
+const resolveRoleBySystem = (user, targetSystemId) => {
+  const matchingRole = (user?.roles || []).find((role) =>
+    (role?.permissions || []).some((permission) => Number(permission?.sistema_id) === targetSystemId)
+  )
+
+  if (!matchingRole) return null
+
+  return {
+    name: matchingRole.name || matchingRole.nombre || 'Usuario',
+    nombre: matchingRole.nombre || matchingRole.name || 'Usuario'
+  }
+}
+
+const buildFullName = (user) => {
+  if (!user) return 'Usuario'
+
+  const persona = normalizePersona(user.persona)
+  const personaFullName = [
+    persona?.nombres,
+    persona?.apellido_paterno,
+    persona?.apellido_materno,
+  ].filter(Boolean).join(' ').trim()
+
+  if (personaFullName.split(' ').filter(Boolean).length >= 2) {
+    return personaFullName
+  }
+
+  const userFullName = [
+    user.nombres,
+    user.apellido_paterno,
+    user.apellido_materno,
+  ].filter(Boolean).join(' ').trim()
+
+  return userFullName || user.nombre_completo || user.apellidos || user.username || 'Usuario'
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => {
-    // Safety check for user in localStorage
-    let storedUser = null;
+    let storedUser = null
+
     try {
-        const rawUser = localStorage.getItem('sispo_user');
-        if (rawUser && rawUser !== 'undefined') {
-            storedUser = JSON.parse(rawUser);
-            // Si el usuario no tiene rol cargado, invalidar sesión para obligar relogin y traer datos nuevos
-            if (storedUser && !storedUser.rol) {
-                console.warn('Usuario almacenado incompleto (falta rol), reseteando sesión SISPO.');
-                storedUser = null;
-                localStorage.removeItem('sispo_user');
-                localStorage.removeItem('sispo_token');
-            }
-        } else {
-            // Clean up bad data
-            localStorage.removeItem('sispo_user');
-        }
+      const rawUser = localStorage.getItem('sispo_user')
+      if (rawUser && rawUser !== 'undefined') {
+        storedUser = JSON.parse(rawUser)
+      } else {
+        localStorage.removeItem('sispo_user')
+      }
     } catch (e) {
-        console.warn('Error parsing stored user, logging out SISPO', e);
-        localStorage.removeItem('sispo_user');
-        localStorage.removeItem('sispo_token');
+      console.warn('Error parsing stored user, logging out SISPO', e)
+      localStorage.removeItem('sispo_user')
+      localStorage.removeItem('sispo_token')
     }
 
     return {
       token: localStorage.getItem('sispo_token') || null,
       user: storedUser,
-      currentSystem: localStorage.getItem('sispo_currentSystem') || 'SISTEMA DE POSTULACION', // Por defecto el sistema de postulaciones
+      currentSystem: localStorage.getItem('sispo_currentSystem') || 'SISTEMA DE POSTULACION',
       returnUrl: null
-    };
+    }
   },
 
   getters: {
     isLoggedIn: (state) => !!state.token,
     currentUser: (state) => state.user,
-    can: (state) => (permission) => state.user?.permisos?.includes(permission)
+    can: (state) => (permission) => state.user?.permisos?.includes(permission),
+    fullName: (state) => buildFullName(state.user),
+    userPhoto: (state) => normalizePhotoUrl(
+      state.user?.persona?.foto_url
+      || state.user?.persona?.foto
+      || state.user?.foto_url
+      || state.user?.foto
+      || null
+    ),
   },
 
   actions: {
     async login(loginInput, password) {
-        // Directo al endpoint creado en AuthController
-        console.log('Sending login payload:', { login_input: loginInput, password })
-        const response = await api.post('/login', { login_input: loginInput, password })
+      const response = await api.post('/login', { login_input: loginInput, password })
 
-        if (response.data.success) {
-            console.log('LOGIN SUCCESS! FULL RESPONSE:', response.data)
-            const token = response.data.data.token
-            const user = response.data.data.user
-            console.log('USER RECEIVED:', user)
-            console.log('USER ROL:', user.rol)
+      if (response.data.success) {
+        const token = response.data.data.token
+        const user = response.data.data.user
 
-            this.setToken(token)
-            this.setUser(user)
+        this.setToken(token)
+        this.setUser(user)
 
-            // Si el usuario tiene acceso a sistemas, establecer uno por defecto
-            if (user.systems && user.systems.length > 0) {
-              const defaultSystem = user.systems[0] // Ahora es un string directo
-              this.setSystem(defaultSystem)
-            }
-
-            // Set default auth header
-            api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-
-            return true
-        } else {
-            throw new Error(response.data.message || 'Error de autenticación')
+        if (user.systems && user.systems.length > 0) {
+          this.setSystem(user.systems[0])
         }
+
+        api.defaults.headers.common.Authorization = `Bearer ${token}`
+        return true
+      }
+
+      throw new Error(response.data.message || 'Error de autenticacion')
     },
 
     async logout() {
-      // Guardamos el token para la petición antes de borrarlo
       const token = this.token
 
-      // Limpiar estado local inmediatamente
       this.token = null
       this.user = null
       this.currentSystem = null
       localStorage.removeItem('sispo_token')
       localStorage.removeItem('sispo_user')
       localStorage.removeItem('sispo_currentSystem')
-      delete api.defaults.headers.common['Authorization']
+      delete api.defaults.headers.common.Authorization
 
       try {
         if (token) {
-           await api.post('/logout')
+          await api.post('/logout')
         }
       } catch (e) {
-        console.warn('Servidor ya había invalidado la sesión o error de red:', e.message)
+        console.warn('Servidor ya habia invalidado la sesion o hubo error de red:', e.message)
       }
     },
 
     async loginWithGoogle(user, token) {
-        this.setToken(token)
-        this.setUser(user)
-
-        // Set default auth header
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-
-        return true
+      this.setToken(token)
+      this.setUser(user)
+      api.defaults.headers.common.Authorization = `Bearer ${token}`
+      return true
     },
 
-    init() {
-      if (this.token) {
-        api.defaults.headers.common['Authorization'] = `Bearer ${this.token}`
+    async init() {
+      if (!this.token) return
+
+      api.defaults.headers.common.Authorization = `Bearer ${this.token}`
+      try {
+        const response = await api.get('/me')
+        const payload = response.data?.user || response.data?.data || response.data
+        if (payload) {
+          this.setUser(payload)
+        }
+      } catch (error) {
+        console.warn('No se pudo refrescar el usuario actual de SISPO, se mantiene la sesion local.', error?.message || error)
       }
     },
 
@@ -115,36 +193,59 @@ export const useAuthStore = defineStore('auth', {
     },
 
     setToken(token) {
-        this.token = token
-        localStorage.setItem('sispo_token', token)
-        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+      this.token = token
+      localStorage.setItem('sispo_token', token)
+      api.defaults.headers.common.Authorization = `Bearer ${token}`
     },
 
     setUser(user) {
-        if (!user) {
-            this.user = null
-            localStorage.removeItem('sispo_user')
-            return
-        }
+      if (!user) {
+        this.user = null
+        localStorage.removeItem('sispo_user')
+        return
+      }
 
-        // === NORMALIZACIÓN COMPLETA PARA SISPO ===
-        const accessMetadata = user.access_metadata || {}
-        const sispoAccess = accessMetadata['sispo'] || accessMetadata['SISPO'] || { roles: [], permissions: [] }
-        
-        // Inyectar o asegurar campos que SISPO usa persistentemente
-        user.permisos = Array.from(new Set([
-            ...(user.permisos || []),
-            ...(sispoAccess.permissions || [])
-        ]))
-        
-        if (sispoAccess.roles?.length > 0) {
-            user.rol = { nombres: sispoAccess.roles[0], ...user.rol }
+      const accessMetadata = user.access_metadata || {}
+      const sispoAccess = accessMetadata.sispo || accessMetadata.SISPO || { roles: [], permissions: [] }
+      const permissionsFromRoles = (user.roles || [])
+        .flatMap((role) => role?.permissions || [])
+        .map((permission) => permission?.nombres || permission?.name || permission)
+        .filter(Boolean)
+
+      const normalizedPersona = normalizePersona(user.persona)
+
+      user.permisos = Array.from(new Set([
+        ...(user.permisos || []),
+        ...(sispoAccess.permissions || []),
+        ...permissionsFromRoles,
+      ]))
+
+      if (sispoAccess.roles?.length > 0) {
+        user.rol = { name: sispoAccess.roles[0], nombre: sispoAccess.roles[0], ...user.rol }
+      } else {
+        const systemRole = resolveRoleBySystem(user, 2)
+        if (systemRole) {
+          user.rol = { ...systemRole, ...user.rol }
         } else if (!user.rol && user.roles?.length > 0) {
-            user.rol = { nombres: user.roles[0].nombres || user.roles[0] }
+          user.rol = {
+            name: user.roles[0].name || user.roles[0].nombre || user.roles[0],
+            nombre: user.roles[0].nombre || user.roles[0].name || user.roles[0]
+          }
         }
+      }
 
-        this.user = user
-        localStorage.setItem('sispo_user', JSON.stringify(user))
+      if (normalizedPersona) {
+        user.persona = normalizedPersona
+        user.nombres = normalizedPersona.nombres || user.nombres
+        user.apellido_paterno = normalizedPersona.apellido_paterno || user.apellido_paterno || user.primer_apellido
+        user.apellido_materno = normalizedPersona.apellido_materno || user.apellido_materno || user.segundo_apellido
+        user.apellidos = [user.apellido_paterno, user.apellido_materno].filter(Boolean).join(' ')
+      }
+
+      user.nombre_completo = buildFullName(user)
+
+      this.user = user
+      localStorage.setItem('sispo_user', JSON.stringify(user))
     }
   }
 })

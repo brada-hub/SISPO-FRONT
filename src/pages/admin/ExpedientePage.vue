@@ -5,7 +5,7 @@
       <q-btn flat round icon="arrow_back" @click="$router.back()" class="mr-4" />
       <div class="flex items-center">
         <div class="text-h6 font-black tracking-tighter uppercase leading-none mb-1">
-          Expediente: {{ postulacion?.postulante?.nombres }} {{ postulacion?.postulante?.apellidos }}
+          Expediente: {{ postulacionData?.postulante?.nombres }} {{ postulacionData?.postulante?.apellidos }}
         </div>
       </div>
       <q-space />

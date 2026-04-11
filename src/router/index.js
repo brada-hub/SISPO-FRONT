@@ -8,6 +8,31 @@ import {
 import routes from './routes'
 import { useAuthStore } from 'src/stores/auth-store'
 
+const normalizePermissionName = (permission) =>
+  String(permission?.nombres || permission?.name || permission || '').trim().toLowerCase()
+
+const collectUserPermissions = (user) => {
+  const accessMetadata = user?.access_metadata || {}
+  const sispoAccess = accessMetadata.sispo || accessMetadata.SISPO || { permissions: [] }
+
+  return Array.from(new Set([
+    ...(user?.permisos || []).map(normalizePermissionName),
+    ...(sispoAccess.permissions || []).map(normalizePermissionName),
+    ...((user?.roles || []).flatMap((role) => role?.permissions || []).map(normalizePermissionName)),
+  ].filter(Boolean)))
+}
+
+const collectUserRoles = (user) => {
+  const accessMetadata = user?.access_metadata || {}
+  const sispoAccess = accessMetadata.sispo || accessMetadata.SISPO || { roles: [] }
+
+  return Array.from(new Set([
+    ...(sispoAccess.roles || []).map((role) => String(role || '').trim().toUpperCase()),
+    ...((user?.roles || []).map((role) => String(role?.nombres || role?.nombre || role?.name || role || '').trim().toUpperCase())),
+    String(user?.rol?.nombres || user?.rol?.nombre || user?.rol?.name || '').trim().toUpperCase(),
+  ].filter(Boolean)))
+}
+
 /*
  * If not building with SSR mode, you can
  * directly export the Router instantiation;
@@ -60,6 +85,13 @@ export default defineRouter(function ({ store }) {
             // Decodificación segura de base64
             const decodedStr = decodeURIComponent(escape(atob(userEncoded)))
             const userData = JSON.parse(decodedStr)
+
+            if (userData.persona) {
+              userData.nombres = userData.persona.nombres || userData.nombres
+              userData.apellido_paterno = userData.persona.apellido_paterno || userData.persona.primer_apellido || userData.apellido_paterno
+              userData.apellido_materno = userData.persona.apellido_materno || userData.persona.segundo_apellido || userData.apellido_materno
+            }
+
             authStore.setToken(urlToken)
             authStore.setUser(userData)
             
@@ -78,7 +110,7 @@ export default defineRouter(function ({ store }) {
         const storedUser = localStorage.getItem('sispo_user')
         if (storedUser && storedUser !== 'undefined') {
             try {
-                authStore.user = JSON.parse(storedUser)
+                authStore.setUser(JSON.parse(storedUser))
             } catch (error) {
                 console.warn('Failed to parse stored user, clearing session', error)
                 localStorage.removeItem('sispo_token')
@@ -93,21 +125,14 @@ export default defineRouter(function ({ store }) {
     }
 
     const user = authStore.user
-    
-    // SSO Payload compatibility (SIGETH returns access_metadata grouping by system keys)
     const accessMetadata = user?.access_metadata || {}
-    const sispoAccess = accessMetadata['sispo'] || accessMetadata['SISPO'] || { roles: [], permissions: [] }
-    
-    // Check for roles in both system-specific and global structures
-    const sispoRoles = (sispoAccess.roles || []).map(r => r.toUpperCase())
-    const globalRoles = (user?.roles || []).map(r => (r.nombres || r).toUpperCase())
-    const allRoles = [...sispoRoles, ...globalRoles]
+    const userPermissions = collectUserPermissions(user)
+    const allRoles = collectUserRoles(user)
 
     const isAdmin = allRoles.some(role => 
         ['ADMINISTRADOR DEL SISTEMA', 'ADMINISTRADOR', 'SUPER ADMIN', 'ADMIN', 'DIRECTOR'].includes(role)
     )
 
-    const userPermissions = sispoAccess.permissions || []
     const hasSispoPerms = userPermissions.some(p => ['postulaciones', 'evaluaciones', 'dashboard', 'convocatorias', 'all', 'admin'].includes(p))
 
     // 1. Check if route requires auth
@@ -165,7 +190,7 @@ export default defineRouter(function ({ store }) {
            accessGranted = true;
        } else {
            // Must have at least one of the required permissions
-           const hasPermission = requiredPermissions.some(p => userPermissions.includes(p))
+           const hasPermission = requiredPermissions.some(p => userPermissions.includes(normalizePermissionName(p)))
            if (!hasPermission) {
                accessGranted = false
            }
@@ -217,3 +242,4 @@ export default defineRouter(function ({ store }) {
 
   return Router
 })
+

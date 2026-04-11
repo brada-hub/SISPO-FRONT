@@ -2,7 +2,7 @@
   <q-page class="p-6 bg-gray-50 min-h-screen">
     <!-- Header -->
     <div class="mb-8">
-      <div class="text-h4 font-black text-gray-800 tracking-tight uppercase mb-2">Evaluación de Méritos</div>
+      <div class="text-h4 font-black text-gray-800 tracking-tight uppercase mb-2">Evaluacion de meritos</div>
       <div class="text-gray-500 font-medium">Seleccione una convocatoria para iniciar el proceso de evaluación.</div>
     </div>
 
@@ -94,7 +94,7 @@
 
            <!-- Action Button -->
            <q-btn
-             label="Evaluar Méritos"
+             label="Evaluar meritos"
              icon-right="arrow_forward"
              color="primary"
              unelevated
@@ -167,3 +167,4 @@ const goToEvaluation = (conv) => {
 
 onMounted(loadConvocatorias)
 </script>
+
