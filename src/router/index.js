@@ -5,6 +5,7 @@ import {
   createWebHistory,
   createWebHashHistory,
 } from 'vue-router'
+import { api } from 'boot/axios'
 import routes from './routes'
 import { useAuthStore } from 'src/stores/auth-store'
 
@@ -79,11 +80,13 @@ export default defineRouter(function ({ store }) {
     const userEncoded = to.query.user
     if (urlToken && userEncoded) {
         console.log('SSO: Token detected in URL. Authenticating in SISPO...')
-        authStore.token = urlToken
-        localStorage.setItem('sispo_token', urlToken)
+        const tokenValue = decodeURIComponent(String(urlToken))
+        authStore.setToken(tokenValue)
+        localStorage.removeItem('sispo_last_401')
+        localStorage.removeItem('sispo_401_count')
         try {
             // Decodificación segura de base64
-            const decodedStr = decodeURIComponent(escape(atob(userEncoded)))
+            const decodedStr = decodeURIComponent(escape(atob(decodeURIComponent(String(userEncoded)))))
             const userData = JSON.parse(decodedStr)
 
             if (userData.persona) {
@@ -92,7 +95,6 @@ export default defineRouter(function ({ store }) {
               userData.apellido_materno = userData.persona.apellido_materno || userData.persona.segundo_apellido || userData.apellido_materno
             }
 
-            authStore.setToken(urlToken)
             authStore.setUser(userData)
             
             // ¡CLAVE! Redirigir a /admin DIRECTAMENTE, no quedarse en /login
@@ -100,6 +102,11 @@ export default defineRouter(function ({ store }) {
             return next({ path: '/admin', replace: true })
         } catch (e) {
             console.error('SSO: Token/User processing failed', e)
+            authStore.token = null
+            authStore.user = null
+            localStorage.removeItem('sispo_token')
+            localStorage.removeItem('sispo_user')
+            delete api.defaults.headers.common.Authorization
         }
     }
 

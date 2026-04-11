@@ -26,9 +26,13 @@ onMounted(() => {
 
   if (token && userBase64) {
     try {
-      const user = JSON.parse(decodeURIComponent(escape(atob(userBase64))));
-      localStorage.setItem('sispo_token', token);
+      const normalizedToken = decodeURIComponent(String(token));
+      const normalizedUser = decodeURIComponent(String(userBase64));
+      const user = JSON.parse(decodeURIComponent(escape(atob(normalizedUser))));
+      localStorage.setItem('sispo_token', normalizedToken);
       localStorage.setItem('sispo_user', JSON.stringify(user));
+      localStorage.removeItem('sispo_last_401');
+      localStorage.removeItem('sispo_401_count');
       window.location.href = '#/admin';
       return;
     } catch (e) {

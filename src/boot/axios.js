@@ -14,6 +14,11 @@ const api = axios.create({
   }
 })
 
+const resetAuthLoopGuard = () => {
+  localStorage.removeItem('sispo_last_401')
+  localStorage.removeItem('sispo_401_count')
+}
+
 // Request Interceptor to add Token
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('sispo_token')
@@ -27,7 +32,13 @@ api.interceptors.request.use(config => {
 
 // Response Interceptor to handle expired tokens (401)
 api.interceptors.response.use(
-  response => response,
+  response => {
+    if (localStorage.getItem('sispo_token')) {
+      resetAuthLoopGuard()
+    }
+
+    return response
+  },
   error => {
     if (error.response?.status === 401) {
       console.error('Sesión SISPO expirada o no autorizada. Revisando bucle de redirección...')
