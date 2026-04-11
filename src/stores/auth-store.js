@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { api } from 'boot/axios'
 
+const LAST_ACTIVITY_KEY = 'sispo_last_activity'
+const LOGOUT_BROADCAST_KEY = 'sispo_logout_broadcast'
 const BACK_URL = String(import.meta.env.VITE_SISPO_BACK_URL || '').replace(/\/+$/, '')
 const SHARED_ASSET_URL = String(import.meta.env.VITE_SHARED_ASSET_URL || '').replace(/\/+$/, '')
 
@@ -195,6 +197,8 @@ export const useAuthStore = defineStore('auth', {
     setToken(token) {
       this.token = token
       localStorage.setItem('sispo_token', token)
+      localStorage.setItem(LAST_ACTIVITY_KEY, String(Date.now()))
+      localStorage.removeItem(LOGOUT_BROADCAST_KEY)
       api.defaults.headers.common.Authorization = `Bearer ${token}`
     },
 

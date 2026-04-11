@@ -31,6 +31,8 @@ onMounted(() => {
       const user = JSON.parse(decodeURIComponent(escape(atob(normalizedUser))));
       localStorage.setItem('sispo_token', normalizedToken);
       localStorage.setItem('sispo_user', JSON.stringify(user));
+      localStorage.setItem('sispo_last_activity', String(Date.now()));
+      localStorage.removeItem('sispo_logout_broadcast');
       localStorage.removeItem('sispo_last_401');
       localStorage.removeItem('sispo_401_count');
       window.location.href = '#/admin';
