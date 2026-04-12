@@ -328,7 +328,7 @@ const loading = ref(true)
 const saving = ref(false)
 const loadingDocs = ref(false)
 const userRole = ref('')
-const baseUrl = import.meta.env.VITE_SISPO_BACK_URL || 'http://localhost:8002'
+const baseUrl = String(import.meta.env.VITE_SISPO_BACK_URL || '').replace(/\/+$/, '')
 
 // Data models
 const form = ref({})

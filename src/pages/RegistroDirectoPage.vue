@@ -328,12 +328,12 @@ const existingFiles = ref({
 const meritos = ref([])
 const tiposDocumento = ref([])
 const sedesOptions = ref([])
-const baseUrl = import.meta.env.VITE_SISPO_BACK_URL || 'http://localhost:8002'
+const baseUrl = String(import.meta.env.VITE_SISPO_BACK_URL || '').replace(/\/+$/, '')
 
 const getFileUrl = (path) => {
    if (!path) return ''
    if (path.startsWith('http')) return path
-   return `${baseUrl}/storage/${path}`
+   return baseUrl ? `${baseUrl}/storage/${path}` : `/storage/${path}`
 }
 
 onMounted(async () => {

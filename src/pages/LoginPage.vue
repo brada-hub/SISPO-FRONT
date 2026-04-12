@@ -1,56 +1,38 @@
 <template>
   <q-page class="window-height window-width flex flex-center bg-grey-2">
-    <!-- This page should almost never be visible - it auto-redirects -->
+    <div class="text-center">
+      <q-spinner-dots color="primary" size="4em" />
+      <div class="text-h6 q-mt-md text-primary" style="font-weight: bold;">Verificando sesión central...</div>
+    </div>
   </q-page>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
+import { useAuthStore } from 'src/stores/auth-store'
 
-const ssoBaseUrl = import.meta.env.VITE_SSO_FRONT_URL
-const currentOrigin = window.location.origin + window.location.pathname
+const authStore = useAuthStore()
+const ssoBaseUrl = String(import.meta.env.VITE_SSO_FRONT_URL || 'https://sigeth.xpertiaplus.com').replace(/\/+$/, '')
+const adminBaseUrl = `${window.location.origin}/admin`
 
 const goToSSO = () => {
-    const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
-    const force = urlParams.get('force') === 'true';
-    const returnToUrl = encodeURIComponent(`${currentOrigin}#/admin`)
-    window.location.href = `${ssoBaseUrl}/#/login?returnTo=${returnToUrl}${force ? '&force=true' : ''}`
+  const returnToUrl = encodeURIComponent(adminBaseUrl)
+  window.location.href = `${ssoBaseUrl}/login?returnTo=${returnToUrl}`
 }
 
 onMounted(() => {
-  const urlParams = new URLSearchParams(window.location.hash.split('?')[1]);
-
-  // Si viene con token del SSO, procesarlo
-  const token = urlParams.get('token');
-  const userBase64 = urlParams.get('user');
-
-  if (token && userBase64) {
-    try {
-      const normalizedToken = decodeURIComponent(String(token));
-      const normalizedUser = decodeURIComponent(String(userBase64));
-      const user = JSON.parse(decodeURIComponent(escape(atob(normalizedUser))));
-      localStorage.setItem('sispo_token', normalizedToken);
-      localStorage.setItem('sispo_user', JSON.stringify(user));
-      localStorage.setItem('sispo_last_activity', String(Date.now()));
-      localStorage.removeItem('sispo_logout_broadcast');
-      localStorage.removeItem('sispo_last_401');
-      localStorage.removeItem('sispo_401_count');
-      window.location.href = '#/admin';
-      return;
-    } catch (e) {
-      console.error('Error al procesar datos del SSO', e);
+  // Si el Router ya procesó el token, el authStore ya tendrá datos.
+  // Esperar un momento breve para asegurar que el store esté listo.
+  setTimeout(() => {
+    if (authStore.token || localStorage.getItem('sispo_token')) {
+      console.log('LoginPage: Sesión detectada, redirigiendo a /admin')
+      window.location.href = '/admin'
+      return
     }
-  }
 
-  // Si ya tiene token en localStorage, ir al admin
-  const existingToken = localStorage.getItem('sispo_token')
-  if (existingToken) {
-    window.location.href = '#/admin';
-    return;
-  }
-
-  // Sin sesión → redirigir INMEDIATAMENTE al SSO
-  goToSSO()
+    // Si no hay nada de nada, ir al SSO
+    console.log('LoginPage: No se detectó sesión ni token. Redirigiendo al SSO...')
+    goToSSO()
+  }, 500)
 })
 </script>
-

@@ -82,12 +82,18 @@
           <div class="row items-center no-wrap gap-3 mb-4">
             <q-avatar
               size="34px"
-              class="shadow-sm border border-primary/20 shrink-0"
-              color="primary"
-              text-color="white"
+              class="shadow-sm border border-primary/20 shrink-0 overflow-hidden"
+              :color="authStore.userPhoto ? void 0 : 'primary'"
+              :text-color="authStore.userPhoto ? void 0 : 'white'"
               :key="`${authStore.userPhoto || 'no-photo'}-${authStore.fullName}`"
             >
-              <q-img v-if="authStore.userPhoto" :src="authStore.userPhoto" fit="cover" />
+              <q-img
+                v-if="authStore.userPhoto"
+                :src="authStore.userPhoto"
+                fit="cover"
+                class="full-width full-height"
+                img-class="full-width full-height"
+              />
               <span v-else>{{ (authStore.fullName || 'A').charAt(0).toUpperCase() }}</span>
             </q-avatar>
             <div class="column leading-tight overflow-hidden">
@@ -207,7 +213,7 @@ const adminMenuItems = computed(() => {
   const sispoItems = [
     { permission: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
     { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
-    { permission: 'convocatorias', label: 'Plantillas de Evaluación', icon: 'library_books', to: '/admin/plantillas-matrices' },
+    { permission: 'convocatorias', label: 'Matrices de Evaluación', icon: 'assignment', to: '/admin/plantillas-matrices' },
     { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
     { permission: 'evaluaciones', label: 'Evaluación de méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
     { permission: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },

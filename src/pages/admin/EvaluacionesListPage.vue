@@ -73,19 +73,25 @@
               </div>
            </div>
 
-           <div class="flex flex-col gap-2 mb-6 flex-1">
-              <div class="flex items-center justify-between text-xs font-medium text-gray-500">
-                 <span>Ofertas (Cargos/Sedes)</span>
+           <div class="flex flex-col gap-2 mb-6 flex-1 text-sm font-medium text-gray-600">
+              <div class="flex items-center justify-between">
+                 <span>Ofertas disponibles</span>
                  <span class="font-bold text-gray-800">{{ conv.ofertas?.length || 0 }}</span>
               </div>
-              <q-separator />
+              <div class="flex items-center justify-between">
+                 <span>Postulantes registrados</span>
+                 <q-badge :color="conv.postulaciones_count > 0 ? 'primary' : 'grey-5'" class="font-bold">
+                    {{ conv.postulaciones_count || 0 }}
+                 </q-badge>
+              </div>
+              <q-separator class="my-2" />
               <!-- Status Chips -->
-               <div class="flex gap-2 mt-2">
+               <div class="flex gap-2">
                  <q-chip
                    :color="getStatus(conv).color"
                    text-color="white"
-                   size="sm"
-                   class="font-bold"
+                   size="xs"
+                   class="font-extrabold"
                  >
                    {{ getStatus(conv).label }}
                  </q-chip>
@@ -94,11 +100,14 @@
 
            <!-- Action Button -->
            <q-btn
-             label="Evaluar meritos"
-             icon-right="arrow_forward"
-             color="primary"
+             :label="conv.postulaciones_count > 0 ? 'Evaluar meritos' : 'Sin postulantes'"
+             :icon-right="conv.postulaciones_count > 0 ? 'arrow_forward' : 'block'"
+             :color="conv.postulaciones_count > 0 ? 'primary' : 'grey-4'"
+             :text-color="conv.postulaciones_count > 0 ? 'white' : 'grey-7'"
              unelevated
              rounded
+             dense
+             :disable="!conv.postulaciones_count || conv.postulaciones_count === 0"
              class="w-full py-3 font-bold shadow-md group-hover:shadow-lg transition-all"
              @click="goToEvaluation(conv)"
            />
@@ -123,7 +132,7 @@ const filter = ref('')
 const loadConvocatorias = async () => {
   loading.value = true
   try {
-    const { data } = await api.get('/convocatorias')
+    const { data } = await api.get('/admin/convocatorias-con-postulantes')
     // Sort by most recent first
     convocatorias.value = data.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
   } catch (error) {

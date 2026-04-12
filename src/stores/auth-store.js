@@ -46,6 +46,7 @@ const normalizePersona = (persona) => {
     ...persona,
     apellido_paterno: persona.apellido_paterno || persona.primer_apellido || null,
     apellido_materno: persona.apellido_materno || persona.segundo_apellido || null,
+    foto: normalizePhotoUrl(persona.foto || persona.foto_url || null),
     foto_url: normalizePhotoUrl(persona.foto_url || persona.foto || null),
   }
 }
@@ -119,8 +120,16 @@ export const useAuthStore = defineStore('auth', {
     userPhoto: (state) => normalizePhotoUrl(
       state.user?.persona?.foto_url
       || state.user?.persona?.foto
+      || state.user?.persona?.avatar_url
+      || state.user?.persona?.avatar
+      || state.user?.persona?.image_url
+      || state.user?.persona?.profile_photo_url
       || state.user?.foto_url
       || state.user?.foto
+      || state.user?.avatar_url
+      || state.user?.avatar
+      || state.user?.image_url
+      || state.user?.profile_photo_url
       || null
     ),
   },
@@ -247,6 +256,15 @@ export const useAuthStore = defineStore('auth', {
       }
 
       user.nombre_completo = buildFullName(user)
+      user.foto_url = normalizePhotoUrl(
+        user.persona?.foto_url
+        || user.persona?.foto
+        || user.foto_url
+        || user.foto
+        || user.avatar_url
+        || user.avatar
+        || null
+      )
 
       this.user = user
       localStorage.setItem('sispo_user', JSON.stringify(user))
