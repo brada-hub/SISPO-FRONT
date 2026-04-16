@@ -440,6 +440,7 @@ const statusLabels = {
   validada: 'Preseleccionado',
   observada: 'Con observacion',
   rechazada: 'No Seleccionado',
+  seleccionado: 'Seleccionado',
 }
 const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
   label,
@@ -597,6 +598,8 @@ const getStatusColor = (status) => {
       return 'deep-orange-7'
     case 'rechazada':
       return 'red-7'
+    case 'seleccionado':
+      return 'positive'
     default:
       return 'grey-7'
   }

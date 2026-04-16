@@ -166,7 +166,8 @@ const statusLabels = {
   en_revision: 'En Evaluación',
   validada: 'Pre-seleccionado',
   observada: 'Con Observación',
-  rechazada: 'No Seleccionado'
+  rechazada: 'No Seleccionado',
+  seleccionado: 'Seleccionado'
 }
 
 const buscar = async () => {
@@ -196,6 +197,7 @@ const getStatusColor = (estado) => {
   if (e === 'validada') return 'teal-7'
   if (e === 'observada') return 'red-9'
   if (e === 'rechazada') return 'grey-9'
+  if (e === 'seleccionado') return 'positive'
   return 'primary'
 }
 
