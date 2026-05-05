@@ -109,7 +109,7 @@
         </q-card-section>
 
         <q-card-actions align="center" class="q-pb-xl px-12 gap-4">
-          <q-btn outline label="Ir al Inicio" color="grey-8" class="flex-grow rounded-xl h-14" to="/" />
+          <q-btn outline label="Ir al Inicio" color="grey-8" class="flex-grow rounded-xl h-14" :to="portalHomeRoute" />
           <q-btn unelevated label="Nueva Postulación" color="primary" class="flex-grow rounded-xl h-14 font-bold" @click="resetAndStart" />
         </q-card-actions>
       </q-card>
@@ -137,6 +137,7 @@ import { useRoute } from 'vue-router'
 const $q = useQuasar()
 const route = useRoute()
 const store = usePostulacionStore()
+const portalHomeRoute = { path: '/', query: { public: '1' } }
 
 const currentStep = computed({
   get: () => store.currentStep,
@@ -154,9 +155,9 @@ onMounted(async () => {
   await store.fetchOfertasActivas()
 
   // Si viene con un ID de convocatoria por parámetro, autoseleccionamos todo lo relacionado
-  const convId = route.query.convocatoria
+  const convId = route.params.id || route.query.convocatoria
   if (convId) {
-    await store.autoSelectConvocatoria(convId)
+    store.autoSelectConvocatoria(convId)
   }
 })
 

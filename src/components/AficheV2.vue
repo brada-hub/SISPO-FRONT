@@ -8,14 +8,19 @@
     <div class="afiche-header">
       <img src="~assets/logo_unitepc.png" class="afiche-logo" />
       <div class="text-center w-full">
-        <h2 class="main-title text-uppercase">REQUERIMIENTO DE PERSONAL:</h2>
+        <h2
+          class="main-title text-uppercase"
+          :contenteditable="editable"
+          @input="onInputMainHeading"
+          :class="{ 'editable-field': editable }"
+        >{{ mainHeading }}</h2>
         <h3 class="area-title text-uppercase" :style="titleScaleStyle">
           <span
             :contenteditable="editable"
             @input="onInputTitle"
             :class="{ 'editable-field': editable }"
             class="inline-block min-w-[50px]"
-          >{{ titulo || '[ÁREA]' }}</span>
+          >{{ titulo || '[AREA]' }}</span>
         </h3>
         <!-- SEDE BANNER -->
         <div v-if="singleSede" class="sede-banner-container animate-fade-in">
@@ -84,16 +89,33 @@
             <span class="bullet"></span>
             <div class="doc-text">
               <span class="item-main-text text-uppercase">{{ getReqName(rid) }}:</span>
-              <span
-                v-if="requisitosAfiche[rid]"
-                class="item-sub-text"
-                :contenteditable="editable"
-                @input="onInputReq(rid, $event)"
-                :class="{ 'editable-field': editable }"
-              >
-                {{ requisitosAfiche[rid] }}
-              </span>
-              <span v-else-if="editable" class="item-sub-text italic opacity-50" :contenteditable="editable" @input="onInputReq(rid, $event)">[Añadir detalles...]</span>
+              <div v-if="editable" class="w-full">
+                <span
+                  v-if="requisitosAfiche[rid]"
+                  class="item-sub-text editable-field requirement-editor"
+                  :contenteditable="editable"
+                  @input="onInputReq(rid, $event)"
+                >
+                  {{ requisitosAfiche[rid] }}
+                </span>
+                <span
+                  v-else
+                  class="item-sub-text italic opacity-50 editable-field requirement-editor"
+                  :contenteditable="editable"
+                  @input="onInputReq(rid, $event)"
+                >[Añadir detalles...]</span>
+              </div>
+              <div v-else-if="requisitosAfiche[rid]" class="item-sub-text requirement-block">
+                <div
+                  v-for="(line, idx) in buildRequirementLines(requisitosAfiche[rid])"
+                  :key="`${rid}-${idx}`"
+                  class="requirement-line"
+                  :class="line.level > 0 ? 'is-nested' : 'is-top-level'"
+                >
+                  <span class="auto-bullet" :class="line.level > 0 ? 'is-nested' : 'is-top-level'"></span>
+                  <span>{{ line.text }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -167,18 +189,31 @@ const props = defineProps({
   editable: { type: Boolean, default: false }
 })
 
-const emit = defineEmits(['update:titulo', 'update:descripcion', 'update:requisitoAfiche'])
+const emit = defineEmits(['update:titulo', 'update:descripcion', 'update:requisitoAfiche', 'update:mainHeading'])
+
+const normalizeEditableText = (value) => {
+  return String(value || '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/\r/g, '')
+    .trim()
+}
+
+const mainHeading = computed(() => props.requisitosAfiche?.__main_heading || 'REQUERIMIENTO DE PERSONAL:')
+
+const onInputMainHeading = (e) => {
+  emit('update:mainHeading', normalizeEditableText(e.target.innerText))
+}
 
 const onInputTitle = (e) => {
-  emit('update:titulo', e.target.innerText)
+  emit('update:titulo', normalizeEditableText(e.target.innerText))
 }
 
 const onInputDescription = (e) => {
-  emit('update:descripcion', e.target.innerText)
+  emit('update:descripcion', normalizeEditableText(e.target.innerText))
 }
 
 const onInputReq = (rid, e) => {
-  emit('update:requisitoAfiche', { id: rid, value: e.target.innerText })
+  emit('update:requisitoAfiche', { id: rid, value: normalizeEditableText(e.target.innerText) })
 }
 
 
@@ -280,7 +315,7 @@ const useGridForCargos = computed(() => totalCargoItems.value > 8)
 const visibleRequisitosIds = computed(() => {
   return props.requisitosIds.filter(rid => {
     const text = props.requisitosAfiche[rid]
-    // Solo ocultamos si es EXPLÍCITAMENTE la palabra mágica OCULTAR
+    // Solo ocultamos si es EXPLICITAMENTE la palabra magica OCULTAR
     // Si está vacío o tiene texto, se muestra.
     return text !== 'OCULTAR'
   })
@@ -318,6 +353,30 @@ function getCargoName (id) {
 
 function getReqName (id) {
   return props.catalogRequisitos.find(r => r.id === parseInt(id))?.nombre || ''
+}
+
+function buildRequirementLines (text) {
+  return String(text || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map(rawLine => rawLine.replace(/\u00A0/g, ' '))
+    .map((rawLine) => {
+      const indentMatch = rawLine.match(/^(\s*)/)
+      const indent = indentMatch ? indentMatch[1].length : 0
+      const cleaned = rawLine
+        .trim()
+        .replace(/^[-*•·]+/, '')
+        .replace(/^[oO]\s+/, '')
+        .trim()
+
+      if (!cleaned) return null
+
+      return {
+        level: indent >= 2 ? 1 : 0,
+        text: cleaned,
+      }
+    })
+    .filter(Boolean)
 }
 
 
@@ -590,6 +649,49 @@ function formatDateLiteral (dateStr) {
   white-space: pre-wrap;
 }
 
+.requirement-editor {
+  display: inline-block;
+  width: 100%;
+}
+
+.requirement-block {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 4px;
+  white-space: normal;
+}
+
+.requirement-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.25;
+}
+
+.requirement-line.is-nested {
+  margin-left: 22px;
+}
+
+.auto-bullet {
+  flex-shrink: 0;
+  margin-top: 0.42em;
+}
+
+.auto-bullet.is-top-level {
+  width: 6px;
+  height: 6px;
+  background: #6b7280;
+  border-radius: 50%;
+}
+
+.auto-bullet.is-nested {
+  width: 6px;
+  height: 6px;
+  border: 1.5px solid #6b7280;
+  border-radius: 50%;
+}
+
 .afiche-footer {
   height: auto;
   padding-top: 25px;
@@ -695,3 +797,4 @@ function formatDateLiteral (dateStr) {
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
 </style>
+

@@ -129,14 +129,15 @@ const mapPaths = computed(() => {
 
 const sedesConOfertas = computed(() => {
   return store.ofertasActivas
-    .map((s) => normalizeDept(s.departamento))
+    .map((s) => normalizeDept(s.departamento || s.nombre))
     .filter(d => d && d !== 'nacional')
 })
 
 const nacionalOffersCount = computed(() => {
-  const central = store.ofertasActivas.find((s) =>
-    s.departamento?.toLowerCase() === 'nacional'
-  )
+  const central = store.ofertasActivas.find((s) => {
+    const dept = (s.departamento || s.nombre || '').toLowerCase()
+    return dept === 'nacional' || dept === 'central'
+  })
   return central?.cargos?.length || 0
 })
 
@@ -171,7 +172,10 @@ const selectSede = (name) => {
 }
 
 const selectNacional = () => {
-  const hasNacionalOffers = store.ofertasActivas.some(s => s.departamento?.toLowerCase() === 'nacional')
+  const hasNacionalOffers = store.ofertasActivas.some(s => {
+    const dept = (s.departamento || s.nombre || '').toLowerCase()
+    return dept === 'nacional' || dept === 'central'
+  })
   if (hasNacionalOffers) {
     store.setSedeActiva('Nacional')
     emit('select-sede', 'Nacional')

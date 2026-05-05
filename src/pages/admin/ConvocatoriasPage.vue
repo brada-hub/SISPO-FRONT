@@ -153,13 +153,22 @@
                   <q-card-section class="space-y-4 py-4">
                     <q-input
                       v-model="form.titulo"
-                      label="Título (Eje: MARKETING Y VENTAS)"
+                      label="Título (Ej. MARKETING Y VENTAS)"
                       outlined
                       dense
                       class="text-uppercase"
                       placeholder="MARKETING Y VENTAS"
                       :rules="[val => !!val || 'El título es obligatorio']"
                       hint="Puedes editarlo directamente en el afiche a la derecha"
+                    />
+                    <q-input
+                      :model-value="form.requisitos_afiche?.__main_heading || 'REQUERIMIENTO DE PERSONAL:'"
+                      label="Encabezado del Afiche"
+                      outlined
+                      dense
+                      placeholder="REQUERIMIENTO DE PERSONAL:"
+                      hint="Puedes cambiarlo por ejemplo a CONVOCATORIA INTERNA:"
+                      @update:model-value="updatePosterHeading"
                     />
                     <q-input v-model="form.descripcion" label="Descripción / Invitación" type="textarea" outlined dense rows="3" placeholder="La Universidad Técnica Privada Cosmos invita a profesionales..." :rules="[val => !!val || 'La descripción es obligatoria']" />
 
@@ -370,11 +379,12 @@
                             outlined
                             autogrow
                             type="textarea"
-                            rows="1"
+                            rows="3"
                             class="full-width"
-                            placeholder="Detalle (Eje: Título Provisión Nacional)"
+                            placeholder="Escribe una linea por punto. Usa espacios al inicio para subpuntos."
                             input-class="text-[10px]"
                             bg-color="white"
+                            hint="El afiche creará las viñetas automáticamente."
                           />
                           <div class="flex items-center justify-between bg-white p-2 rounded-lg border border-dashed">
                              <div class="flex items-center gap-1">
@@ -540,7 +550,7 @@
                :style="isViewMode ? 'min-height: calc(100vh - 80px)' : ''">
               <!-- HELP BANNER -->
               <div v-if="!isViewMode" class="bg-amber-1 text-amber-9 border border-amber-200 p-2 rounded-xl mb-3 text-center text-xs font-bold animate-pulse mx-4">
-                <q-icon name="edit" /> TIP: HAZ CLIC DIRECTAMENTE EN EL TEXTO DEL AFICHE PARA EDITAR EL TÍTULO O DESCRIPCIÓN
+                <q-icon name="edit" /> TIP: HAZ CLIC DIRECTAMENTE EN EL TEXTO DEL AFICHE PARA EDITAR EL TITULO O DESCRIPCION
               </div>
 
               <div
@@ -567,6 +577,7 @@
                     :editable="!isViewMode"
                     @update:titulo="val => form.titulo = val"
                     @update:descripcion="val => form.descripcion = val"
+                    @update:main-heading="updatePosterHeading"
                     @update:requisito-afiche="({ id, value }) => form.requisitos_afiche[id] = value"
                   />
                 </div>
@@ -732,6 +743,13 @@ watch(() => quickCargo.value.nombre, (newVal) => {
 
 const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {}, matriz_evaluacion: [] })
 
+const updatePosterHeading = (value) => {
+  form.value.requisitos_afiche = {
+    ...(form.value.requisitos_afiche || {}),
+    __main_heading: value || 'REQUERIMIENTO DE PERSONAL:'
+  }
+}
+
 const addSeccion = () => {
   if (!form.value.matriz_evaluacion) form.value.matriz_evaluacion = [];
   form.value.matriz_evaluacion.push({ seccion: '', criterios: [ { nombre: '', puntaje: 0, descripcion: '' } ] });
@@ -816,13 +834,13 @@ const getStatus = (row) => {
 
 const qrValue = computed(() => {
   const origin = window.location.origin
-  return form.value.id ? `${origin}/#/postular/${form.value.id}` : `${origin}/#/postular`
+  return form.value.id ? `${origin}/postular/${form.value.id}` : `${origin}/postular`
 })
 
 const publicPageUrl = computed(() => {
   if (!form.value.id) return 'Se generará al guardar'
   const origin = window.location.origin
-  return `${origin}/#/convocatoria/${form.value.id}`
+  return `${origin}/convocatoria/${form.value.id}`
 })
 
 const copyPublicLink = async () => {
@@ -1119,3 +1137,4 @@ onMounted(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 </style>
+

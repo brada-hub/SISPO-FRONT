@@ -192,8 +192,8 @@
                     </div>
                   </td>
                   <td class="px-6 py-4">
-                    <div class="text-sm font-medium text-gray-900">{{ item.oferta.cargo.nombre }}</div>
-                    <div class="text-[10px] text-gray-500 uppercase font-bold">{{ item.oferta.sede.nombre }}</div>
+                    <div class="text-sm font-medium text-gray-900">{{ item.oferta?.cargo?.nombre || 'Cargo Desconocido' }}</div>
+                    <div class="text-[10px] text-gray-500 uppercase font-bold">{{ item.oferta?.sede?.nombre || 'Sede Desconocida' }}</div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="text-sm text-gray-600">{{ formatDateTime(item.created_at) }}</div>

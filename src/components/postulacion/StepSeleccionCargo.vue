@@ -104,7 +104,7 @@
                           icon-right="launch"
                           label="Ver requisitos de la convocatoria"
                           class="text-[15px] font-bold px-3 py-1 rounded-md"
-                          :href="'#/convocatoria/' + cargo.convocatoria_id"
+                          :href="'/convocatoria/' + cargo.convocatoria_id"
                           target="_blank"
                           no-caps
                         />
@@ -200,9 +200,10 @@ const cargosSeleccionados = computed(() => store.cargosSeleccionados)
 
 const sedesDelDepartamento = computed(() => {
   if (!departamentoActivo.value) return []
-  return store.ofertasActivas.filter(s =>
-    s.departamento?.toLowerCase() === departamentoActivo.value.toLowerCase()
-  )
+  return store.ofertasActivas.filter(s => {
+    const dept = (s.departamento || s.nombre || '').toLowerCase()
+    return dept === departamentoActivo.value.toLowerCase()
+  })
 })
 
 const totalCargosVisibles = computed(() => {

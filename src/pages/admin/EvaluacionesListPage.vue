@@ -2,7 +2,7 @@
   <q-page class="p-6 bg-gray-50 min-h-screen">
     <!-- Header -->
     <div class="mb-8">
-      <div class="text-h4 font-black text-gray-800 tracking-tight uppercase mb-2">Evaluacion de meritos</div>
+      <div class="text-h4 font-black text-gray-800 tracking-tight uppercase mb-2">Evaluación de méritos</div>
       <div class="text-gray-500 font-medium">Seleccione una convocatoria para iniciar el proceso de evaluación.</div>
     </div>
 
@@ -100,7 +100,7 @@
 
            <!-- Action Button -->
            <q-btn
-             :label="conv.postulaciones_count > 0 ? 'Evaluar meritos' : 'Sin postulantes'"
+             :label="conv.postulaciones_count > 0 ? 'Evaluar méritos' : 'Sin postulantes'"
              :icon-right="conv.postulaciones_count > 0 ? 'arrow_forward' : 'block'"
              :color="conv.postulaciones_count > 0 ? 'primary' : 'grey-4'"
              :text-color="conv.postulaciones_count > 0 ? 'white' : 'grey-7'"

@@ -3,7 +3,7 @@
     <div class="flex justify-between items-center mb-10">
       <div>
         <h1 class="text-3xl font-black text-gray-900 tracking-tight">Usuarios con Acceso a SISPO</h1>
-        <p class="text-gray-500 font-medium">Aqu� solo gestionas a qu� convocatorias espec�ficas puede entrar cada usuario del sistema.</p>
+        <p class="text-gray-500 font-medium">Aquí solo gestionas a qué convocatorias específicas puede entrar cada usuario del sistema.</p>
       </div>
     </div>
 
@@ -48,7 +48,7 @@
                 {{ convocatoriaMap.get(convocatoriaId) || `Convocatoria #${convocatoriaId}` }}
               </q-chip>
             </div>
-            <q-badge v-else color="grey-3" text-color="grey-8" label="Sin restricci�n espec�fica" class="q-px-sm" />
+            <q-badge v-else color="grey-3" text-color="grey-8" label="Sin restricción específica" class="q-px-sm" />
           </q-td>
         </template>
 
@@ -103,7 +103,7 @@
           </div>
 
           <div>
-            <label class="text-caption text-weight-bold text-deep-purple uppercase tracking-widest q-mb-xs block">Convocatorias espec�ficas</label>
+            <label class="text-caption text-weight-bold text-deep-purple uppercase tracking-widest q-mb-xs block">Convocatorias específicas</label>
             <q-select
               v-model="form.convocatoria_scope"
               :options="convocatoriasOptions"
@@ -117,7 +117,7 @@
               map-options
               clearable
               bg-color="deep-purple-1"
-              hint="Si seleccionas convocatorias, el usuario solo ver� esas convocatorias y sus postulaciones relacionadas. Si queda vac�o, ver� las convocatorias permitidas por su acceso base."
+              hint="Si seleccionas convocatorias, el usuario solo verá esas convocatorias y sus postulaciones relacionadas. Si queda vacío, verá las convocatorias permitidas por su acceso base."
             >
               <template v-slot:prepend><q-icon name="campaign" color="deep-purple" /></template>
             </q-select>
@@ -190,10 +190,14 @@ const formatConvocatoriaLabel = (opt) => {
 }
 
 const getDisplayFullName = (row) => {
+  if (row?.persona?.nombres || row?.persona?.apellido_paterno) {
+    return [
+      row?.persona?.nombres,
+      row?.persona?.apellido_paterno,
+      row?.persona?.apellido_materno,
+    ].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim() || 'Usuario'
+  }
   return [
-    row?.persona?.nombres,
-    row?.persona?.apellido_paterno,
-    row?.persona?.apellido_materno,
     row?.nombres,
     row?.apellido_paterno,
     row?.apellido_materno,

@@ -74,6 +74,32 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     loading.value = true
     try {
       const { data } = await api.get('/portal/ofertas-activas')
+
+      // Automatically map known sedes to their departments if missing
+      const mapSedeToDepartamento = (nombre) => {
+        if (!nombre) return ''
+        const n = nombre.toLowerCase().trim()
+        if (n.includes('cobija')) return 'Pando'
+        if (n.includes('guayaramerin') || n.includes('guayaramerín')) return 'Beni'
+        if (n.includes('riberalta')) return 'Beni'
+        if (n.includes('santa cruz') || n.includes('quijarro')) return 'Santa Cruz'
+        if (n.includes('cochabamba') || n.includes('ivirgarzama') || n.includes('trópico') || n.includes('tropico')) return 'Cochabamba'
+        if (n.includes('la paz') || n.includes('el alto')) return 'La Paz'
+        if (n.includes('sucre') || n.includes('chuquisaca')) return 'Chuquisaca'
+        if (n.includes('tarija') || n.includes('yacuiba')) return 'Tarija'
+        if (n.includes('oruro')) return 'Oruro'
+        if (n.includes('potosi') || n.includes('potosí')) return 'Potosi'
+        if (n.includes('beni') || n.includes('trinidad')) return 'Beni'
+        if (n.includes('pando')) return 'Pando'
+        return nombre
+      }
+
+      data.forEach(sede => {
+        if (!sede.departamento) {
+          sede.departamento = mapSedeToDepartamento(sede.nombre)
+        }
+      })
+
       ofertasActivas.value = data
       return data
     } catch (error) {
@@ -271,7 +297,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       }
 
       const { data } = await api.post('/portal/postular', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 120000, // 2 minutes for file uploads
       })
 
       return data
@@ -384,13 +411,46 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   }
 
   /**
-   * Only fetches offers, does NOT select them automatically anymore.
-   * Logic changed per user request.
+   * Selects all active offers that belong to a convocatoria and loads them into the cart.
    */
-  function autoSelectConvocatoria() {
-    // Ensuring we have the active offers is enough.
-    // We clear previous selections to start fresh.
+  function autoSelectConvocatoria(convocatoriaId) {
+    const normalizedId = Number(convocatoriaId)
     cargosSeleccionados.value = []
+
+    if (!normalizedId) {
+      sedeActiva.value = null
+      return 0
+    }
+
+    const sedesConSeleccion = []
+
+    ofertasActivas.value.forEach((sede) => {
+      const cargos = Array.isArray(sede.cargos) ? sede.cargos : []
+
+      cargos.forEach((cargo) => {
+        if (Number(cargo.convocatoria_id) !== normalizedId) return
+
+        cargosSeleccionados.value.push({
+          oferta_id: cargo.oferta_id,
+          convocatoria_id: cargo.convocatoria_id,
+          cargo_id: cargo.cargo_id,
+          cargo_nombre: cargo.cargo_nombre,
+          sede_id: sede.id,
+          sede_nombre: sede.nombre,
+          vacantes: cargo.vacantes,
+          fecha_cierre: cargo.convocatoria?.fecha_cierre || '',
+          pretension_salarial: null,
+          porque_cargo: '',
+        })
+
+        sedesConSeleccion.push(sede)
+      })
+    })
+
+    const primeraSede = sedesConSeleccion[0]
+    sedeActiva.value = primeraSede ? (primeraSede.departamento || primeraSede.nombre || null) : null
+
+    return cargosSeleccionados.value.length
   }
 
   return {

@@ -17,7 +17,7 @@
             <span class="text-xs opacity-80">Cochabamba, Bolivia</span>
           </div>
 
-          <q-btn flat round dense icon="public" @click="$router.push('/')" class="bg-white/10 hover:bg-white/20 transition-all">
+          <q-btn flat round dense icon="public" @click="openPublicPortal" class="bg-white/10 hover:bg-white/20 transition-all">
             <q-tooltip class="bg-black/80 text-white">Ver portal publico</q-tooltip>
           </q-btn>
 
@@ -51,7 +51,7 @@
 
         <div class="col px-4 space-y-2 overflow-y-auto mt-2">
           <div
-            @click="$router.push('/')"
+            @click="openPublicPortal"
             class="flex items-center gap-4 px-4 py-3 rounded-lg transition-all cursor-pointer mb-6 bg-gray-50 hover:bg-gradient-to-r hover:from-primary hover:to-secondary hover:text-white border border-gray-100 group"
           >
             <q-icon name="public" size="22px" class="text-gray-600 group-hover:text-white group-hover:scale-110 transition-all" />
@@ -244,6 +244,12 @@ const volverAlPortal = () => {
   const ssoUrl = import.meta.env.VITE_SSO_FRONT_URL
   window.location.href = ssoUrl
 }
+
+const openPublicPortal = () => {
+  router.push({ path: '/', query: { public: '1' } })
+}
+
+
 
 const handleSessionContinue = async () => {
   await sessionTimeoutManager.continueSession()

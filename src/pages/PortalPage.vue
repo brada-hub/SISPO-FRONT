@@ -357,16 +357,6 @@ const getUniqueSedes = (conv) => {
 }
 
 onMounted(async () => {
-    // Redirigir automáticamente si ya tiene sesión y es administrador
-    const authStore = (await import('src/stores/auth-store')).useAuthStore();
-    if (authStore.isLoggedIn) {
-        const canAdmin = authStore.can('dashboard') || authStore.can('convocatorias') || authStore.can('postulaciones');
-        if (canAdmin) {
-            const router = (await import('vue-router')).useRouter();
-            router.push('/admin');
-            return;
-        }
-    }
     loadConvocatorias();
 });
 </script>
