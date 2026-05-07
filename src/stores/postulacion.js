@@ -231,6 +231,45 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   }
 
   /**
+   * Helper to compress images on the client side using Canvas
+   */
+  async function compressImage(file, maxWidth = 1200, quality = 0.7) {
+    if (!file || !file.type.startsWith('image/')) return file;
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          if (width > maxWidth) {
+            height = (maxWidth / width) * height;
+            width = maxWidth;
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          }, 'image/jpeg', quality);
+        };
+      };
+    });
+  }
+
+  /**
    * Submit the complete application for ALL selected cargos
    */
   async function submitPostulacion() {
@@ -238,24 +277,29 @@ export const usePostulacionStore = defineStore('postulacion', () => {
 
     try {
       const formData = new FormData()
-      const MAX_FILE_SIZE = 2 * 1024 * 1024 // 2MB
+      const MAX_FILE_SIZE = 5 * 1024 * 1024 // Increased to 5MB since we will compress
 
       // Add ALL selected offer IDs
       cargosSeleccionados.value.forEach((cargo, idx) => {
         formData.append(`oferta_ids[${idx}]`, cargo.oferta_id)
       })
 
-      // Add personal data
-      Object.keys(datosPersonales.value).forEach(key => {
-        const value = datosPersonales.value[key]
+      // Add personal data (with compression for images)
+      for (const key of Object.keys(datosPersonales.value)) {
+        let value = datosPersonales.value[key]
         if (value !== null && value !== '') {
-          // Check file size for personal docs
-          if (value instanceof File && value.size > MAX_FILE_SIZE) {
-            throw new Error(`El archivo ${key.replace('_', ' ')} excede el límite de 2MB.`)
+          if (value instanceof File) {
+            // Compress if it's an image
+            if (value.type.startsWith('image/') && (key === 'foto_perfil' || key === 'ci_archivo')) {
+              value = await compressImage(value)
+            }
+            if (value.size > MAX_FILE_SIZE) {
+              throw new Error(`El archivo ${key.replace('_', ' ')} excede el límite de 5MB.`)
+            }
           }
           formData.append(key, value)
         }
-      })
+      }
 
       // Add per-cargo details
       cargosSeleccionados.value.forEach((cargo, idx) => {
@@ -267,8 +311,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       // Add merits (Step 3) - Flattening records
       if (meritos.value && Array.isArray(meritos.value)) {
         let globalIndex = 0
-        meritos.value.forEach((merito) => {
-          merito.registros.forEach((reg) => {
+        for (const merito of meritos.value) {
+          for (const reg of merito.registros) {
             formData.append(`meritos[${globalIndex}][tipo_documento_id]`, merito.tipo_documento_id)
 
             // Add responses
@@ -280,25 +324,29 @@ export const usePostulacionStore = defineStore('postulacion', () => {
               })
             }
 
-            // Add merit files
+            // Add merit files (with compression if images)
             if (reg.archivos && typeof reg.archivos === 'object') {
-              Object.entries(reg.archivos).forEach(([configId, file]) => {
+              for (const [configId, file] of Object.entries(reg.archivos)) {
                 if (file instanceof File) {
-                  if (file.size > MAX_FILE_SIZE) {
-                    throw new Error(`El archivo adjunto para "${merito.nombre}" excede el límite de 2MB.`)
+                  let fileToUpload = file
+                  if (file.type.startsWith('image/')) {
+                    fileToUpload = await compressImage(file)
                   }
-                  formData.append(`meritos[${globalIndex}][archivos][${configId}]`, file)
+                  if (fileToUpload.size > MAX_FILE_SIZE) {
+                    throw new Error(`El archivo adjunto para "${merito.nombre}" excede el límite de 5MB.`)
+                  }
+                  formData.append(`meritos[${globalIndex}][archivos][${configId}]`, fileToUpload)
                 }
-              })
+              }
             }
             globalIndex++
-          })
-        })
+          }
+        }
       }
 
       const { data } = await api.post('/portal/postular', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 120000, // 2 minutes for file uploads
+        timeout: 180000, // Increased to 3 minutes for peace of mind
       })
 
       return data
