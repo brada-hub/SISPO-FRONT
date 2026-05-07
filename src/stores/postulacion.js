@@ -88,7 +88,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         if (n.includes('sucre') || n.includes('chuquisaca')) return 'Chuquisaca'
         if (n.includes('tarija') || n.includes('yacuiba')) return 'Tarija'
         if (n.includes('oruro')) return 'Oruro'
-        if (n.includes('potosi') || n.includes('potosí')) return 'Potosi'
+        if (n.includes('potosi') || n.includes('potosí')) return 'Potosí'
         if (n.includes('beni') || n.includes('trinidad')) return 'Beni'
         if (n.includes('pando')) return 'Pando'
         return nombre
