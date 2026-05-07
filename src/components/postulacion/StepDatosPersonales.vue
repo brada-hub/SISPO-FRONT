@@ -467,9 +467,20 @@ watch(form, (newVal) => {
 const $q = useQuasar()
 const myForm = ref(null)
 
-const handleNext = () => {
+const handleNext = async () => {
   // El evento submit solo se dispara si la validación de Quasar pasa
   store.updateDatosPersonales(form)
+  try {
+    await store.prepararArchivosPersonales()
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: error.message || 'No se pudieron subir los documentos base. Revise su conexion e intente nuevamente.',
+      position: 'top',
+      timeout: 10000
+    })
+    return
+  }
   emit('next')
 }
 

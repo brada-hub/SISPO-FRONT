@@ -43,6 +43,16 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   const currentStep = ref(1)
   const submitting = ref(false)
   const sedeActiva = ref(null) // For map interaction
+  const uploadingFiles = ref(false)
+  const uploadProgress = ref({
+    current: 0,
+    total: 0,
+    label: '',
+  })
+  const archivoTokens = ref({
+    personales: {},
+    meritos: {},
+  })
 
   // =====================
   // GETTERS
@@ -296,6 +306,11 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     return { personales, meritosArchivos }
   }
 
+  function fileSignature(file) {
+    if (!(file instanceof File)) return null
+    return `${file.name}:${file.size}:${file.lastModified}`
+  }
+
   function snapshotHasFiles(archivosSnapshot) {
     if (Object.keys(archivosSnapshot.personales).length > 0) return true
 
@@ -304,84 +319,97 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     })
   }
 
-  async function uploadArchivosPostulacion(postulacionData, archivosSnapshot) {
-    if (!postulacionData?.postulante_id || !postulacionData?.upload_token) return
-
+  async function uploadArchivoTemporal(file, scope, field) {
     const MAX_FILE_SIZE = 5 * 1024 * 1024
+    let fileToUpload = file
+
+    if (file.type.startsWith('image/')) {
+      fileToUpload = await compressImage(file)
+    }
+
+    if (fileToUpload.size > MAX_FILE_SIZE) {
+      throw new Error(`El archivo ${file.name} excede el limite de 5MB.`)
+    }
+
     const formData = new FormData()
-    formData.append('postulante_id', postulacionData.postulante_id)
-    formData.append('upload_token', postulacionData.upload_token)
+    formData.append('scope', scope)
+    formData.append('field', field)
+    formData.append('file', fileToUpload)
 
-    let hasFiles = false
-
-    for (const [key, file] of Object.entries(archivosSnapshot.personales)) {
-      let fileToUpload = file
-      if (file.type.startsWith('image/') && (key === 'foto_perfil' || key === 'ci_archivo')) {
-        fileToUpload = await compressImage(file)
-      }
-      if (fileToUpload.size > MAX_FILE_SIZE) {
-        console.error(`El archivo ${key} excede el limite de 5MB.`)
-        continue
-      }
-      formData.append(key, fileToUpload)
-      hasFiles = true
-    }
-
-    const meritosUpload = postulacionData.meritos_upload || []
-    for (const info of meritosUpload) {
-      const snapshot = archivosSnapshot.meritosArchivos[info.index]
-      if (!snapshot?.archivos) continue
-
-      let meritoHasFiles = false
-      formData.append(`meritos[${info.index}][merito_id]`, info.id)
-
-      for (const [configId, file] of Object.entries(snapshot.archivos)) {
-        if (!(file instanceof File)) continue
-
-        let fileToUpload = file
-        if (file.type.startsWith('image/')) {
-          fileToUpload = await compressImage(file)
-        }
-        if (fileToUpload.size > MAX_FILE_SIZE) {
-          console.error(`El archivo adjunto para "${snapshot.nombre}" excede el limite de 5MB.`)
-          continue
-        }
-
-        formData.append(`meritos[${info.index}][archivos][${configId}]`, fileToUpload)
-        meritoHasFiles = true
-        hasFiles = true
-      }
-
-      if (!meritoHasFiles) {
-        formData.delete(`meritos[${info.index}][merito_id]`)
-      }
-    }
-
-    if (!hasFiles) return
-
-    await api.post('/portal/postular-archivos', formData, {
+    const { data } = await api.post('/portal/archivo-temporal', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180000,
     })
+
+    return data.token
   }
 
-  async function uploadArchivosConReintentos(postulacionData, archivosSnapshot) {
-    const maxIntentos = 3
-    let ultimoError = null
+  async function prepareArchivoPersonal(key, label, file) {
+    if (!(file instanceof File)) return
 
-    for (let intento = 1; intento <= maxIntentos; intento++) {
-      try {
-        await uploadArchivosPostulacion(postulacionData, archivosSnapshot)
-        return
-      } catch (error) {
-        ultimoError = error
-        if (intento < maxIntentos) {
-          await new Promise(resolve => setTimeout(resolve, intento * 1200))
-        }
+    const signature = fileSignature(file)
+    const current = archivoTokens.value.personales[key]
+    if (current?.signature === signature && current?.token) return
+
+    uploadProgress.value.current++
+    uploadProgress.value.label = label
+    const token = await uploadArchivoTemporal(file, 'personal', key)
+    archivoTokens.value.personales[key] = { token, signature }
+  }
+
+  async function prepararArchivosPersonales() {
+    const personales = collectArchivoSnapshot().personales
+    const entries = [
+      ['foto_perfil', 'Fotografia personal'],
+      ['ci_archivo', 'Documento CI'],
+      ['cv_pdf', 'Curriculum vitae'],
+      ['carta_postulacion', 'Carta de postulacion'],
+    ].filter(([key]) => personales[key] instanceof File)
+
+    if (entries.length === 0) return
+
+    uploadingFiles.value = true
+    uploadProgress.value = { current: 0, total: entries.length, label: '' }
+    try {
+      for (const [key, label] of entries) {
+        await prepareArchivoPersonal(key, label, personales[key])
       }
+    } finally {
+      uploadingFiles.value = false
     }
+  }
 
-    throw ultimoError
+  async function prepararArchivosMeritos() {
+    const { meritosArchivos } = collectArchivoSnapshot()
+    const entries = []
+
+    meritosArchivos.forEach((snapshot, index) => {
+      Object.entries(snapshot?.archivos || {}).forEach(([configId, file]) => {
+        if (file instanceof File) {
+          entries.push({ index, configId, file, label: snapshot.nombre || 'Merito' })
+        }
+      })
+    })
+
+    if (entries.length === 0) return
+
+    uploadingFiles.value = true
+    uploadProgress.value = { current: 0, total: entries.length, label: '' }
+    try {
+      for (const entry of entries) {
+        const key = `${entry.index}:${entry.configId}`
+        const signature = fileSignature(entry.file)
+        const current = archivoTokens.value.meritos[key]
+        if (current?.signature === signature && current?.token) continue
+
+        uploadProgress.value.current++
+        uploadProgress.value.label = entry.label
+        const token = await uploadArchivoTemporal(entry.file, 'merito', key)
+        archivoTokens.value.meritos[key] = { token, signature }
+      }
+    } finally {
+      uploadingFiles.value = false
+    }
   }
 
   /**
@@ -393,6 +421,9 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     try {
       const formData = new FormData()
       const archivosSnapshot = collectArchivoSnapshot()
+
+      await prepararArchivosPersonales()
+      await prepararArchivosMeritos()
 
       // Add ALL selected offer IDs
       cargosSeleccionados.value.forEach((cargo, idx) => {
@@ -407,6 +438,12 @@ export const usePostulacionStore = defineStore('postulacion', () => {
           formData.append(key, value)
         }
       }
+
+      Object.entries(archivoTokens.value.personales).forEach(([key, info]) => {
+        if (info?.token) {
+          formData.append(`archivo_tokens[${key}]`, info.token)
+        }
+      })
 
       // Add per-cargo details
       cargosSeleccionados.value.forEach((cargo, idx) => {
@@ -431,6 +468,14 @@ export const usePostulacionStore = defineStore('postulacion', () => {
               })
             }
 
+            Object.entries(reg.archivos || {}).forEach(([configId, file]) => {
+              if (!(file instanceof File)) return
+              const tokenInfo = archivoTokens.value.meritos[`${globalIndex}:${configId}`]
+              if (tokenInfo?.token) {
+                formData.append(`meritos[${globalIndex}][archivo_tokens][${configId}]`, tokenInfo.token)
+              }
+            })
+
             globalIndex++
           }
         }
@@ -440,19 +485,6 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000, // Increased to 3 minutes for peace of mind
       })
-
-      if (snapshotHasFiles(archivosSnapshot)) {
-        try {
-          await uploadArchivosConReintentos(data.data, archivosSnapshot)
-        } catch (uploadError) {
-          console.error('Error subiendo archivos de postulacion:', uploadError)
-          throw {
-            message: 'La informacion fue registrada, pero los archivos no se guardaron. La postulacion no fue marcada como enviada; revise su conexion e intente nuevamente.',
-            details: uploadError.response?.data?.errors || uploadError.response?.data || null,
-            type: 'upload'
-          }
-        }
-      }
 
       return data
     } catch (error) {
@@ -512,6 +544,15 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     requisitosUnificados.value = []
     currentStep.value = 1
     sedeActiva.value = null
+    archivoTokens.value = {
+      personales: {},
+      meritos: {},
+    }
+    uploadProgress.value = {
+      current: 0,
+      total: 0,
+      label: '',
+    }
   }
 
   /**
@@ -617,6 +658,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     currentStep,
     submitting,
     sedeActiva,
+    uploadingFiles,
+    uploadProgress,
 
     // Getters
     hayCargosSeleccionados,
@@ -630,6 +673,8 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     removeCargo,
     fetchRequisitosUnificados,
     updateDatosPersonales,
+    prepararArchivosPersonales,
+    prepararArchivosMeritos,
     submitPostulacion,
     resetPostulacion,
     setSedeActiva,

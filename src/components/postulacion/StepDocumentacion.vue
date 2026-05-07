@@ -234,6 +234,18 @@ const handleNext = async () => {
     return
   }
 
+  try {
+    await store.prepararArchivosMeritos()
+  } catch (error) {
+    $q.notify({
+      type: 'negative',
+      message: error.message || 'No se pudieron subir los documentos de merito. Revise su conexion e intente nuevamente.',
+      position: 'top',
+      timeout: 10000
+    })
+    return
+  }
+
   emit('next')
 }
 

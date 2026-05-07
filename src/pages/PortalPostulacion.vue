@@ -116,9 +116,14 @@
     </q-dialog>
 
     <!-- BUSY OVERLAY -->
-    <q-inner-loading :showing="store.submitting" class="z-max" style="backdrop-filter: blur(4px); background: rgba(255,255,255,0.7)">
+    <q-inner-loading :showing="store.submitting || store.uploadingFiles" class="z-max" style="backdrop-filter: blur(4px); background: rgba(255,255,255,0.7)">
       <q-spinner-dots size="80px" color="primary" />
-      <div class="text-primary font-black mt-4 uppercase tracking-tighter">Procesando Postulación...</div>
+      <div class="text-primary font-black mt-4 uppercase tracking-tighter">
+        {{ store.uploadingFiles ? 'Subiendo documentos...' : 'Procesando Postulación...' }}
+      </div>
+      <div v-if="store.uploadingFiles" class="text-primary/70 text-xs font-bold mt-2 uppercase tracking-widest">
+        {{ store.uploadProgress.current }} / {{ store.uploadProgress.total }} {{ store.uploadProgress.label }}
+      </div>
     </q-inner-loading>
   </q-page>
 </template>
