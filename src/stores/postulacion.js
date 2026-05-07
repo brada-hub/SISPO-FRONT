@@ -95,9 +95,10 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       }
 
       data.forEach(sede => {
-        if (!sede.departamento) {
-          sede.departamento = mapSedeToDepartamento(sede.nombre)
-        }
+        // Always try to map the department name to a standard one
+        // first check the 'departamento' field, then the 'nombre' field
+        const rawName = sede.departamento || sede.nombre || ''
+        sede.departamento = mapSedeToDepartamento(rawName)
       })
 
       ofertasActivas.value = data
