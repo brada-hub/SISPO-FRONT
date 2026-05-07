@@ -270,6 +270,120 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     });
   }
 
+  function collectArchivoSnapshot() {
+    const personales = {}
+
+    Object.entries(datosPersonales.value).forEach(([key, value]) => {
+      if (value instanceof File) {
+        personales[key] = value
+      }
+    })
+
+    const meritosArchivos = []
+    if (meritos.value && Array.isArray(meritos.value)) {
+      let globalIndex = 0
+      meritos.value.forEach((merito) => {
+        merito.registros.forEach((reg) => {
+          meritosArchivos[globalIndex] = {
+            nombre: merito.nombre,
+            archivos: { ...(reg.archivos || {}) },
+          }
+          globalIndex++
+        })
+      })
+    }
+
+    return { personales, meritosArchivos }
+  }
+
+  function snapshotHasFiles(archivosSnapshot) {
+    if (Object.keys(archivosSnapshot.personales).length > 0) return true
+
+    return archivosSnapshot.meritosArchivos.some((merito) => {
+      return Object.values(merito?.archivos || {}).some((file) => file instanceof File)
+    })
+  }
+
+  async function uploadArchivosPostulacion(postulacionData, archivosSnapshot) {
+    if (!postulacionData?.postulante_id || !postulacionData?.upload_token) return
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024
+    const formData = new FormData()
+    formData.append('postulante_id', postulacionData.postulante_id)
+    formData.append('upload_token', postulacionData.upload_token)
+
+    let hasFiles = false
+
+    for (const [key, file] of Object.entries(archivosSnapshot.personales)) {
+      let fileToUpload = file
+      if (file.type.startsWith('image/') && (key === 'foto_perfil' || key === 'ci_archivo')) {
+        fileToUpload = await compressImage(file)
+      }
+      if (fileToUpload.size > MAX_FILE_SIZE) {
+        console.error(`El archivo ${key} excede el limite de 5MB.`)
+        continue
+      }
+      formData.append(key, fileToUpload)
+      hasFiles = true
+    }
+
+    const meritosUpload = postulacionData.meritos_upload || []
+    for (const info of meritosUpload) {
+      const snapshot = archivosSnapshot.meritosArchivos[info.index]
+      if (!snapshot?.archivos) continue
+
+      let meritoHasFiles = false
+      formData.append(`meritos[${info.index}][merito_id]`, info.id)
+
+      for (const [configId, file] of Object.entries(snapshot.archivos)) {
+        if (!(file instanceof File)) continue
+
+        let fileToUpload = file
+        if (file.type.startsWith('image/')) {
+          fileToUpload = await compressImage(file)
+        }
+        if (fileToUpload.size > MAX_FILE_SIZE) {
+          console.error(`El archivo adjunto para "${snapshot.nombre}" excede el limite de 5MB.`)
+          continue
+        }
+
+        formData.append(`meritos[${info.index}][archivos][${configId}]`, fileToUpload)
+        meritoHasFiles = true
+        hasFiles = true
+      }
+
+      if (!meritoHasFiles) {
+        formData.delete(`meritos[${info.index}][merito_id]`)
+      }
+    }
+
+    if (!hasFiles) return
+
+    await api.post('/portal/postular-archivos', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      timeout: 180000,
+    })
+  }
+
+  async function uploadArchivosConReintentos(postulacionData, archivosSnapshot) {
+    const maxIntentos = 3
+    let ultimoError = null
+
+    for (let intento = 1; intento <= maxIntentos; intento++) {
+      try {
+        await uploadArchivosPostulacion(postulacionData, archivosSnapshot)
+        return
+      } catch (error) {
+        ultimoError = error
+        if (intento < maxIntentos) {
+          await new Promise(resolve => setTimeout(resolve, intento * 1200))
+        }
+      }
+    }
+
+    throw ultimoError
+  }
+
   /**
    * Submit the complete application for ALL selected cargos
    */
@@ -278,26 +392,18 @@ export const usePostulacionStore = defineStore('postulacion', () => {
 
     try {
       const formData = new FormData()
-      const MAX_FILE_SIZE = 5 * 1024 * 1024 // Increased to 5MB since we will compress
+      const archivosSnapshot = collectArchivoSnapshot()
 
       // Add ALL selected offer IDs
       cargosSeleccionados.value.forEach((cargo, idx) => {
         formData.append(`oferta_ids[${idx}]`, cargo.oferta_id)
       })
+      formData.append('has_archivos', snapshotHasFiles(archivosSnapshot) ? '1' : '0')
 
-      // Add personal data (with compression for images)
+      // Add personal data only; files are uploaded after the DB save succeeds.
       for (const key of Object.keys(datosPersonales.value)) {
-        let value = datosPersonales.value[key]
-        if (value !== null && value !== '') {
-          if (value instanceof File) {
-            // Compress if it's an image
-            if (value.type.startsWith('image/') && (key === 'foto_perfil' || key === 'ci_archivo')) {
-              value = await compressImage(value)
-            }
-            if (value.size > MAX_FILE_SIZE) {
-              throw new Error(`El archivo ${key.replace('_', ' ')} excede el límite de 5MB.`)
-            }
-          }
+        const value = datosPersonales.value[key]
+        if (value !== null && value !== '' && !(value instanceof File)) {
           formData.append(key, value)
         }
       }
@@ -325,21 +431,6 @@ export const usePostulacionStore = defineStore('postulacion', () => {
               })
             }
 
-            // Add merit files (with compression if images)
-            if (reg.archivos && typeof reg.archivos === 'object') {
-              for (const [configId, file] of Object.entries(reg.archivos)) {
-                if (file instanceof File) {
-                  let fileToUpload = file
-                  if (file.type.startsWith('image/')) {
-                    fileToUpload = await compressImage(file)
-                  }
-                  if (fileToUpload.size > MAX_FILE_SIZE) {
-                    throw new Error(`El archivo adjunto para "${merito.nombre}" excede el límite de 5MB.`)
-                  }
-                  formData.append(`meritos[${globalIndex}][archivos][${configId}]`, fileToUpload)
-                }
-              }
-            }
             globalIndex++
           }
         }
@@ -349,6 +440,19 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000, // Increased to 3 minutes for peace of mind
       })
+
+      if (snapshotHasFiles(archivosSnapshot)) {
+        try {
+          await uploadArchivosConReintentos(data.data, archivosSnapshot)
+        } catch (uploadError) {
+          console.error('Error subiendo archivos de postulacion:', uploadError)
+          throw {
+            message: 'La informacion fue registrada, pero los archivos no se guardaron. La postulacion no fue marcada como enviada; revise su conexion e intente nuevamente.',
+            details: uploadError.response?.data?.errors || uploadError.response?.data || null,
+            type: 'upload'
+          }
+        }
+      }
 
       return data
     } catch (error) {

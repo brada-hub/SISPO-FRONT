@@ -162,6 +162,7 @@ const resultado = ref(null)
 const notFound = ref(false)
 
 const statusLabels = {
+  pendiente_archivos: 'Pendiente de documentos',
   enviada: 'Postulado',
   en_revision: 'En Evaluación',
   validada: 'Pre-seleccionado',
@@ -192,6 +193,7 @@ const buscar = async () => {
 
 const getStatusColor = (estado) => {
   const e = String(estado || '').toLowerCase()
+  if (e === 'pendiente_archivos') return 'grey-7'
   if (e === 'enviada') return 'indigo-7'
   if (e === 'en_revision') return 'orange-8'
   if (e === 'validada') return 'teal-7'
