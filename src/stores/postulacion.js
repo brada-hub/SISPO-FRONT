@@ -341,7 +341,12 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180000,
     })
-    console.info(`[SISPO] Archivo temporal ${field} subido en ${Math.round(performance.now() - start)}ms`)
+    const totalMs = Math.round(performance.now() - start)
+    const serverMs = data.server_elapsed_ms ?? 'n/a'
+    console.info(
+      `[SISPO] Archivo temporal ${field} subido en ${totalMs}ms ` +
+        `(servidor: ${serverMs}ms, tamano: ${fileToUpload.size} bytes)`
+    )
 
     return data.token
   }
