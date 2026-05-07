@@ -336,12 +336,31 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     formData.append('field', field)
     formData.append('file', fileToUpload)
 
+    const start = performance.now()
     const { data } = await api.post('/portal/archivo-temporal', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 180000,
     })
+    console.info(`[SISPO] Archivo temporal ${field} subido en ${Math.round(performance.now() - start)}ms`)
 
     return data.token
+  }
+
+  async function runUploadQueue(entries, concurrency, uploadOne) {
+    let nextIndex = 0
+    let completed = 0
+
+    const workers = Array.from({ length: Math.min(concurrency, entries.length) }, async () => {
+      while (nextIndex < entries.length) {
+        const entry = entries[nextIndex++]
+        uploadProgress.value.label = entry.label
+        await uploadOne(entry)
+        completed++
+        uploadProgress.value.current = completed
+      }
+    })
+
+    await Promise.all(workers)
   }
 
   async function prepareArchivoPersonal(key, label, file) {
@@ -351,8 +370,6 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     const current = archivoTokens.value.personales[key]
     if (current?.signature === signature && current?.token) return
 
-    uploadProgress.value.current++
-    uploadProgress.value.label = label
     const token = await uploadArchivoTemporal(file, 'personal', key)
     archivoTokens.value.personales[key] = { token, signature }
   }
@@ -371,9 +388,11 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     uploadingFiles.value = true
     uploadProgress.value = { current: 0, total: entries.length, label: '' }
     try {
-      for (const [key, label] of entries) {
-        await prepareArchivoPersonal(key, label, personales[key])
-      }
+      await runUploadQueue(
+        entries.map(([key, label]) => ({ key, label, file: personales[key] })),
+        4,
+        (entry) => prepareArchivoPersonal(entry.key, entry.label, entry.file)
+      )
     } finally {
       uploadingFiles.value = false
     }
@@ -396,17 +415,16 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     uploadingFiles.value = true
     uploadProgress.value = { current: 0, total: entries.length, label: '' }
     try {
-      for (const entry of entries) {
+      await runUploadQueue(entries, 3, async (entry) => {
         const key = `${entry.index}:${entry.configId}`
         const signature = fileSignature(entry.file)
         const current = archivoTokens.value.meritos[key]
-        if (current?.signature === signature && current?.token) continue
+        if (current?.signature === signature && current?.token) return
 
-        uploadProgress.value.current++
         uploadProgress.value.label = entry.label
         const token = await uploadArchivoTemporal(entry.file, 'merito', key)
         archivoTokens.value.meritos[key] = { token, signature }
-      }
+      })
     } finally {
       uploadingFiles.value = false
     }
