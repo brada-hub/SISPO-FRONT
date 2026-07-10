@@ -140,13 +140,13 @@
               <tr>
                 <template v-for="campo in group.tipo?.campos" :key="campo.key">
                   <th>{{ campo.label }}</th>
-                  <!-- Insert archivo header right after its related campo -->
-                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
+                  <!-- Insert archivo header right after its related campo (only if after_campo is explicitly set) -->
+                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo && a.after_campo === campo.key)" :key="configArch.id">
                     <th class="qr-col">{{ configArch.label }}</th>
                   </template>
                 </template>
-                <!-- Archivos without after_campo go at the end -->
-                <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
+                <!-- Archivos without after_campo (null/undefined/empty) go at the end ONCE -->
+                <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo || a.after_campo === '')" :key="configArch.id">
                   <th class="qr-col">{{ configArch.label }}</th>
                 </template>
               </tr>
@@ -157,8 +157,8 @@
                   <td class="text-center font-bold uppercase">
                     {{ merito.respuestas[campo.key] || '---' }}
                   </td>
-                  <!-- Insert archivo QR right after its related campo -->
-                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
+                  <!-- Insert archivo QR right after its related campo (only if after_campo is explicitly set) -->
+                  <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo && a.after_campo === campo.key)" :key="configArch.id">
                     <td class="text-center">
                       <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
                         <div class="qr-box-small no-border">
@@ -169,8 +169,8 @@
                     </td>
                   </template>
                 </template>
-                <!-- Archivos without after_campo go at the end -->
-                <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
+                <!-- Archivos without after_campo go at the end ONCE -->
+                <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo || a.after_campo === '')" :key="configArch.id">
                   <td class="text-center">
                     <div v-if="getMeritoFile(merito, configArch.id)" class="flex justify-center">
                       <div class="qr-box-small no-border">

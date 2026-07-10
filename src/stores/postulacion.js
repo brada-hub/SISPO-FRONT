@@ -328,7 +328,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     }
 
     if (fileToUpload.size > MAX_FILE_SIZE) {
-      throw new Error(`El archivo ${file.name} excede el limite de 5MB.`)
+      throw new Error(`El archivo "${file.name}" excede el límite de 5MB. Por favor comprime o reduce el tamaño del archivo.`)
     }
 
     const formData = new FormData()
@@ -336,36 +336,77 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     formData.append('field', field)
     formData.append('file', fileToUpload)
 
-    const start = performance.now()
-    const { data } = await api.post('/portal/archivo-temporal', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      timeout: 180000,
-    })
-    const totalMs = Math.round(performance.now() - start)
-    const serverMs = data.server_elapsed_ms ?? 'n/a'
-    console.info(
-      `[SISPO] Archivo temporal ${field} subido en ${totalMs}ms ` +
-        `(servidor: ${serverMs}ms, tamano: ${fileToUpload.size} bytes)`
-    )
+    // Reintentar hasta 3 veces con espera exponencial (1s, 2s, 4s)
+    const MAX_RETRIES = 3
+    let lastError = null
 
-    return data.token
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const start = performance.now()
+        const { data } = await api.post('/portal/archivo-temporal', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 120000,
+        })
+        const totalMs = Math.round(performance.now() - start)
+        const serverMs = data.server_elapsed_ms ?? 'n/a'
+        console.info(
+          `[SISPO] Archivo "${file.name}" subido en ${totalMs}ms` +
+          ` (servidor: ${serverMs}ms, tamaño: ${fileToUpload.size} bytes, intento: ${attempt})`
+        )
+        return data.token
+      } catch (err) {
+        lastError = err
+        const isNetworkOrTimeout = !err.response || err.code === 'ECONNABORTED' || err.code === 'ERR_NETWORK'
+        if (isNetworkOrTimeout && attempt < MAX_RETRIES) {
+          const waitMs = Math.pow(2, attempt - 1) * 1000
+          console.warn(`[SISPO] Intento ${attempt} fallido para "${file.name}", reintentando en ${waitMs}ms...`)
+          await new Promise(resolve => setTimeout(resolve, waitMs))
+          continue
+        }
+        break
+      }
+    }
+
+    // Si llegamos aquí, todos los intentos fallaron
+    if (lastError?.response?.status === 413) {
+      throw new Error(`El archivo "${file.name}" es demasiado grande para el servidor. Intenta reducir su tamaño.`)
+    }
+    if (lastError?.code === 'ECONNABORTED') {
+      throw new Error(`La subida del archivo "${file.name}" tardó demasiado. Verifica tu conexión a internet e intenta nuevamente.`)
+    }
+    throw new Error(`No se pudo subir el archivo "${file.name}" después de ${MAX_RETRIES} intentos. Verifica tu conexión e intenta nuevamente.`)
   }
 
   async function runUploadQueue(entries, concurrency, uploadOne) {
     let nextIndex = 0
     let completed = 0
+    const errors = []
 
     const workers = Array.from({ length: Math.min(concurrency, entries.length) }, async () => {
       while (nextIndex < entries.length) {
         const entry = entries[nextIndex++]
-        uploadProgress.value.label = entry.label
-        await uploadOne(entry)
+        uploadProgress.value.label = entry.label || ''
+        try {
+          await uploadOne(entry)
+        } catch (err) {
+          // Acumular el error pero continuar con los demás archivos
+          errors.push(err?.message || `Error al subir: ${entry.label}`)
+        }
         completed++
         uploadProgress.value.current = completed
       }
     })
 
     await Promise.all(workers)
+
+    // Si hubo errores en alguno de los archivos, lanzar un error conjunto
+    if (errors.length > 0) {
+      throw {
+        message: `No se pudieron subir ${errors.length} archivo(s):\n• ${errors.join('\n• ')}`,
+        details: errors,
+        type: 'upload_error'
+      }
+    }
   }
 
   async function prepareArchivoPersonal(key, label, file) {
@@ -382,10 +423,10 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   async function prepararArchivosPersonales() {
     const personales = collectArchivoSnapshot().personales
     const entries = [
-      ['foto_perfil', 'Fotografia personal'],
-      ['ci_archivo', 'Documento CI'],
+      ['foto_perfil', 'Fotografía personal'],
+      ['ci_archivo', 'Documento de identidad'],
       ['cv_pdf', 'Curriculum vitae'],
-      ['carta_postulacion', 'Carta de postulacion'],
+      ['carta_postulacion', 'Carta de postulación'],
     ].filter(([key]) => personales[key] instanceof File)
 
     if (entries.length === 0) return
@@ -395,7 +436,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     try {
       await runUploadQueue(
         entries.map(([key, label]) => ({ key, label, file: personales[key] })),
-        4,
+        2, // Concurrencia reducida a 2 para no sobrecargar hosting compartido
         (entry) => prepareArchivoPersonal(entry.key, entry.label, entry.file)
       )
     } finally {
@@ -420,7 +461,7 @@ export const usePostulacionStore = defineStore('postulacion', () => {
     uploadingFiles.value = true
     uploadProgress.value = { current: 0, total: entries.length, label: '' }
     try {
-      await runUploadQueue(entries, 3, async (entry) => {
+      await runUploadQueue(entries, 2, async (entry) => { // Concurrencia 2 para hosting compartido
         const key = `${entry.index}:${entry.configId}`
         const signature = fileSignature(entry.file)
         const current = archivoTokens.value.meritos[key]
@@ -436,6 +477,46 @@ export const usePostulacionStore = defineStore('postulacion', () => {
   }
 
   /**
+   * Valida que todos los archivos seleccionados tengan su token listo.
+   * Retorna un array de strings con los nombres de archivos que fallan.
+   */
+  function validarTokensCompletos() {
+    const faltantes = []
+
+    // Validar archivos personales
+    const personalKeys = ['foto_perfil', 'ci_archivo', 'cv_pdf', 'carta_postulacion']
+    for (const key of personalKeys) {
+      const file = datosPersonales.value[key]
+      if (file instanceof File) {
+        const tokenInfo = archivoTokens.value.personales[key]
+        if (!tokenInfo?.token) {
+          faltantes.push(file.name || key)
+        }
+      }
+    }
+
+    // Validar archivos de méritos
+    if (meritos.value && Array.isArray(meritos.value)) {
+      let globalIndex = 0
+      for (const merito of meritos.value) {
+        for (const reg of merito.registros) {
+          Object.entries(reg.archivos || {}).forEach(([configId, file]) => {
+            if (file instanceof File) {
+              const tokenInfo = archivoTokens.value.meritos[`${globalIndex}:${configId}`]
+              if (!tokenInfo?.token) {
+                faltantes.push(file.name || `Archivo de ${merito.nombre}`)
+              }
+            }
+          })
+          globalIndex++
+        }
+      }
+    }
+
+    return faltantes
+  }
+
+  /**
    * Submit the complete application for ALL selected cargos
    */
   async function submitPostulacion() {
@@ -445,9 +526,21 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       const formData = new FormData()
       const archivosSnapshot = collectArchivoSnapshot()
 
+      // 1. Subir todos los archivos temporales (con reintentos automáticos)
       await prepararArchivosPersonales()
       await prepararArchivosMeritos()
 
+      // 2. Validar que todos los tokens estén completos antes de enviar
+      const tokensFaltantes = validarTokensCompletos()
+      if (tokensFaltantes.length > 0) {
+        throw {
+          message: `No se pudieron procesar los siguientes archivos: ${tokensFaltantes.join(', ')}. Verifica tu conexión e intenta nuevamente.`,
+          details: null,
+          type: 'upload_error'
+        }
+      }
+
+      // 3. Construir el formulario final
       // Add ALL selected offer IDs
       cargosSeleccionados.value.forEach((cargo, idx) => {
         formData.append(`oferta_ids[${idx}]`, cargo.oferta_id)
@@ -504,14 +597,18 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         }
       }
 
+      // 4. Enviar postulación al servidor
       const { data } = await api.post('/portal/postular', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 180000, // Increased to 3 minutes for peace of mind
+        timeout: 180000,
       })
 
       return data
     } catch (error) {
-      // Manejo estructurado de errores
+      // Si el error ya tiene nuestro formato estructurado, lo propagamos tal cual
+      if (error?.type) throw error
+
+      // Manejo estructurado de errores del servidor
       let customError = {
         message: 'Error desconocido al procesar la postulación.',
         details: null,
@@ -519,18 +616,23 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       }
 
       if (error.response) {
-        // El servidor respondió con un error (4xx, 5xx)
         if (error.response.status === 422) {
           customError.message = 'Existen errores de validación en su información.'
           customError.details = error.response.data.errors
           customError.type = 'validation'
         } else if (error.response.status === 413) {
-          customError.message = 'Los archivos seleccionados son demasiado pesados para el servidor.'
-        } else if (error.response.data && error.response.data.message) {
+          customError.message = 'Los archivos adjuntos son demasiado grandes para el servidor. Intente reducir el tamaño de sus documentos (máximo 5MB por archivo).'
+          customError.type = 'size_error'
+        } else if (error.response.data?.message) {
           customError.message = error.response.data.message
         }
+      } else if (error.code === 'ECONNABORTED') {
+        customError.message = 'La conexión tardó demasiado. Verifique su conexión a internet e intente nuevamente.'
+        customError.type = 'timeout'
+      } else if (error.code === 'ERR_NETWORK') {
+        customError.message = 'Sin conexión a internet. Por favor verifique su red e intente nuevamente.'
+        customError.type = 'network'
       } else if (error.message) {
-        // Error local (como el de tamaño de archivo lanzado arriba) o de red
         customError.message = error.message
       }
 
