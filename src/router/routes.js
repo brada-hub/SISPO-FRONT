@@ -64,11 +64,7 @@ const routes = [
         component: () => import('pages/admin/CargosPage.vue'),
         meta: { permissions: ['cargos'] },
       },
-      {
-        path: 'requisitos',
-        component: () => import('pages/admin/TiposDocumentoPage.vue'),
-        meta: { permissions: ['requisitos'] },
-      },
+
       {
         path: 'convocatorias',
         component: () => import('pages/admin/ConvocatoriasPage.vue'),
@@ -91,12 +87,20 @@ const routes = [
       },
       {
         path: 'evaluaciones',
-        component: () => import('pages/admin/EvaluacionesListPage.vue'),
-        meta: { permissions: ['evaluaciones'] },
+        redirect: '/admin/postulaciones'
       },
       {
         path: 'evaluacion-tabla',
-        component: () => import('pages/admin/EvaluacionTablaPage.vue'),
+        redirect: '/admin/postulaciones'
+      },
+      {
+        path: 'decision-workspace',
+        component: () => import('pages/recruitment/DecisionWorkspacePage.vue'),
+        meta: { permissions: ['evaluaciones'] },
+      },
+      {
+        path: 'recruitment-analytics',
+        component: () => import('pages/recruitment/RecruitmentAnalyticsPage.vue'),
         meta: { permissions: ['evaluaciones'] },
       },
       {
@@ -109,12 +113,7 @@ const routes = [
         component: () => import('pages/admin/RolesPage.vue'),
         meta: { permissions: ['roles'] },
       },
-      {
-        path: 'mi-legajo',
-        name: 'mi_legajo',
-        component: () => import('pages/admin/MiLegajoPage.vue'),
-        meta: { permissions: ['ver_mi_legajo'] },
-      },
+
       {
         path: 'expedientes',
         name: 'expedientes',

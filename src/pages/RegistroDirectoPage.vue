@@ -288,6 +288,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import { buildMeritosFromNormalized } from 'src/utils/meritosNormalizer'
+import { adaptSchemas } from 'src/utils/meritSchemaAdapter'
 
 const $q = useQuasar()
 const verified = ref(false)
@@ -338,15 +340,11 @@ const getFileUrl = (path) => {
 
 onMounted(async () => {
    const [resDocs, resSedes] = await Promise.all([
-      api.get('/portal/tipos-documento'),
+      api.get('/merit-schemas'),
       api.get('/portal/sedes')
    ])
-   // Normalize types
-   tiposDocumento.value = resDocs.data.map(t => ({
-      ...t,
-      campos: typeof t.campos === 'string' ? JSON.parse(t.campos) : t.campos,
-      config_archivos: typeof t.config_archivos === 'string' ? JSON.parse(t.config_archivos) : t.config_archivos
-   }))
+   // Normalize types through the centralized adapter
+   tiposDocumento.value = adaptSchemas(resDocs.data)
    sedesOptions.value = resSedes.data
 })
 
@@ -425,14 +423,9 @@ const verifyFullIdentity = async () => {
       existingFiles.value.ci_archivo = p.ci_archivo_path
       existingFiles.value.foto_perfil = p.foto_perfil_path
 
-      if (p.meritos) {
-         meritos.value = p.meritos.map(m => ({
-            id: m.id,
-            tipo_documento_id: m.tipo_documento_id,
-            respuestas: typeof m.respuestas === 'string' ? JSON.parse(m.respuestas) : (m.respuestas || {}),
-            newFiles: {},
-            archivos: m.archivos || []
-         }))
+      const normalizedMeritos = buildMeritosFromNormalized(p)
+      if (normalizedMeritos.length > 0) {
+         meritos.value = normalizedMeritos
       }
    } catch (err) {
       $q.notify({ type: 'negative', message: err.response?.data?.message || 'Error de verificación' })
@@ -508,14 +501,9 @@ const handleSubmit = async () => {
       existingFiles.value.ci_archivo = p.ci_archivo_path
       existingFiles.value.foto_perfil = p.foto_perfil_path
 
-      if (p.meritos) {
-         meritos.value = p.meritos.map(m => ({
-            id: m.id,
-            tipo_documento_id: m.tipo_documento_id,
-            respuestas: typeof m.respuestas === 'string' ? JSON.parse(m.respuestas) : (m.respuestas || {}),
-            newFiles: {},
-            archivos: m.archivos || []
-         }))
+      const newNormalizedMeritos = buildMeritosFromNormalized(p)
+      if (newNormalizedMeritos.length > 0) {
+         meritos.value = newNormalizedMeritos
       }
    } catch (error) {
       console.error(error)

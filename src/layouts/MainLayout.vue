@@ -215,9 +215,8 @@ const adminMenuItems = computed(() => {
     { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
     { permission: 'convocatorias', label: 'Matrices de Evaluación', icon: 'assignment', to: '/admin/plantillas-matrices' },
     { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
-    { permission: 'evaluaciones', label: 'Evaluación de méritos', icon: 'fact_check', to: '/admin/evaluaciones' },
+    { permission: 'evaluaciones', label: 'Workspace de Decisiones', icon: 'gavel', to: '/admin/decision-workspace' },
     { permission: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
-    { permission: 'requisitos', label: 'Tipos de documento', icon: 'folder_special', to: '/admin/requisitos' },
     { permission: 'usuarios', label: 'Usuarios SISPO', icon: 'manage_accounts', to: '/admin/usuarios' },
   ]
 

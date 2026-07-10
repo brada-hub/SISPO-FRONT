@@ -494,37 +494,26 @@ const formatDate = (dateStr) => {
   })
 }
 
-const getTipoDocumentoNombre = (merito) => {
-  return merito?.tipo_documento?.nombre || merito?.tipoDocumento?.nombre || ''
-}
-
-const normalizeText = (value) => {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toUpperCase()
-}
-
 const extractExtraInfo = (postulacion) => {
-  const formacion = postulacion.postulante?.meritos?.find((merito) =>
-    normalizeText(getTipoDocumentoNombre(merito)).includes('FORMACION')
-  )
+  const p = postulacion.postulante
+  if (!p) {
+    return { area: '-', anio: '-' }
+  }
 
-  const area =
-    formacion?.respuestas?.profesion ||
-    formacion?.respuestas?.area_formacion ||
-    formacion?.respuestas?.area ||
-    '-'
-
-  const fechaTitulo =
-    formacion?.respuestas?.fecha_titulo ||
-    formacion?.respuestas?.anio_titulo ||
-    formacion?.respuestas?.ano_titulo ||
-    ''
+  // 1. Direct Normalized Formación Académica
+  if (p.formaciones_academicas && Array.isArray(p.formaciones_academicas) && p.formaciones_academicas.length > 0) {
+    const mainFormacion = p.formaciones_academicas[0]
+    const area = mainFormacion.carrera || '-'
+    const fecha = mainFormacion.fecha_titulo || mainFormacion.fecha_diploma || ''
+    return {
+      area,
+      anio: String(fecha || '').match(/\d{4}/)?.[0] || '-'
+    }
+  }
 
   return {
-    area,
-    anio: String(fechaTitulo || '').match(/\d{4}/)?.[0] || '-'
+    area: '-',
+    anio: '-'
   }
 }
 

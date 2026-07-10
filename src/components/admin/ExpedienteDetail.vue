@@ -7,7 +7,22 @@
         <div class="q-ml-sm text-grey-7">Cargando expediente...</div>
       </div>
 
-      <div v-else-if="postulacion" id="expediente-carta" class="reporte-container print-content">
+      <div v-else-if="postulacion" class="h-full flex flex-col no-wrap w-full overflow-hidden">
+        <q-tabs
+          v-model="activeTab"
+          dense
+          class="bg-white text-grey-7 shadow-2 no-print shrink-0"
+          active-color="primary"
+          indicator-color="primary"
+          align="justify"
+        >
+          <q-tab name="tradicional" icon="description" label="Ficha Tradicional" />
+          <q-tab name="ia" icon="fact_check" label="Evaluación Sistema" class="text-primary" />
+        </q-tabs>
+
+        <q-tab-panels v-model="activeTab" animated class="flex-1 bg-transparent overflow-y-auto">
+          <q-tab-panel name="tradicional" class="q-pa-md flex justify-center">
+            <div id="expediente-carta" class="reporte-container print-content shadow-2">
         <!-- HEADER -->
         <div class="seccion-reporte text-center mb-6">
           <h1 class="header-title">UNITEPC</h1>
@@ -212,6 +227,13 @@
             Documento generado digitalmente por el panel administrativo. ID #{{ postulacion?.id }} - {{ new Date().getDate().toString().padStart(2, '0') }}-{{ (new Date().getMonth() + 1).toString().padStart(2, '0') }}-{{ new Date().getFullYear() }} {{ new Date().getHours().toString().padStart(2, '0') }}:{{ new Date().getMinutes().toString().padStart(2, '0') }}
           </div>
         </div>
+            </div>
+          </q-tab-panel>
+
+          <q-tab-panel name="ia" class="q-pa-md">
+            <AiPanel :postulacion-id="postulacionId" />
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
     </div>
 
@@ -250,6 +272,9 @@
 import { ref, computed, watch } from 'vue'
 import { api } from 'boot/axios'
 import QrcodeVue from 'qrcode.vue'
+import AiPanel from '../Ai/AiPanel.vue'
+
+const activeTab = ref('tradicional')
 
 const props = defineProps({
   postulacionId: {
@@ -283,33 +308,282 @@ const loadExpediente = async () => {
 watch(() => props.postulacionId, loadExpediente, { immediate: true })
 
 const filteredMeritos = computed(() => {
-  if (!postulacion.value?.postulante?.meritos) return []
+  const p = postulacion.value?.postulante
+  if (!p) return []
 
-  const merits = postulacion.value.postulante.meritos
   const configRequisitos = postulacion.value?.oferta?.convocatoria?.config_requisitos_ids
+  const allowedIds = configRequisitos && Array.isArray(configRequisitos)
+     ? configRequisitos.map(id => Number(id))
+     : null
 
-  let allowedMerits = merits
+  // Check if normalized tables exist in the payload
+  const hasNormalized = p.formaciones_academicas || p.postgrados || p.experiencias_profesionales || p.experiencias_docencia || p.capacitaciones || p.producciones || p.reconocimientos
 
-  // If we have a convocatoria context, filter by its requirements. Otherwise show all with files.
-  if (configRequisitos && Array.isArray(configRequisitos)) {
-     const allowedIds = configRequisitos.map(id => Number(id))
-     allowedMerits = merits.filter(m => allowedIds.includes(Number(m.tipo_documento_id)))
+  if (hasNormalized) {
+     const groups = []
+
+     // 1. Formación Académica
+     if (!allowedIds || allowedIds.includes(1)) {
+        const items = (p.formaciones_academicas || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 1,
+           respuestas: {
+              nivel: row.nivel_academico,
+              universidad: row.universidad,
+              profesion: row.carrera,
+              fecha_diploma: row.fecha_diploma,
+              fecha_titulo: row.fecha_titulo
+           },
+           archivos: [
+              ...(row.diploma_archivo_path ? [{ config_archivo_id: 'diploma', archivo_path: row.diploma_archivo_path }] : []),
+              ...(row.titulo_archivo_path ? [{ config_archivo_id: 'titulo', archivo_path: row.titulo_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 1,
+                 nombre: 'FORMACIÓN ACADÉMICA',
+                 orden: 1,
+                 campos: [
+                    { key: 'nivel', label: 'NIVEL' },
+                    { key: 'universidad', label: 'UNIVERSIDAD' },
+                    { key: 'profesion', label: 'PROFESIÓN' },
+                    { key: 'fecha_diploma', label: 'FECHA DIPLOMA' },
+                    { key: 'fecha_titulo', label: 'FECHA TÍTULO' }
+                 ],
+                 config_archivos: [
+                    { id: 'diploma', after_campo: 'profesion' },
+                    { id: 'titulo', after_campo: 'fecha_titulo' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 2. Formación Postgrado
+     if (!allowedIds || allowedIds.includes(2)) {
+        const items = (p.postgrados || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 2,
+           respuestas: {
+              tipo_posgrado: row.tipo_posgrado,
+              nombre_programa: row.nombre_programa,
+              fecha_certificacion: row.fecha_certificacion,
+              institucion: row.institucion
+           },
+           archivos: [
+              ...(row.certificado_archivo_path ? [{ config_archivo_id: 'certificado', archivo_path: row.certificado_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 2,
+                 nombre: 'FORMACIÓN DE POSTGRADO',
+                 orden: 2,
+                 campos: [
+                    { key: 'tipo_posgrado', label: 'TIPO POSGRADO' },
+                    { key: 'nombre_programa', label: 'PROGRAMA' },
+                    { key: 'fecha_certificacion', label: 'FECHA CERTIFICACIÓN' },
+                    { key: 'institucion', label: 'INSTITUCIÓN' }
+                 ],
+                 config_archivos: [
+                    { id: 'certificado' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 3. Experiencia Docencia
+     if (!allowedIds || allowedIds.includes(3)) {
+        const items = (p.experiencias_docencia || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 3,
+           respuestas: {
+              universidad: row.universidad,
+              carrera: row.carrera,
+              asignaturas: row.asignaturas,
+              gestion_periodo: row.gestion_periodo
+           },
+           archivos: [
+              ...(row.respaldo_archivo_path ? [{ config_archivo_id: 'respaldo', archivo_path: row.respaldo_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 3,
+                 nombre: 'EXPERIENCIA EN DOCENCIA',
+                 orden: 3,
+                 campos: [
+                    { key: 'universidad', label: 'UNIVERSIDAD' },
+                    { key: 'carrera', label: 'CARRERA' },
+                    { key: 'asignaturas', label: 'ASIGNATURAS' },
+                    { key: 'gestion_periodo', label: 'GESTIÓN/PERIODO' }
+                 ],
+                 config_archivos: [
+                    { id: 'respaldo' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 4. Experiencia Profesional
+     if (!allowedIds || allowedIds.includes(4)) {
+        const items = (p.experiencias_profesionales || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 4,
+           respuestas: {
+              cargo: row.cargo,
+              empresa: row.empresa,
+              fecha_inicio: row.fecha_inicio,
+              fecha_fin: row.fecha_fin
+           },
+           archivos: [
+              ...(row.certificado_archivo_path ? [{ config_archivo_id: 'certificado', archivo_path: row.certificado_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 4,
+                 nombre: 'EXPERIENCIA PROFESIONAL',
+                 orden: 4,
+                 campos: [
+                    { key: 'cargo', label: 'CARGO' },
+                    { key: 'empresa', label: 'EMPRESA' },
+                    { key: 'fecha_inicio', label: 'FECHA INICIO' },
+                    { key: 'fecha_fin', label: 'FECHA FIN' }
+                 ],
+                 config_archivos: [
+                    { id: 'certificado' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 5. Capacitaciones
+     if (!allowedIds || allowedIds.includes(5)) {
+        const items = (p.capacitaciones || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 5,
+           respuestas: {
+              nombre: row.nombre_curso,
+              fecha: row.fecha,
+              institucion: row.institucion_organizadora,
+              horas: row.carga_horaria
+           },
+           archivos: [
+              ...(row.certificado_archivo_path ? [{ config_archivo_id: 'certificado', archivo_path: row.certificado_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 5,
+                 nombre: 'CAPACITACIÓN Y CURSOS',
+                 orden: 5,
+                 campos: [
+                    { key: 'nombre', label: 'NOMBRE CURSO' },
+                    { key: 'fecha', label: 'FECHA' },
+                    { key: 'institucion', label: 'INSTITUCIÓN' },
+                    { key: 'horas', label: 'HORAS' }
+                 ],
+                 config_archivos: [
+                    { id: 'certificado' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 6. Producciones Intelectuales
+     if (!allowedIds || allowedIds.includes(6)) {
+        const items = (p.producciones || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 6,
+           respuestas: {
+              tipo: row.tipo_produccion,
+              titulo: row.titulo,
+              fecha: row.fecha_publicacion,
+              editorial: row.editorial_revista,
+              lugar: row.lugar
+           },
+           archivos: [
+              ...(row.evidencia_archivo_path ? [{ config_archivo_id: 'evidencia', archivo_path: row.evidencia_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 6,
+                 nombre: 'PRODUCCIÓN INTELECTUAL Y PUBLICACIONES',
+                 orden: 6,
+                 campos: [
+                    { key: 'tipo', label: 'TIPO' },
+                    { key: 'titulo', label: 'TÍTULO' },
+                    { key: 'fecha', label: 'FECHA' },
+                    { key: 'editorial', label: 'EDITORIAL/REVISTA' },
+                    { key: 'lugar', label: 'LUGAR' }
+                 ],
+                 config_archivos: [
+                    { id: 'evidencia' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     // 7. Reconocimientos
+     if (!allowedIds || allowedIds.includes(7)) {
+        const items = (p.reconocimientos || []).map(row => ({
+           id: row.id,
+           tipo_documento_id: 7,
+           respuestas: {
+              titulo: row.titulo_reconocimiento,
+              fecha: row.fecha,
+              institucion: row.institucion_otorgante,
+              lugar: row.lugar
+           },
+           archivos: [
+              ...(row.reconocimiento_archivo_path ? [{ config_archivo_id: 'reconocimiento', archivo_path: row.reconocimiento_archivo_path }] : [])
+           ]
+        }))
+        if (items.length > 0) {
+           groups.push({
+              tipo: {
+                 id: 7,
+                 nombre: 'RECONOCIMIENTOS Y DISTINCIONES',
+                 orden: 7,
+                 campos: [
+                    { key: 'titulo', label: 'TÍTULO RECONOCIMIENTO' },
+                    { key: 'fecha', label: 'FECHA' },
+                    { key: 'institucion', label: 'INSTITUCIÓN' },
+                    { key: 'lugar', label: 'LUGAR' }
+                 ],
+                 config_archivos: [
+                    { id: 'reconocimiento' }
+                 ]
+              },
+              items
+           })
+        }
+     }
+
+     return groups.sort((a, b) => (a.tipo?.orden || 0) - (b.tipo?.orden || 0))
   }
 
-  const groups = {}
-  allowedMerits.forEach(merito => {
-    if (!merito.archivos || merito.archivos.length === 0) return
-    const tid = merito.tipo_documento_id
-    if (!groups[tid]) {
-      groups[tid] = {
-        tipo: merito.tipo_documento || merito.tipoDocumento,
-        items: []
-      }
-    }
-    groups[tid].items.push(merito)
-  })
-
-  return Object.values(groups).sort((a, b) => (a.tipo?.orden || 0) - (b.tipo?.orden || 0))
+  return []
 })
 
 const getFileUrl = (path) => {

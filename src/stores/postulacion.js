@@ -212,14 +212,14 @@ export const usePostulacionStore = defineStore('postulacion', () => {
       // Initialize meritos for each unique requirement
       meritos.value = requisitosUnificados.value.map(req => ({
         tipo_documento_id: req.id,
-        nombre: req.nombre,
-        descripcion: req.descripcion,
-        campos: req.campos || [],
-        config_archivos: req.config_archivos || [],
+        nombre: req.nombre || req.label,
+        descripcion: req.descripcion || req.description || '',
+        campos: req.campos || req.fields || [],
+        config_archivos: req.config_archivos || req.required_documents || [],
         compartido: req.compartido,
         usadoPor: req.usadoPor,
         opcional: req.opcional || false, // CAPTURE OPTIONAL STATUS
-        permite_multiples: req.permite_multiples || false,
+        permite_multiples: req.permite_multiples || req.supports_multiple || false,
         registros: [
           { respuestas: {}, archivos: {} }
         ]
