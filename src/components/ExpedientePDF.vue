@@ -3,32 +3,27 @@
   <div ref="pdfContainer" class="pdf-hidden-container">
     <div class="reporte-container" ref="expedienteClone">
 
-      <!-- TOP GOLD ACCENT BAR -->
-      <div class="top-gold-bar"></div>
-
       <!-- HEADER + LOGO (Section 0) -->
       <div ref="sectionHeader" class="pdf-section">
-        <div class="header-card mb-6">
-          <div class="row items-center no-wrap px-4 py-3">
-            <div class="col-3 flex items-center justify-start">
-              <img src="~assets/unitepc_escudo.png" style="height: 85px; width: auto;" @error="(e) => e.target.style.display = 'none'" />
-            </div>
-            <div class="col-6 text-center">
-              <h1 class="header-univ-title">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h1>
-              <div class="header-univ-subtitle">VICERRECTORADO ACADÉMICO  •  DIRECCIÓN GENERAL DE TALENTO HUMANO</div>
-              <div class="header-doc-title">EXPEDIENTE Y HOJA DE VIDA DIGITAL</div>
-              <div class="header-convo-pill">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</div>
-            </div>
-            <div class="col-3 flex items-center justify-end">
-              <div class="flex items-center gap-3">
-                <div class="text-right">
-                  <div class="photo-label">FOTOGRAFÍA<br/>DIGITAL:</div>
-                  <span v-if="postulacion?.postulante?.foto_perfil_path" class="scan-hint">QR Verificación</span>
-                </div>
-                <div class="qr-box-header">
-                  <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="75" level="M" render-as="svg" />
-                  <div v-else class="qr-placeholder flex items-center justify-center text-xs text-grey-6">SIN FOTO</div>
-                </div>
+        <div class="seccion-reporte text-center mb-6">
+          <h1 class="header-title">UNITEPC</h1>
+          <h2 class="header-subtitle">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h2>
+          <h3 class="header-cv">CURRICULUM VITAE</h3>
+          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</h4>
+        </div>
+
+        <div class="seccion-reporte row items-center no-wrap mb-4 px-10">
+          <div class="col-4 flex flex-start">
+            <img src="~assets/unitepc_escudo.png" style="height: 90px; width: auto;" @error="(e) => e.target.style.display = 'none'" />
+          </div>
+          <div class="col-8 flex items-center justify-end">
+            <div class="flex items-center gap-4">
+              <div class="text-right">
+                  <div class="photo-label">FOTOGRAFÍA<br/>PERSONAL:</div>
+                  <span v-if="postulacion?.postulante?.foto_perfil_path" class="scan-hint">Escanear QR →</span>
+              </div>
+              <div class="qr-box-header">
+                <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="80" level="M" render-as="svg" />
               </div>
             </div>
           </div>
@@ -201,7 +196,6 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import QrcodeVue from 'qrcode.vue'
 import { api } from 'boot/axios'
-import { generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine'
 
 const props = defineProps({
   postulacion: Object,
@@ -232,25 +226,40 @@ const romanize = (num) => {
   return roman
 }
 
+const convertImageToJpg = (url, pdfDoc) => {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = async () => {
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.naturalWidth || img.width
+        canvas.height = img.naturalHeight || img.height
+        const ctx = canvas.getContext('2d')
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        const embedded = await pdfDoc.embedJpg(dataUrl)
+        resolve(embedded)
+      } catch {
+        resolve(null)
+      }
+    }
+    img.onerror = () => resolve(null)
+    img.src = url
+  })
+}
+
 const generatePDF = async () => {
-  if (!props.postulacion) {
-    console.error('PDF: No hay datos de postulación')
-    return false
+  console.log('PDF: Iniciando generación por secciones...')
+
+  if (!props.postulacion || !expedienteClone.value) {
+    console.error('PDF: No hay datos o elemento')
+    return
   }
 
-  // 1. Primary path: Vectorial Institutional Engine (Crisp, Official UNITEPC Layout, Multi-page)
-  try {
-    console.log('PDF: Generando con motor vectorial institucional UNITEPC...')
-    await generateInstitutionalExpedientePDF({
-      postulacion: props.postulacion,
-      filteredMeritos: props.filteredMeritos || []
-    })
-    return true
-  } catch (err) {
-    console.warn('Fallo motor vectorial institucional, usando fallback html2canvas:', err)
-  }
-
-  // 2. Fallback: html2canvas DOM Capture
+  // Make the container visible for capture
   pdfContainer.value.style.position = 'absolute'
   pdfContainer.value.style.left = '-9999px'
   pdfContainer.value.style.top = '0'
@@ -261,6 +270,7 @@ const generatePDF = async () => {
   await new Promise(resolve => setTimeout(resolve, 500))
 
   try {
+    // Create PDF in Oficio format (Bolivia: 216mm x 330mm)
     const pdf = new jsPDF({
       orientation: 'p',
       unit: 'mm',
@@ -270,11 +280,12 @@ const generatePDF = async () => {
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = pdf.internal.pageSize.getHeight()
     const margin = 10
-    const usableHeight = pdfHeight - (margin * 2) - 10
+    const usableHeight = pdfHeight - (margin * 2) - 10 // Leave space for page number
     const contentWidth = pdfWidth - (margin * 2)
 
     let currentY = margin
 
+    // Function to capture and add a section
     const addSection = async (element, forceNewPage = false) => {
       if (!element) return
 
@@ -288,6 +299,7 @@ const generatePDF = async () => {
       const imgWidth = contentWidth
       const imgHeight = (canvas.height * imgWidth) / canvas.width
 
+      // Check if section fits on current page
       if (forceNewPage || (currentY + imgHeight > usableHeight && currentY > margin)) {
         pdf.addPage()
         currentY = margin
@@ -295,41 +307,290 @@ const generatePDF = async () => {
 
       const imgData = canvas.toDataURL('image/png')
       pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight)
-      currentY += imgHeight + 5
+      currentY += imgHeight + 5 // Add some spacing between sections
     }
 
+    // Capture each section separately
+    console.log('PDF: Capturando header...')
     await addSection(sectionHeader.value)
+
+    console.log('PDF: Capturando datos personales...')
     await addSection(sectionDatosPersonales.value)
 
+    // Capture merit sections
     for (let i = 0; i < meritSections.value.length; i++) {
       const section = meritSections.value[i]
       if (section) {
+        console.log(`PDF: Capturando sección de méritos ${i + 1}...`)
         await addSection(section)
       }
     }
 
+    // Add footer and page numbers
     const totalPages = pdf.internal.getNumberOfPages()
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i)
-      pdf.setDrawColor(74, 21, 75)
-      pdf.setLineWidth(0.4)
+
+      // Footer line
+      pdf.setDrawColor(102, 51, 153)
+      pdf.setLineWidth(0.5)
       pdf.line(margin, pdfHeight - 15, pdfWidth - margin, pdfHeight - 15)
 
+      // Footer text
       pdf.setFontSize(8)
-      pdf.setTextColor(74, 21, 75)
-      pdf.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS • SISTEMA DE SELECCIÓN (SISPO)', pdfWidth / 2, pdfHeight - 10, { align: 'center' })
+      pdf.setTextColor(102, 51, 153)
+      pdf.text('SISTEMA DE GESTIÓN DE CONVOCATORIAS UNITEPC', pdfWidth / 2, pdfHeight - 10, { align: 'center' })
 
       pdf.setFontSize(7)
       pdf.setTextColor(100)
-      const nowStr = new Date().toLocaleString('es-BO')
-      pdf.text(`Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Emisión: ${nowStr}`, pdfWidth / 2, pdfHeight - 6, { align: 'center' })
+      const now = new Date()
+      const d = now.getDate().toString().padStart(2, '0')
+      const m = (now.getMonth() + 1).toString().padStart(2, '0')
+      const y = now.getFullYear()
+      const hh = now.getHours().toString().padStart(2, '0')
+      const mm = now.getMinutes().toString().padStart(2, '0')
+      const footerInfo = `Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Generado: ${d}-${m}-${y} ${hh}:${mm}`
+      pdf.text(footerInfo, pdfWidth / 2, pdfHeight - 6, { align: 'center' })
     }
 
+    // Generate filename
     const p = props.postulacion.postulante
     const nombre = String(p?.nombres || 'Postulante').replace(/[^a-zA-Z]/g, '')
     const ci = String(p?.ci || '0').replace(/[^0-9]/g, '')
-    pdf.save(`Expediente_${nombre}_${ci}.pdf`)
-    return true
+    const filename = `Expediente_${nombre}_${ci}.pdf`
+
+    // Extract all attached files (respaldos)
+    const attachments = []
+
+    if (p?.ci_archivo_path) {
+      attachments.push({
+        label: 'CÉDULA DE IDENTIDAD (C.I.)',
+        path: p.ci_archivo_path
+      })
+    }
+    if (props.postulacion.carta_postulacion_path || p?.carta_postulacion_path) {
+      attachments.push({
+        label: 'CARTA DE POSTULACIÓN',
+        path: props.postulacion.carta_postulacion_path || p?.carta_postulacion_path
+      })
+    }
+    if (p?.cv_pdf_path) {
+      attachments.push({
+        label: 'CURRICULUM VITAE ADJUNTO',
+        path: p.cv_pdf_path
+      })
+    }
+
+    if (props.filteredMeritos && Array.isArray(props.filteredMeritos)) {
+      props.filteredMeritos.forEach((group) => {
+        const secName = (group.tipo?.nombre || 'MÉRITO').toUpperCase()
+        if (group.items && Array.isArray(group.items)) {
+          group.items.forEach((item, itemIdx) => {
+            const itemDesc = item.respuestas?.titulo || item.respuestas?.carrera || item.respuestas?.institucion || `Ítem ${itemIdx + 1}`
+            if (item.archivos && Array.isArray(item.archivos)) {
+              item.archivos.forEach((arch) => {
+                if (arch.archivo_path) {
+                  const configArch = group.tipo?.config_archivos?.find(a => a.id === arch.config_archivo_id)
+                  const archLabel = configArch?.label || 'Respaldo'
+                  attachments.push({
+                    label: `${secName}: ${archLabel.toUpperCase()} (${String(itemDesc).toUpperCase()})`,
+                    path: arch.archivo_path
+                  })
+                }
+              })
+            }
+          })
+        }
+      })
+    }
+
+    // If attachments exist, merge them using pdf-lib
+    try {
+      const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib/dist/pdf-lib.esm.js')
+      const cvBytes = pdf.output('arraybuffer')
+      const mergedPdf = await PDFDocument.load(cvBytes)
+      const helveticaFont = await mergedPdf.embedFont(StandardFonts.HelveticaBold)
+      const helveticaNormal = await mergedPdf.embedFont(StandardFonts.Helvetica)
+
+      if (attachments.length > 0) {
+        console.log(`PDF: Anexando ${attachments.length} documentos de respaldo...`)
+
+        // Separator page for Annexes
+        const sepPage = mergedPdf.addPage([612, 935])
+        const { width: sW, height: sH } = sepPage.getSize()
+
+        // Banner box
+        sepPage.drawRectangle({
+          x: 40,
+          y: sH - 125,
+          width: sW - 80,
+          height: 60,
+          color: rgb(0.4, 0.2, 0.6) // #663399
+        })
+
+        sepPage.drawText('DOCUMENTOS DE RESPALDO Y ANEXOS', {
+          x: 55,
+          y: sH - 95,
+          size: 17,
+          font: helveticaFont,
+          color: rgb(1, 1, 1)
+        })
+
+        sepPage.drawText(`POSTULANTE: ${String(p?.nombres || '')} ${String(p?.apellidos || '')}`.toUpperCase(), {
+          x: 55,
+          y: sH - 114,
+          size: 10,
+          font: helveticaNormal,
+          color: rgb(0.9, 0.9, 0.9)
+        })
+
+        let listY = sH - 170
+        sepPage.drawText('ÍNDICE DE RESPALDOS ADJUNTOS:', {
+          x: 50,
+          y: listY,
+          size: 11,
+          font: helveticaFont,
+          color: rgb(0.2, 0.2, 0.2)
+        })
+        listY -= 22
+
+        attachments.forEach((att, aIdx) => {
+          if (listY > 60) {
+            sepPage.drawText(`${aIdx + 1}. ${att.label.substring(0, 85)}`, {
+              x: 60,
+              y: listY,
+              size: 8.5,
+              font: helveticaNormal,
+              color: rgb(0.3, 0.3, 0.3)
+            })
+            listY -= 17
+          }
+        })
+
+        // Process and append each file
+        for (let i = 0; i < attachments.length; i++) {
+          const att = attachments[i]
+          const fileUrl = getFileUrl(att.path)
+          if (!fileUrl) continue
+
+          try {
+            console.log(`PDF: Procesando respaldo ${i + 1}/${attachments.length}:`, att.label)
+            const res = await fetch(fileUrl)
+            if (!res.ok) continue
+            const fileBytes = await res.arrayBuffer()
+            const contentType = res.headers.get('content-type') || ''
+            const isPdfFile = att.path.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
+
+            if (isPdfFile) {
+              try {
+                const donorPdf = await PDFDocument.load(fileBytes, { ignoreEncryption: true })
+                const pageIndices = donorPdf.getPageIndices()
+                const copiedPages = await mergedPdf.copyPages(donorPdf, pageIndices)
+
+                copiedPages.forEach((page, pIdx) => {
+                  const { width: pW, height: pH } = page.getSize()
+                  page.drawRectangle({
+                    x: 0,
+                    y: pH - 20,
+                    width: pW,
+                    height: 20,
+                    color: rgb(0.95, 0.93, 0.98)
+                  })
+                  page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
+                    x: 15,
+                    y: pH - 14,
+                    size: 8,
+                    font: helveticaFont,
+                    color: rgb(0.4, 0.2, 0.6)
+                  })
+                  mergedPdf.addPage(page)
+                })
+              } catch (e) {
+                console.warn('No se pudo fusionar PDF anexo:', e)
+              }
+            } else {
+              // Image attachment
+              try {
+                let embeddedImg = null
+                const isPng = att.path.toLowerCase().endsWith('.png') || contentType.includes('png')
+
+                if (isPng) {
+                  try {
+                    embeddedImg = await mergedPdf.embedPng(fileBytes)
+                  } catch {
+                    embeddedImg = await convertImageToJpg(fileUrl, mergedPdf)
+                  }
+                } else {
+                  try {
+                    embeddedImg = await mergedPdf.embedJpg(fileBytes)
+                  } catch {
+                    embeddedImg = await convertImageToJpg(fileUrl, mergedPdf)
+                  }
+                }
+
+                if (embeddedImg) {
+                  const imgPage = mergedPdf.addPage([612, 935])
+                  const { width: ipW, height: ipH } = imgPage.getSize()
+
+                  // Top header banner
+                  imgPage.drawRectangle({
+                    x: 0,
+                    y: ipH - 32,
+                    width: ipW,
+                    height: 32,
+                    color: rgb(0.4, 0.2, 0.6)
+                  })
+                  imgPage.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)}`, {
+                    x: 20,
+                    y: ipH - 18,
+                    size: 9.5,
+                    font: helveticaFont,
+                    color: rgb(1, 1, 1)
+                  })
+                  imgPage.drawText(`UNITEPC • Postulante: ${String(p?.nombres || '')} ${String(p?.apellidos || '')} • C.I. ${ci}`, {
+                    x: 20,
+                    y: ipH - 28,
+                    size: 7,
+                    font: helveticaNormal,
+                    color: rgb(0.9, 0.9, 0.9)
+                  })
+
+                  // Scale image nicely
+                  const maxW = ipW - 50
+                  const maxH = ipH - 80
+                  const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
+
+                  imgPage.drawImage(embeddedImg, {
+                    x: (ipW - drawW) / 2,
+                    y: (maxH - drawH) / 2 + 35,
+                    width: drawW,
+                    height: drawH
+                  })
+                }
+              } catch (imgErr) {
+                console.warn('No se pudo adjuntar imagen anexa:', imgErr)
+              }
+            }
+          } catch (fileErr) {
+            console.warn('Error al cargar archivo de respaldo:', fileErr)
+          }
+        }
+      }
+
+      const mergedBytes = await mergedPdf.save()
+      const { saveAs } = await import('file-saver')
+      const blob = new Blob([mergedBytes], { type: 'application/pdf' })
+      saveAs(blob, filename)
+      console.log('PDF con respaldos guardado como:', filename)
+      return true
+    } catch (mergeErr) {
+      console.warn('Fallo al anexar respaldos con pdf-lib, guardando CV base:', mergeErr)
+      pdf.save(filename)
+      return true
+    }
+  } catch (err) {
+    console.error('PDF Error:', err)
+    throw err
   } finally {
     pdfContainer.value.style.display = 'none'
   }
@@ -354,167 +615,148 @@ defineExpose({ generatePDF })
 .reporte-container {
   background: white;
   width: 216mm;
-  padding: 12mm;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  color: #1e293b;
-}
-
-.top-gold-bar {
-  height: 4px;
-  background: #c5a059;
-  border-radius: 2px;
-  margin-bottom: 8px;
+  padding: 15mm;
+  font-family: 'Times New Roman', Times, serif;
+  color: #000;
 }
 
 .seccion-reporte {
   width: 100%;
 }
 
-/* HEADER CARD */
-.header-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  background: #ffffff;
-}
-
-.header-univ-title {
-  font-size: 16px;
+/* HEADERS */
+.header-title {
+  font-size: 42px;
   font-weight: 800;
-  color: #4a154b;
   margin: 0;
-  line-height: 1.2;
+  line-height: 1;
 }
-
-.header-univ-subtitle {
-  font-size: 8.5px;
+.header-subtitle {
+  font-size: 24px;
   font-weight: 700;
-  color: #c5a059;
-  margin-top: 3px;
-  letter-spacing: 0.4px;
+  margin: 0;
 }
-
-.header-doc-title {
-  font-size: 12px;
-  font-weight: 800;
-  color: #1e293b;
-  margin-top: 4px;
+.header-cv {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 10px 0 0 0;
 }
-
-.header-convo-pill {
-  font-size: 8.5px;
-  color: #64748b;
-  margin-top: 2px;
+.header-selection {
+  font-size: 18px;
+  font-weight: 700;
+  color: #663399;
+  margin: 0;
 }
 
 .section-header {
-  background: #4a154b;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 800;
-  padding: 6px 12px;
-  border-radius: 4px 4px 0 0;
+  background: transparent;
+  color: #000;
+  font-size: 16px;
+  font-weight: 900;
+  border-bottom: none;
+  padding: 5px 0;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
 .section-description {
-  font-size: 9px;
-  color: #64748b;
+  font-size: 10px;
+  color: #666;
   font-style: italic;
-  margin: 4px 0 6px 4px;
+  margin-bottom: 4px;
   text-transform: uppercase;
+  font-weight: bold;
+  padding-left: 16px;
+  text-align: left;
 }
 
 /* PHOTO SECTION */
 .photo-label {
-  font-size: 9px;
-  font-weight: 800;
-  color: #4a154b;
+  font-size: 11px;
+  font-weight: bold;
+  color: #663399;
 }
 .scan-hint {
-  font-size: 8px;
-  color: #0f766e;
-  font-weight: 600;
+  font-size: 10px;
+  color: #663399;
+  font-style: italic;
 }
 
 /* TABLES */
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #cbd5e1;
-  border-radius: 0 0 4px 4px;
+  border: 2px solid #663399;
 }
 .data-table td {
-  padding: 5px 10px;
-  border: 1px solid #e2e8f0;
-  font-size: 10px;
+  padding: 6px 12px;
+  border: 1px solid #663399;
+  font-size: 12px;
 }
 .data-table .label {
-  width: 32%;
-  font-weight: 700;
-  color: #4a154b;
+  width: 35%;
+  font-weight: 900;
+  color: #663399;
   text-align: right;
-  background-color: #f8fafc;
+  background-color: #f3efff;
 }
 .name-value {
-  font-weight: 800;
-  font-size: 12px;
-  color: #4a154b;
+  font-weight: bold;
+  font-size: 14px;
+  color: #663399;
 }
 .cargo-value {
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: bold;
 }
 .sede-text {
-  color: #0f766e;
-  margin-left: 6px;
-  font-weight: 600;
+  color: #663399;
+  margin-left: 8px;
+  font-weight: normal;
 }
 .email-value {
   color: #1e40af;
+  text-decoration: underline;
 }
 
 .merit-table {
   width: 100%;
   border-collapse: collapse;
-  border: 1px solid #cbd5e1;
+  border: 2px solid #663399;
 }
 .merit-table th {
-  background-color: #f8fafc;
-  color: #4a154b;
-  font-weight: 800;
-  font-size: 8.5px;
-  padding: 6px 4px;
-  border: 1px solid #cbd5e1;
-  border-bottom: 2px solid #c5a059;
+  background-color: #f3efff;
+  color: #663399;
+  font-weight: 900;
+  font-size: 10px;
+  padding: 8px 4px;
+  border: 1px solid #663399;
   text-transform: uppercase;
 }
 .merit-table td {
-  padding: 6px 4px;
-  border: 1px solid #e2e8f0;
-  font-size: 9px;
+  padding: 8px 4px;
+  border: 1px solid #663399;
+  font-size: 11px;
 }
 .qr-col {
   width: 25mm;
 }
 .no-file {
-  color: #94a3b8;
+  color: #999;
   font-style: italic;
-  font-size: 8px;
+  font-size: 9px;
 }
 
 /* QR BOXES */
 .qr-box-header {
-  border: 1px solid #cbd5e1;
-  padding: 3px;
-  background: white;
-  border-radius: 4px;
-}
-.qr-box-small {
-  border: 1px solid #cbd5e1;
+  border: 1px solid #663399;
   padding: 2px;
   background: white;
-  border-radius: 4px;
+}
+.qr-box-small {
+  border: 1px solid #663399;
+  padding: 2px;
+  background: white;
+  width: auto;
   display: inline-block;
 }
 .qr-box-small.no-border {
@@ -527,13 +769,10 @@ defineExpose({ generatePDF })
 .items-center { align-items: center; }
 .justify-end { justify-content: flex-end; }
 .justify-center { justify-content: center; }
-.gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
 .flex { display: flex; }
 .flex-start { justify-content: flex-start; }
-.col-3 { width: 25%; }
 .col-4 { width: 33.33%; }
-.col-6 { width: 50%; }
 .col-8 { width: 66.66%; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
@@ -541,7 +780,5 @@ defineExpose({ generatePDF })
 .font-bold { font-weight: bold; }
 .mb-4 { margin-bottom: 16px; }
 .mb-6 { margin-bottom: 24px; }
-.px-4 { padding-left: 16px; padding-right: 16px; }
-.py-3 { padding-top: 12px; padding-bottom: 12px; }
 .px-10 { padding-left: 40px; padding-right: 40px; }
 </style>

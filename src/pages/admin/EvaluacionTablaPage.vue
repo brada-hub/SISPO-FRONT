@@ -308,6 +308,13 @@
             <!-- Using iframe to reuse the full page logic without refactoring everything into components right now. It is efficient for this admin task. -->
             <ExpedienteDetail ref="expedienteRef" v-if="selectedPostulacion" :postulacion-id="selectedPostulacion.id" />
         </div>
+
+        <!-- HIDDEN EXPEDIENTE PDF COMPONENT (Formato Original Aprobado + Respaldos Anexados) -->
+        <ExpedientePDF
+          ref="pdfExpedienteRef"
+          :postulacion="expedientePostulacionData"
+          :filtered-meritos="expedienteMeritosData"
+        />
       </q-card>
     </q-dialog>
   </q-page>
@@ -320,7 +327,8 @@ import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import { debounce } from 'quasar'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
-import { generateInstitutionalEvaluationPDF, generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine'
+import ExpedientePDF from 'components/ExpedientePDF.vue'
+import { generateInstitutionalEvaluationPDF } from 'src/utils/institutionalPdfEngine'
 import { exportInstitutionalMatrixExcel } from 'src/utils/institutionalExcelEngine'
 
 const route = useRoute()
@@ -344,6 +352,10 @@ const selectedSedeName = ref(null)
 const showExpedienteModal = ref(false)
 const selectedPostulacion = ref(null)
 const expedienteRef = ref(null)
+const pdfExpedienteRef = ref(null)
+
+const expedientePostulacionData = computed(() => expedienteRef.value?.postulacion || null)
+const expedienteMeritosData = computed(() => expedienteRef.value?.filteredMeritos || [])
 
 const openExpedienteModal = (row) => {
   selectedPostulacion.value = row
@@ -351,18 +363,15 @@ const openExpedienteModal = (row) => {
 }
 
 const exportToPDFExpediente = async () => {
-  if (!expedienteRef.value) return
-
-  const postu = expedienteRef.value.postulacion
-  if (!postu) return
+  if (!pdfExpedienteRef.value) {
+    $q.notify({ type: 'warning', message: 'Cargando expediente...' })
+    return
+  }
 
   try {
-    $q.loading.show({ message: 'Generando Expediente Digital Institucional...' })
-    await generateInstitutionalExpedientePDF({
-      postulacion: postu,
-      filteredMeritos: expedienteRef.value.filteredMeritos || []
-    })
-    $q.notify({ type: 'positive', message: 'Expediente Institucional descargado con éxito.' })
+    $q.loading.show({ message: 'Generando Expediente y respaldos adjuntos...' })
+    await pdfExpedienteRef.value.generatePDF()
+    $q.notify({ type: 'positive', message: 'Expediente descargado con éxito con todos sus respaldos.' })
   } catch (err) {
     console.error('Error al exportar Expediente PDF:', err)
     $q.notify({ type: 'negative', message: 'Error al generar Expediente: ' + (err.message || 'Error desconocido') })
