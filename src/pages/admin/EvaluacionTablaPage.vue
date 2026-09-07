@@ -318,12 +318,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
-import { jsPDF } from 'jspdf'
-import autoTable from 'jspdf-autotable'
-import ExcelJS from 'exceljs'
-import { saveAs } from 'file-saver'
 import { debounce } from 'quasar'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
+import { generateInstitutionalEvaluationPDF, generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine'
+import { exportInstitutionalMatrixExcel } from 'src/utils/institutionalExcelEngine'
 
 const route = useRoute()
 const router = useRouter()
@@ -352,106 +350,25 @@ const openExpedienteModal = (row) => {
   showExpedienteModal.value = true
 }
 
-const exportToPDFExpediente = () => {
+const exportToPDFExpediente = async () => {
   if (!expedienteRef.value) return
 
   const postu = expedienteRef.value.postulacion
   if (!postu) return
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  })
-
-  // Header
-  doc.setFontSize(24)
-  doc.setFont('helvetica', 'bold')
-  doc.text('UNITEPC', 105, 20, { align: 'center' })
-  doc.setFontSize(14)
-  doc.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS', 105, 28, { align: 'center' })
-  doc.setFontSize(12)
-  doc.text('CURRICULUM VITAE', 105, 36, { align: 'center' })
-  doc.setTextColor(102, 51, 153)
-  doc.text((postu.oferta?.convocatoria?.titulo || '').toUpperCase(), 105, 43, { align: 'center' })
-  doc.setTextColor(0, 0, 0)
-
-  // Section I
-  doc.setFontSize(11)
-  doc.setFillColor(243, 239, 255)
-  doc.rect(15, 55, 185, 8, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.text('I. DATOS PERSONALES', 20, 60.5)
-
-  const personalData = [
-    ['NOMBRE COMPLETO:', `${postu.postulante?.nombres} ${postu.postulante?.apellidos}`.toUpperCase()],
-    ['CARGO AL QUE POSTULA:', `${postu.oferta?.cargo?.nombre} (${postu.oferta?.sede?.nombre})`.toUpperCase()],
-    ['Nº CÉDULA DE IDENTIDAD:', `${postu.postulante?.ci} ${postu.postulante?.ci_expedido || ''}`],
-    ['NACIONALIDAD:', (postu.postulante?.nacionalidad || '').toUpperCase()],
-    ['DIRECCIÓN:', (postu.postulante?.direccion_domicilio || '').toUpperCase()],
-    ['TELÉFONO / CELULAR:', postu.postulante?.celular || ''],
-    ['CORREO ELECTRÓNICO:', postu.postulante?.email || ''],
-    ['PRETENSIÓN SALARIAL:', `BS. ${Math.round(postu.pretension_salarial || 0)}`]
-  ]
-
-  autoTable(doc, {
-    startY: 65,
-    body: personalData,
-    theme: 'grid',
-    styles: { fontSize: 9, cellPadding: 2, lineColor: [102, 51, 153] },
-    columnStyles: {
-      0: { cellWidth: 50, fontStyle: 'bold', fillColor: [243, 239, 255], textColor: [102, 51, 153] },
-      1: { cellWidth: 135 }
-    },
-    margin: { left: 15 }
-  })
-
-  // Dynamic Merit Sections
-  let lastY = doc.lastAutoTable.finalY + 10
-  const meritos = expedienteRef.value.filteredMeritos
-
-  meritos.forEach((group, gIdx) => {
-    // Check page space
-    if (lastY > 230) {
-      doc.addPage()
-      lastY = 20
-    }
-
-    doc.setFillColor(243, 239, 255)
-    doc.rect(15, lastY, 185, 8, 'F')
-    doc.setFont('helvetica', 'bold')
-    const roman = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII'][gIdx] || 'X'
-    doc.text(`${roman}. ${group.tipo?.nombre.toUpperCase()}`, 20, lastY + 5.5)
-    lastY += 10
-
-    const headers = group.tipo?.campos.map(c => c.label.toUpperCase())
-    const rows = group.items.map(item => {
-      return group.tipo?.campos.map(c => (item.respuestas[c.key] || '---').toUpperCase())
+  try {
+    $q.loading.show({ message: 'Generando Expediente Digital Institucional...' })
+    await generateInstitutionalExpedientePDF({
+      postulacion: postu,
+      filteredMeritos: expedienteRef.value.filteredMeritos || []
     })
-
-    autoTable(doc, {
-      startY: lastY,
-      head: [headers],
-      body: rows,
-      theme: 'grid',
-      styles: { fontSize: 8, cellPadding: 2, lineColor: [102, 51, 153], halign: 'center' },
-      headStyles: { fillColor: [243, 239, 255], textColor: [102, 51, 153], fontStyle: 'bold' },
-      margin: { left: 15 }
-    })
-
-    lastY = doc.lastAutoTable.finalY + 10
-  })
-
-  // Footer
-  const pageCount = doc.internal.getNumberOfPages()
-  doc.setFontSize(8)
-  for(let i = 1; i <= pageCount; i++) {
-    doc.setPage(i)
-    doc.setTextColor(150, 150, 150)
-    doc.text(`Expediente Digital - UNITEPC - Página ${i} de ${pageCount}`, 105, 270, { align: 'center' })
+    $q.notify({ type: 'positive', message: 'Expediente Institucional descargado con éxito.' })
+  } catch (err) {
+    console.error('Error al exportar Expediente PDF:', err)
+    $q.notify({ type: 'negative', message: 'Error al generar Expediente: ' + (err.message || 'Error desconocido') })
+  } finally {
+    $q.loading.hide()
   }
-
-  doc.save(`EXPEDIENTE_${postu.postulante?.nombres}_${postu.postulante?.apellidos}.pdf`)
 }
 
 const headerInfo = ref({
@@ -555,19 +472,6 @@ const createEvalData = (existing = {}) => {
     a4_distinciones: existing.a4_distinciones || 0,
     observaciones: existing.observaciones || '',
   }
-}
-
-const toExcelColumnName = (columnNumber) => {
-  let dividend = columnNumber
-  let columnName = ''
-
-  while (dividend > 0) {
-    const modulo = (dividend - 1) % 26
-    columnName = String.fromCharCode(65 + modulo) + columnName
-    dividend = Math.floor((dividend - modulo) / 26)
-  }
-
-  return columnName
 }
 
 const meritFields = [
@@ -756,339 +660,70 @@ const calculateTotal = (row) => {
   }
 }
 
-const exportToPDF = (targetGroup = null) => {
-  const doc = new jsPDF({
-    orientation: 'landscape',
-    unit: 'mm',
-    format: [216, 330]
-  })
-
-  const groupsToExport = targetGroup ? { [activeTab.value]: targetGroup } : groupedRows.value
-  const detailCount = currentMatriz.value ? dynamicColumns.value.length : 16
-  const totalColumnIndex = 5 + detailCount
-  const observationColumnIndex = totalColumnIndex + 1
-  const columnStyles = {
-    0: { cellWidth: 8 },
-    1: { cellWidth: 45, textColor: [102, 51, 153] },
-    2: { cellWidth: 22 },
-    3: { cellWidth: 12 },
-    4: { cellWidth: 16 },
-    [totalColumnIndex]: { cellWidth: 18 },
-    [observationColumnIndex]: { cellWidth: 40 }
+const exportToPDF = async (targetGroup = null) => {
+  const group = targetGroup || (activeTab.value ? groupedRows.value[activeTab.value] : null) || Object.values(groupedRows.value)[0]
+  if (!group || !group.items || group.items.length === 0) {
+    $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este grupo.' })
+    return
   }
 
-  for (let i = 5; i < totalColumnIndex; i++) {
-    columnStyles[i] = { cellWidth: currentMatriz.value ? 9 : 8 }
+  try {
+    $q.loading.show({ message: 'Generando Acta Oficial Institucional en PDF...' })
+    await generateInstitutionalEvaluationPDF({
+      convocatoria: {
+        titulo: headerInfo.value.nombre,
+        codigo_interno: headerInfo.value.codigo_interno || `CONV-${route.params.id}`,
+        gestion: headerInfo.value.gestion,
+        fecha_inicio: headerInfo.value.fecha_inicio,
+        fecha_cierre: headerInfo.value.fecha_cierre
+      },
+      sede: group.sede || 'TODAS LAS SEDES',
+      cargo: group.cargo || 'TODOS LOS CARGOS',
+      items: group.items,
+      currentMatriz: currentMatriz.value,
+      dynamicColumns: dynamicColumns.value,
+      calculateTotal
+    })
+    $q.notify({ type: 'positive', message: 'Acta Oficial PDF descargada con éxito.' })
+  } catch (err) {
+    console.error('Error al exportar PDF:', err)
+    $q.notify({ type: 'negative', message: 'Error al generar PDF: ' + (err.message || 'Error desconocido') })
+  } finally {
+    $q.loading.hide()
   }
-
-  const head = currentMatriz.value
-    ? [
-        [
-          { content: 'NO.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-          { content: 'NOMBRES Y APELLIDOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-          { content: 'ÁREA FORMACIÓN', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          { content: 'AÑO TÍTULO', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          { content: 'PRETENSION SALARIAL', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          ...currentMatriz.value.map((sec, sectionIndex) => ({
-            content: `${sec.seccion} (${sec.criterios.reduce((sum, crit) => sum + (Number(crit.puntaje) || 0), 0)} PTS)`,
-            colSpan: sec.criterios.length,
-            styles: {
-              fillColor: sectionIndex % 2 === 0 ? [102, 51, 153] : [0, 153, 153],
-              halign: 'center',
-              textColor: [255, 255, 255],
-              fontSize: 7,
-              fontStyle: 'bold'
-            }
-          })),
-          { content: 'PUNTAJE FINAL', rowSpan: 2, styles: { fillColor: [102, 51, 153], valign: 'middle', halign: 'center', textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' } },
-          { content: 'OBSERVACIONES', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 8, fontStyle: 'bold' } }
-        ],
-        dynamicColumns.value.map((col) => ({
-          content: `${col.nombre}
-(${col.puntaje})`,
-          styles: {
-            fontSize: 5.2,
-            halign: 'center',
-            textColor: col.sectionIndex % 2 === 0 ? [102, 51, 153] : [0, 153, 153]
-          }
-        }))
-      ]
-    : [
-        [
-          { content: 'NO.', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-          { content: 'NOMBRES Y APELLIDOS', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 7, fontStyle: 'bold' } },
-          { content: 'ÁREA FORMACIÓN', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          { content: 'AÑO TÍTULO', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          { content: 'PRETENSION SALARIAL', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 6, fontStyle: 'bold' } },
-          { content: 'FORMACION PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
-          { content: 'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', colSpan: 4, styles: { fillColor: [0, 153, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
-          { content: 'EXPERIENCIA ACADEMICA (50 PTS)', colSpan: 5, styles: { fillColor: [102, 51, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
-          { content: 'OTROS MERITOS (10 PTS)', colSpan: 3, styles: { fillColor: [0, 153, 153], halign: 'center', textColor: [255, 255, 255], fontSize: 7, fontStyle: 'bold' } },
-          { content: 'PUNTAJE FINAL', rowSpan: 2, styles: { fillColor: [102, 51, 153], valign: 'middle', halign: 'center', textColor: [255, 255, 255], fontSize: 8, fontStyle: 'bold' } },
-          { content: 'OBSERVACIONES', rowSpan: 2, styles: { valign: 'middle', halign: 'center', fontSize: 8, fontStyle: 'bold' } }
-        ],
-        [
-          { content: 'DIPLOMADO\n(3)', styles: { fontSize: 5.5, halign: 'center' } },
-          { content: 'ESPECIALIZACION\n(4)', styles: { fontSize: 5.5, halign: 'center' } },
-          { content: 'MAESTRIA\n(6)', styles: { fontSize: 5.5, halign: 'center' } },
-          { content: 'DOCTORADO\n(7)', styles: { fontSize: 5.5, halign: 'center' } },
-          { content: 'CURSOS AREA\n>120 (MAX 9)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'CURSILLOS\n>20 (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'DISERTANTE\nCONG. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'FORMACION\nPEDAG. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'EJERCICIO\nPROF. (MAX 15)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'DOCENCIA\nEJER. (MAX 10)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'TUTORIA\nTESIS (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'DOCENTE\nPOSTG. (MAX 5)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'CARGOS\nSIMIL. (MAX 15)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'REVISTAS\nINDEX. (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'LIBROS/\nTEXTOS (MAX 3)', styles: { fontSize: 4.5, halign: 'center' } },
-          { content: 'DISTINCIONES\nHONOR. (MAX 4)', styles: { fontSize: 4.5, halign: 'center' } }
-        ]
-      ]
-
-  Object.values(groupsToExport).forEach((group, gIdx) => {
-    if (gIdx > 0) doc.addPage()
-
-    doc.setFillColor(102, 51, 153)
-    doc.rect(5, 5, 320, 22, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(14)
-    doc.setFont('helvetica', 'bold')
-    doc.text((headerInfo.value.nombre || 'EVALUACION DE MERITOS').toUpperCase(), 15, 12)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`GESTION: ${headerInfo.value.gestion} | INICIO: ${formatDate(headerInfo.value.fecha_inicio)} | CIERRE: ${formatDate(headerInfo.value.fecha_cierre)}`, 15, 17)
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`${group.sede.toUpperCase()} - ${group.cargo.toUpperCase()}`, 15, 23)
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(260, 8, 50, 14, 7, 7, 'F')
-    doc.setTextColor(102, 51, 153)
-    doc.text(`${group.items.length} POSTULANTES`, 285, 17, { align: 'center' })
-
-    const body = group.items.map((row, idx) => {
-      const detailCells = currentMatriz.value
-        ? dynamicColumns.value.map((col) => ({
-            content: Number(row.evalData[col.id] ?? 0),
-            styles: {
-              textColor: col.sectionIndex % 2 === 0 ? [102, 51, 153] : [0, 153, 153],
-              fontStyle: 'bold'
-            }
-          }))
-        : [
-            { content: row.evalData.a1_diplomado, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a1_especialidad, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a1_maestria, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a1_doctorado, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a2_cursos_120, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a2_cursos_20, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a2_disertante, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a2_pedagogico, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a3_ejercicio_prof, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a3_docencia, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a3_tutorias, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a3_docente_post, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a3_cargos_sim, styles: { textColor: [102, 51, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a4_revistas, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a4_libros, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } },
-            { content: row.evalData.a4_distinciones, styles: { textColor: [0, 153, 153], fontStyle: 'bold' } }
-          ]
-
-      return [
-        idx + 1,
-        { content: `${row.postulante?.nombres || ''} ${row.postulante?.apellidos || ''}`.toUpperCase(), styles: { halign: 'left', fontSize: 6, fontStyle: 'bold' } },
-        { content: (row.extraInfo.area || '-').toUpperCase(), styles: { fontSize: 5 } },
-        row.extraInfo.anio || '-',
-        `BS. ${Math.round(row.pretension_salarial || 0)}`,
-        ...detailCells,
-        { content: calculateTotal(row), styles: { fontStyle: 'bold', fontSize: 9, textColor: calculateTotal(row) < 51 ? [200, 0, 0] : [0, 153, 153] } },
-        { content: (row.evalData.observaciones || '').toUpperCase(), styles: { halign: 'left', fontSize: 6 } }
-      ]
-    })
-
-    autoTable(doc, {
-      startY: 32,
-      head,
-      body,
-      theme: 'grid',
-      styles: { fontSize: 6, cellPadding: 1, valign: 'middle', halign: 'center', lineColor: [180, 180, 180], lineWidth: 0.1 },
-      headStyles: { fillColor: [250, 250, 250], textColor: [40, 40, 40], fontStyle: 'bold' },
-      columnStyles,
-      margin: { left: 5, right: 5 }
-    })
-  })
-
-  const fileName = targetGroup ? `EVALUACION_${targetGroup.cargo}_${targetGroup.sede}.pdf` : 'EVALUACION_GENERAL.pdf'
-  doc.save(fileName)
 }
 
 const exportToExcel = async (targetGroup = null) => {
-  const workbook = new ExcelJS.Workbook()
-  const groupsToExport = targetGroup ? { [activeTab.value]: targetGroup } : groupedRows.value
-
-  for (const [, group] of Object.entries(groupsToExport)) {
-    const sheetName = `${group.sede.substring(0, 10)}_${group.cargo.substring(0, 15)}`
-      .replaceAll('/', '')
-      .replaceAll('\\', '')
-      .replace(/[?*]/g, '')
-      .replaceAll('[', '')
-      .replaceAll(']', '')
-      .substring(0, 31)
-    const worksheet = workbook.addWorksheet(sheetName)
-    const lilaColor = '663399'
-    const aquaColor = '009999'
-    const darkColor = '1E1E1E'
-    const whiteColor = 'FFFFFF'
-    const header1 = ['NO.', 'NOMBRES Y APELLIDOS', 'ÁREA FORMACIÓN', 'AÑO TÍTULO', 'PRETENSIÓN SALARIAL']
-    const header2 = ['', '', '', '', '']
-    const merges = ['A3:A4', 'B3:B4', 'C3:C4', 'D3:D4', 'E3:E4']
-    const sectionRanges = []
-    let currentColumn = 6
-
-    if (currentMatriz.value) {
-      currentMatriz.value.forEach((section, sectionIndex) => {
-        const startColumn = currentColumn
-        header1.push(`${section.seccion} (${section.criterios.reduce((sum, crit) => sum + (Number(crit.puntaje) || 0), 0)} PTS)`)
-        header2.push(...section.criterios.map((crit) => `${crit.nombre} (${crit.puntaje})`))
-        for (let i = 1; i < section.criterios.length; i++) header1.push('')
-        const endColumn = startColumn + section.criterios.length - 1
-        if (endColumn > startColumn) {
-          merges.push(`${toExcelColumnName(startColumn)}3:${toExcelColumnName(endColumn)}3`)
-        }
-        sectionRanges.push({ startColumn, endColumn, sectionIndex })
-        currentColumn = endColumn + 1
-      })
-    } else {
-      header1.push(
-        'FORMACION PROFESIONAL (20 PTS)', '', '', '',
-        'PERFECCIONAMIENTO PROFESIONAL (20 PTS)', '', '', '',
-        'EXPERIENCIA ACADEMICA (50 PTS)', '', '', '', '',
-        'OTROS MERITOS (10 PTS)', '', ''
-      )
-      header2.push(
-        'DIPLOMADO(3)', 'ESPECIALIZACION(4)', 'MAESTRIA(6)', 'DOCTORADO(7)',
-        'CURSOS AREA >120(3)', 'CURSILLOS/SEMIN. >20(1)', 'DISERTANTE CONGRESOS(1)', 'FORMACION PEDAGOGICA(1)',
-        'EJERCICIO PROFESIONAL(15)', 'DOCENCIA EJERCIDA(10)', 'TUTORIA DE TESIS(5)', 'DOCENTE POSTGRADO(5)', 'CARGOS SIMILARES(15)',
-        'REVISTAS INDEXADAS(3)', 'LIBROS/TEXTOS(3)', 'DISTINCIONES HONORIFICAS(4)'
-      )
-      sectionRanges.push(
-        { startColumn: 6, endColumn: 9, sectionIndex: 0 },
-        { startColumn: 10, endColumn: 13, sectionIndex: 1 },
-        { startColumn: 14, endColumn: 18, sectionIndex: 2 },
-        { startColumn: 19, endColumn: 21, sectionIndex: 3 }
-      )
-      merges.push('F3:I3', 'J3:M3', 'N3:R3', 'S3:U3')
-      currentColumn = 22
-    }
-
-    const totalColumn = currentColumn
-    const observationColumn = currentColumn + 1
-    header1.push('PUNTAJE FINAL', 'OBSERVACIONES')
-    header2.push('', '')
-    merges.push(`${toExcelColumnName(totalColumn)}3:${toExcelColumnName(totalColumn)}4`)
-    merges.push(`${toExcelColumnName(observationColumn)}3:${toExcelColumnName(observationColumn)}4`)
-
-    const lastColumnLetter = toExcelColumnName(observationColumn)
-    worksheet.mergeCells(`A1:${lastColumnLetter}1`)
-    worksheet.mergeCells(`A2:${lastColumnLetter}2`)
-    worksheet.getCell('A1').value = `${headerInfo.value.nombre || 'EVALUACION DE MERITOS'} - GESTION ${headerInfo.value.gestion}`
-    worksheet.getCell('A1').font = { name: 'Arial', bold: true, size: 14, color: { argb: whiteColor } }
-    worksheet.getCell('A1').alignment = { horizontal: 'center', vertical: 'middle' }
-    worksheet.getCell('A1').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: lilaColor } }
-    worksheet.getCell('A2').value = `INICIO: ${formatDate(headerInfo.value.fecha_inicio)} | CIERRE: ${formatDate(headerInfo.value.fecha_cierre)} | SEDE: ${group.sede} | CARGO: ${group.cargo}`.toUpperCase()
-    worksheet.getCell('A2').font = { name: 'Arial', bold: true, size: 10, color: { argb: whiteColor } }
-    worksheet.getCell('A2').alignment = { horizontal: 'center', vertical: 'middle' }
-    worksheet.getCell('A2').fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: aquaColor } }
-
-    worksheet.addRow(header1)
-    worksheet.addRow(header2)
-    merges.forEach((range) => worksheet.mergeCells(range))
-
-    const headerRow1 = worksheet.getRow(3)
-    const headerRow2 = worksheet.getRow(4)
-
-    headerRow1.eachCell((cell, colNumber) => {
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
-      cell.font = { bold: true, size: 9, color: { argb: '000000' } }
-      const section = sectionRanges.find((range) => range.startColumn === colNumber)
-      if (colNumber === totalColumn) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: darkColor } }
-        cell.font = { bold: true, size: 9, color: { argb: whiteColor } }
-      } else if (section) {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: section.sectionIndex % 2 === 0 ? lilaColor : aquaColor } }
-        cell.font = { bold: true, size: 9, color: { argb: whiteColor } }
-      } else {
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } }
-      }
-    })
-
-    headerRow2.eachCell((cell, colNumber) => {
-      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-      cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
-      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FAFAFA' } }
-      const section = sectionRanges.find((range) => colNumber >= range.startColumn && colNumber <= range.endColumn)
-      const color = section ? (section.sectionIndex % 2 === 0 ? lilaColor : aquaColor) : '000000'
-      cell.font = { bold: true, size: 8, color: { argb: color } }
-    })
-
-    group.items.forEach((row, idx) => {
-      const detailValues = currentMatriz.value
-        ? dynamicColumns.value.map((col) => Number(row.evalData[col.id] ?? 0))
-        : [
-            row.evalData.a1_diplomado, row.evalData.a1_especialidad, row.evalData.a1_maestria, row.evalData.a1_doctorado,
-            row.evalData.a2_cursos_120, row.evalData.a2_cursos_20, row.evalData.a2_disertante, row.evalData.a2_pedagogico,
-            row.evalData.a3_ejercicio_prof, row.evalData.a3_docencia, row.evalData.a3_tutorias, row.evalData.a3_docente_post, row.evalData.a3_cargos_sim,
-            row.evalData.a4_revistas, row.evalData.a4_libros, row.evalData.a4_distinciones
-          ]
-
-      const total = calculateTotal(row)
-      const dataRow = worksheet.addRow([
-        idx + 1,
-        `${row.postulante?.nombres} ${row.postulante?.apellidos}`.toUpperCase(),
-        (row.extraInfo.area || '').toUpperCase(),
-        row.extraInfo.anio,
-        row.pretension_salarial,
-        ...detailValues,
-        total,
-        (row.evalData.observaciones || '').toUpperCase()
-      ])
-
-      dataRow.eachCell((cell, colNumber) => {
-        cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } }
-        cell.font = { size: 9 }
-
-        if (colNumber === 2) {
-          cell.alignment = { horizontal: 'left', vertical: 'middle', wrapText: true }
-          cell.font = { bold: true, color: { argb: lilaColor }, size: 9 }
-        }
-
-        const section = sectionRanges.find((range) => colNumber >= range.startColumn && colNumber <= range.endColumn)
-        if (section) {
-          cell.font = { bold: true, size: 9, color: { argb: section.sectionIndex % 2 === 0 ? lilaColor : aquaColor } }
-        }
-
-        if (colNumber === totalColumn) {
-          cell.font = { bold: true, size: 10, color: { argb: total < 51 ? 'C00000' : aquaColor } }
-        }
-      })
-    })
-
-    worksheet.getColumn(1).width = 5
-    worksheet.getColumn(2).width = 40
-    worksheet.getColumn(3).width = 25
-    worksheet.getColumn(4).width = 10
-    worksheet.getColumn(5).width = 14
-    for (let i = 6; i < totalColumn; i++) worksheet.getColumn(i).width = 10
-    worksheet.getColumn(totalColumn).width = 12
-    worksheet.getColumn(observationColumn).width = 30
+  const group = targetGroup || (activeTab.value ? groupedRows.value[activeTab.value] : null) || Object.values(groupedRows.value)[0]
+  if (!group || !group.items || group.items.length === 0) {
+    $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este grupo.' })
+    return
   }
 
-  const buffer = await workbook.xlsx.writeBuffer()
-  const fileName = targetGroup ? `EVALUACION_${targetGroup.cargo}_${targetGroup.sede}.xlsx` : 'EVALUACION_GENERAL.xlsx'
-  saveAs(new Blob([buffer]), fileName)
+  try {
+    $q.loading.show({ message: 'Generando Matriz Institucional en Excel...' })
+    await exportInstitutionalMatrixExcel({
+      convocatoria: {
+        titulo: headerInfo.value.nombre,
+        codigo_interno: headerInfo.value.codigo_interno || `CONV-${route.params.id}`,
+        gestion: headerInfo.value.gestion,
+        fecha_inicio: headerInfo.value.fecha_inicio,
+        fecha_cierre: headerInfo.value.fecha_cierre
+      },
+      sede: group.sede || 'TODAS LAS SEDES',
+      cargo: group.cargo || 'TODOS LOS CARGOS',
+      items: group.items,
+      currentMatriz: currentMatriz.value,
+      dynamicColumns: dynamicColumns.value,
+      calculateTotal
+    })
+    $q.notify({ type: 'positive', message: 'Matriz Excel descargada con éxito.' })
+  } catch (err) {
+    console.error('Error al exportar Excel:', err)
+    $q.notify({ type: 'negative', message: 'Error al generar Excel: ' + (err.message || 'Error desconocido') })
+  } finally {
+    $q.loading.hide()
+  }
 }
 
 const saveGroup = async (items) => {

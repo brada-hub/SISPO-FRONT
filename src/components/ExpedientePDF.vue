@@ -3,27 +3,32 @@
   <div ref="pdfContainer" class="pdf-hidden-container">
     <div class="reporte-container" ref="expedienteClone">
 
+      <!-- TOP GOLD ACCENT BAR -->
+      <div class="top-gold-bar"></div>
+
       <!-- HEADER + LOGO (Section 0) -->
       <div ref="sectionHeader" class="pdf-section">
-        <div class="seccion-reporte text-center mb-6">
-          <h1 class="header-title">UNITEPC</h1>
-          <h2 class="header-subtitle">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h2>
-          <h3 class="header-cv">CURRICULUM VITAE</h3>
-          <h4 class="header-selection">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</h4>
-        </div>
-
-        <div class="seccion-reporte row items-center no-wrap mb-4 px-10">
-          <div class="col-4 flex flex-start">
-            <img src="~assets/unitepc_escudo.png" style="height: 90px; width: auto;" @error="(e) => e.target.style.display = 'none'" />
-          </div>
-          <div class="col-8 flex items-center justify-end">
-            <div class="flex items-center gap-4">
-              <div class="text-right">
-                  <div class="photo-label">FOTOGRAFÍA<br/>PERSONAL:</div>
-                  <span v-if="postulacion?.postulante?.foto_perfil_path" class="scan-hint">Escanear QR →</span>
-              </div>
-              <div class="qr-box-header">
-                <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="80" level="M" render-as="svg" />
+        <div class="header-card mb-6">
+          <div class="row items-center no-wrap px-4 py-3">
+            <div class="col-3 flex items-center justify-start">
+              <img src="~assets/unitepc_escudo.png" style="height: 85px; width: auto;" @error="(e) => e.target.style.display = 'none'" />
+            </div>
+            <div class="col-6 text-center">
+              <h1 class="header-univ-title">UNIVERSIDAD TÉCNICA PRIVADA COSMOS</h1>
+              <div class="header-univ-subtitle">VICERRECTORADO ACADÉMICO  •  DIRECCIÓN GENERAL DE TALENTO HUMANO</div>
+              <div class="header-doc-title">EXPEDIENTE Y HOJA DE VIDA DIGITAL</div>
+              <div class="header-convo-pill">{{ postulacion?.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL' }}</div>
+            </div>
+            <div class="col-3 flex items-center justify-end">
+              <div class="flex items-center gap-3">
+                <div class="text-right">
+                  <div class="photo-label">FOTOGRAFÍA<br/>DIGITAL:</div>
+                  <span v-if="postulacion?.postulante?.foto_perfil_path" class="scan-hint">QR Verificación</span>
+                </div>
+                <div class="qr-box-header">
+                  <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="75" level="M" render-as="svg" />
+                  <div v-else class="qr-placeholder flex items-center justify-center text-xs text-grey-6">SIN FOTO</div>
+                </div>
               </div>
             </div>
           </div>
@@ -196,6 +201,7 @@ import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 import QrcodeVue from 'qrcode.vue'
 import { api } from 'boot/axios'
+import { generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine'
 
 const props = defineProps({
   postulacion: Object,
@@ -227,14 +233,24 @@ const romanize = (num) => {
 }
 
 const generatePDF = async () => {
-  console.log('PDF: Iniciando generación por secciones...')
-
-  if (!props.postulacion || !expedienteClone.value) {
-    console.error('PDF: No hay datos o elemento')
-    return
+  if (!props.postulacion) {
+    console.error('PDF: No hay datos de postulación')
+    return false
   }
 
-  // Make the container visible for capture
+  // 1. Primary path: Vectorial Institutional Engine (Crisp, Official UNITEPC Layout, Multi-page)
+  try {
+    console.log('PDF: Generando con motor vectorial institucional UNITEPC...')
+    await generateInstitutionalExpedientePDF({
+      postulacion: props.postulacion,
+      filteredMeritos: props.filteredMeritos || []
+    })
+    return true
+  } catch (err) {
+    console.warn('Fallo motor vectorial institucional, usando fallback html2canvas:', err)
+  }
+
+  // 2. Fallback: html2canvas DOM Capture
   pdfContainer.value.style.position = 'absolute'
   pdfContainer.value.style.left = '-9999px'
   pdfContainer.value.style.top = '0'
@@ -245,7 +261,6 @@ const generatePDF = async () => {
   await new Promise(resolve => setTimeout(resolve, 500))
 
   try {
-    // Create PDF in Oficio format (Bolivia: 216mm x 330mm)
     const pdf = new jsPDF({
       orientation: 'p',
       unit: 'mm',
@@ -255,12 +270,11 @@ const generatePDF = async () => {
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = pdf.internal.pageSize.getHeight()
     const margin = 10
-    const usableHeight = pdfHeight - (margin * 2) - 10 // Leave space for page number
+    const usableHeight = pdfHeight - (margin * 2) - 10
     const contentWidth = pdfWidth - (margin * 2)
 
     let currentY = margin
 
-    // Function to capture and add a section
     const addSection = async (element, forceNewPage = false) => {
       if (!element) return
 
@@ -274,7 +288,6 @@ const generatePDF = async () => {
       const imgWidth = contentWidth
       const imgHeight = (canvas.height * imgWidth) / canvas.width
 
-      // Check if section fits on current page
       if (forceNewPage || (currentY + imgHeight > usableHeight && currentY > margin)) {
         pdf.addPage()
         currentY = margin
@@ -282,66 +295,41 @@ const generatePDF = async () => {
 
       const imgData = canvas.toDataURL('image/png')
       pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight)
-      currentY += imgHeight + 5 // Add some spacing between sections
+      currentY += imgHeight + 5
     }
 
-    // Capture each section separately
-    console.log('PDF: Capturando header...')
     await addSection(sectionHeader.value)
-
-    console.log('PDF: Capturando datos personales...')
     await addSection(sectionDatosPersonales.value)
 
-    // Capture merit sections
     for (let i = 0; i < meritSections.value.length; i++) {
       const section = meritSections.value[i]
       if (section) {
-        console.log(`PDF: Capturando sección de méritos ${i + 1}...`)
         await addSection(section)
       }
     }
 
-    // Add footer and page numbers
     const totalPages = pdf.internal.getNumberOfPages()
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i)
-
-      // Footer line
-      pdf.setDrawColor(102, 51, 153)
-      pdf.setLineWidth(0.5)
+      pdf.setDrawColor(74, 21, 75)
+      pdf.setLineWidth(0.4)
       pdf.line(margin, pdfHeight - 15, pdfWidth - margin, pdfHeight - 15)
 
-      // Footer text
       pdf.setFontSize(8)
-      pdf.setTextColor(102, 51, 153)
-      pdf.text('SISTEMA DE GESTIÓN DE CONVOCATORIAS UNITEPC', pdfWidth / 2, pdfHeight - 10, { align: 'center' })
+      pdf.setTextColor(74, 21, 75)
+      pdf.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS • SISTEMA DE SELECCIÓN (SISPO)', pdfWidth / 2, pdfHeight - 10, { align: 'center' })
 
       pdf.setFontSize(7)
       pdf.setTextColor(100)
-      const now = new Date()
-      const d = now.getDate().toString().padStart(2, '0')
-      const m = (now.getMonth() + 1).toString().padStart(2, '0')
-      const y = now.getFullYear()
-      const hh = now.getHours().toString().padStart(2, '0')
-      const mm = now.getMinutes().toString().padStart(2, '0')
-      const footerInfo = `Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Generado: ${d}-${m}-${y} ${hh}:${mm}`
-      pdf.text(footerInfo, pdfWidth / 2, pdfHeight - 6, { align: 'center' })
+      const nowStr = new Date().toLocaleString('es-BO')
+      pdf.text(`Expediente #${props.postulacion.id} | Página ${i} de ${totalPages} | Emisión: ${nowStr}`, pdfWidth / 2, pdfHeight - 6, { align: 'center' })
     }
 
-    // Generate filename
     const p = props.postulacion.postulante
     const nombre = String(p?.nombres || 'Postulante').replace(/[^a-zA-Z]/g, '')
     const ci = String(p?.ci || '0').replace(/[^0-9]/g, '')
-    const filename = `Expediente_${nombre}_${ci}.pdf`
-
-    console.log('PDF: Guardando como:', filename)
-    pdf.save(filename)
-
-    console.log('PDF: Generación completada')
+    pdf.save(`Expediente_${nombre}_${ci}.pdf`)
     return true
-  } catch (err) {
-    console.error('PDF Error:', err)
-    throw err
   } finally {
     pdfContainer.value.style.display = 'none'
   }
@@ -366,148 +354,167 @@ defineExpose({ generatePDF })
 .reporte-container {
   background: white;
   width: 216mm;
-  padding: 15mm;
-  font-family: 'Times New Roman', Times, serif;
-  color: #000;
+  padding: 12mm;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #1e293b;
+}
+
+.top-gold-bar {
+  height: 4px;
+  background: #c5a059;
+  border-radius: 2px;
+  margin-bottom: 8px;
 }
 
 .seccion-reporte {
   width: 100%;
 }
 
-/* HEADERS */
-.header-title {
-  font-size: 42px;
+/* HEADER CARD */
+.header-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.header-univ-title {
+  font-size: 16px;
   font-weight: 800;
+  color: #4a154b;
   margin: 0;
-  line-height: 1;
+  line-height: 1.2;
 }
-.header-subtitle {
-  font-size: 24px;
+
+.header-univ-subtitle {
+  font-size: 8.5px;
   font-weight: 700;
-  margin: 0;
+  color: #c5a059;
+  margin-top: 3px;
+  letter-spacing: 0.4px;
 }
-.header-cv {
-  font-size: 18px;
-  font-weight: 700;
-  margin: 10px 0 0 0;
+
+.header-doc-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-top: 4px;
 }
-.header-selection {
-  font-size: 18px;
-  font-weight: 700;
-  color: #663399;
-  margin: 0;
+
+.header-convo-pill {
+  font-size: 8.5px;
+  color: #64748b;
+  margin-top: 2px;
 }
 
 .section-header {
-  background: transparent;
-  color: #000;
-  font-size: 16px;
-  font-weight: 900;
-  border-bottom: none;
-  padding: 5px 0;
+  background: #4a154b;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 4px 4px 0 0;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .section-description {
-  font-size: 10px;
-  color: #666;
+  font-size: 9px;
+  color: #64748b;
   font-style: italic;
-  margin-bottom: 4px;
+  margin: 4px 0 6px 4px;
   text-transform: uppercase;
-  font-weight: bold;
-  padding-left: 16px;
-  text-align: left;
 }
 
 /* PHOTO SECTION */
 .photo-label {
-  font-size: 11px;
-  font-weight: bold;
-  color: #663399;
+  font-size: 9px;
+  font-weight: 800;
+  color: #4a154b;
 }
 .scan-hint {
-  font-size: 10px;
-  color: #663399;
-  font-style: italic;
+  font-size: 8px;
+  color: #0f766e;
+  font-weight: 600;
 }
 
 /* TABLES */
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  border: 2px solid #663399;
+  border: 1px solid #cbd5e1;
+  border-radius: 0 0 4px 4px;
 }
 .data-table td {
-  padding: 6px 12px;
-  border: 1px solid #663399;
-  font-size: 12px;
+  padding: 5px 10px;
+  border: 1px solid #e2e8f0;
+  font-size: 10px;
 }
 .data-table .label {
-  width: 35%;
-  font-weight: 900;
-  color: #663399;
+  width: 32%;
+  font-weight: 700;
+  color: #4a154b;
   text-align: right;
-  background-color: #f3efff;
+  background-color: #f8fafc;
 }
 .name-value {
-  font-weight: bold;
-  font-size: 14px;
-  color: #663399;
+  font-weight: 800;
+  font-size: 12px;
+  color: #4a154b;
 }
 .cargo-value {
   text-transform: uppercase;
-  font-weight: bold;
+  font-weight: 700;
 }
 .sede-text {
-  color: #663399;
-  margin-left: 8px;
-  font-weight: normal;
+  color: #0f766e;
+  margin-left: 6px;
+  font-weight: 600;
 }
 .email-value {
   color: #1e40af;
-  text-decoration: underline;
 }
 
 .merit-table {
   width: 100%;
   border-collapse: collapse;
-  border: 2px solid #663399;
+  border: 1px solid #cbd5e1;
 }
 .merit-table th {
-  background-color: #f3efff;
-  color: #663399;
-  font-weight: 900;
-  font-size: 10px;
-  padding: 8px 4px;
-  border: 1px solid #663399;
+  background-color: #f8fafc;
+  color: #4a154b;
+  font-weight: 800;
+  font-size: 8.5px;
+  padding: 6px 4px;
+  border: 1px solid #cbd5e1;
+  border-bottom: 2px solid #c5a059;
   text-transform: uppercase;
 }
 .merit-table td {
-  padding: 8px 4px;
-  border: 1px solid #663399;
-  font-size: 11px;
+  padding: 6px 4px;
+  border: 1px solid #e2e8f0;
+  font-size: 9px;
 }
 .qr-col {
   width: 25mm;
 }
 .no-file {
-  color: #999;
+  color: #94a3b8;
   font-style: italic;
-  font-size: 9px;
+  font-size: 8px;
 }
 
 /* QR BOXES */
 .qr-box-header {
-  border: 1px solid #663399;
-  padding: 2px;
+  border: 1px solid #cbd5e1;
+  padding: 3px;
   background: white;
+  border-radius: 4px;
 }
 .qr-box-small {
-  border: 1px solid #663399;
+  border: 1px solid #cbd5e1;
   padding: 2px;
   background: white;
-  width: auto;
+  border-radius: 4px;
   display: inline-block;
 }
 .qr-box-small.no-border {
@@ -520,10 +527,13 @@ defineExpose({ generatePDF })
 .items-center { align-items: center; }
 .justify-end { justify-content: flex-end; }
 .justify-center { justify-content: center; }
+.gap-3 { gap: 12px; }
 .gap-4 { gap: 16px; }
 .flex { display: flex; }
 .flex-start { justify-content: flex-start; }
+.col-3 { width: 25%; }
 .col-4 { width: 33.33%; }
+.col-6 { width: 50%; }
 .col-8 { width: 66.66%; }
 .text-center { text-align: center; }
 .text-right { text-align: right; }
@@ -531,5 +541,7 @@ defineExpose({ generatePDF })
 .font-bold { font-weight: bold; }
 .mb-4 { margin-bottom: 16px; }
 .mb-6 { margin-bottom: 24px; }
+.px-4 { padding-left: 16px; padding-right: 16px; }
+.py-3 { padding-top: 12px; padding-bottom: 12px; }
 .px-10 { padding-left: 40px; padding-right: 40px; }
 </style>
