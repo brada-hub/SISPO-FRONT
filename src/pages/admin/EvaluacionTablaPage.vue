@@ -18,7 +18,7 @@
       </div>
 
       <div class="row justify-between items-center q-mt-lg">
-        <q-btn icon="arrow_back" unelevated color="grey-3" text-color="grey-9" label="VOLVER" @click="$router.back()" class="rounded-xl px-6 font-black h-12" />
+        <q-btn icon="arrow_back" unelevated color="grey-3" text-color="grey-9" label="VOLVER" @click="goBack" class="rounded-xl px-6 font-black h-12" />
 
         <div class="flex gap-3 items-center">
           <div class="text-weight-bold text-grey-7 q-mr-md uppercase text-[10px] tracking-widest">
@@ -315,7 +315,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import { jsPDF } from 'jspdf'
@@ -326,8 +326,17 @@ import { debounce } from 'quasar'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 
 const route = useRoute()
+const router = useRouter()
 const $q = useQuasar()
 const localRows = ref([])
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/admin/evaluaciones')
+  }
+}
 const loading = ref(false)
 const saving = ref(false)
 const activeTab = ref(null)

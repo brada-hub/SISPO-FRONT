@@ -2,7 +2,7 @@
   <q-page class="bg-grey-3 flex flex-col no-wrap h-screen overflow-hidden">
     <!-- TOP BAR (No Print) -->
     <q-toolbar v-if="!$route.query.hideheader" class="bg-white text-gray-800 shadow-md q-px-lg no-print" style="height: 70px; z-index: 10;">
-      <q-btn flat round icon="arrow_back" @click="$router.back()" class="mr-4" />
+      <q-btn flat round icon="arrow_back" @click="goBack" class="mr-4" />
       <div class="flex items-center">
         <div class="text-h6 font-black tracking-tighter uppercase leading-none mb-1">
           Expediente: {{ postulacionData?.postulante?.nombres }} {{ postulacionData?.postulante?.apellidos }}
@@ -36,11 +36,21 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import ExpedientePDF from 'components/ExpedientePDF.vue'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 import { useQuasar } from 'quasar'
 
+const router = useRouter()
 const $q = useQuasar()
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/admin/postulaciones')
+  }
+}
 const pdfExporter = ref(null)
 const generatingPDF = ref(false)
 const detailComp = ref(null)

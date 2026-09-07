@@ -90,7 +90,7 @@ export default route(function ({ store }) {
       return next('/login')
     }
 
-    if (isAuthenticated && isPublicRoute && !isPortalPreview) {
+    if (isAuthenticated && to.path === '/login') {
       return next('/admin')
     }
 

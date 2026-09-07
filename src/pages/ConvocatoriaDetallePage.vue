@@ -14,7 +14,7 @@
         label="Volver al Portal"
         class="mb-4"
         no-caps
-        :to="portalHomeRoute"
+        @click="handleBack"
       />
 
       <!-- Header Card -->
@@ -127,6 +127,14 @@ import { api } from 'boot/axios'
 const route = useRoute()
 const router = useRouter()
 const portalHomeRoute = { path: '/', query: { public: '1' } }
+
+const handleBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 
 const loading = ref(true)
 const convocatoria = ref(null)
