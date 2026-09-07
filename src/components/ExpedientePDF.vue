@@ -226,28 +226,38 @@ const romanize = (num) => {
   return roman
 }
 
-const convertImageToJpg = (url, pdfDoc) => {
+const convertBlobToJpg = (bytes, mime, pdfDoc) => {
   return new Promise((resolve) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = async () => {
-      try {
-        const canvas = document.createElement('canvas')
-        canvas.width = img.naturalWidth || img.width
-        canvas.height = img.naturalHeight || img.height
-        const ctx = canvas.getContext('2d')
-        ctx.fillStyle = '#FFFFFF'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(img, 0, 0)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
-        const embedded = await pdfDoc.embedJpg(dataUrl)
-        resolve(embedded)
-      } catch {
+    try {
+      const blob = new Blob([bytes], { type: mime || 'image/jpeg' })
+      const blobUrl = URL.createObjectURL(blob)
+      const img = new Image()
+      img.onload = async () => {
+        try {
+          const canvas = document.createElement('canvas')
+          canvas.width = img.naturalWidth || img.width || 800
+          canvas.height = img.naturalHeight || img.height || 600
+          const ctx = canvas.getContext('2d')
+          ctx.fillStyle = '#FFFFFF'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+          ctx.drawImage(img, 0, 0)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+          URL.revokeObjectURL(blobUrl)
+          const embedded = await pdfDoc.embedJpg(dataUrl)
+          resolve(embedded)
+        } catch {
+          URL.revokeObjectURL(blobUrl)
+          resolve(null)
+        }
+      }
+      img.onerror = () => {
+        URL.revokeObjectURL(blobUrl)
         resolve(null)
       }
+      img.src = blobUrl
+    } catch {
+      resolve(null)
     }
-    img.onerror = () => resolve(null)
-    img.src = url
   })
 }
 
@@ -422,64 +432,86 @@ const generatePDF = async () => {
         // Banner box
         sepPage.drawRectangle({
           x: 40,
-          y: sH - 125,
+          y: sH - 120,
           width: sW - 80,
-          height: 60,
+          height: 65,
           color: rgb(0.4, 0.2, 0.6) // #663399
         })
 
         sepPage.drawText('DOCUMENTOS DE RESPALDO Y ANEXOS', {
           x: 55,
-          y: sH - 95,
-          size: 17,
+          y: sH - 85,
+          size: 16,
           font: helveticaFont,
           color: rgb(1, 1, 1)
         })
 
         sepPage.drawText(`POSTULANTE: ${String(p?.nombres || '')} ${String(p?.apellidos || '')}`.toUpperCase(), {
           x: 55,
-          y: sH - 114,
+          y: sH - 105,
           size: 10,
           font: helveticaNormal,
-          color: rgb(0.9, 0.9, 0.9)
+          color: rgb(0.95, 0.95, 0.95)
         })
 
-        let listY = sH - 170
-        sepPage.drawText('ÍNDICE DE RESPALDOS ADJUNTOS:', {
-          x: 50,
+        let listY = sH - 155
+        sepPage.drawText('ÍNDICE DE RESPALDOS ADJUNTOS EN ESTE EXPEDIENTE:', {
+          x: 45,
           y: listY,
           size: 11,
           font: helveticaFont,
           color: rgb(0.2, 0.2, 0.2)
         })
-        listY -= 22
+        listY -= 24
 
         attachments.forEach((att, aIdx) => {
           if (listY > 60) {
             sepPage.drawText(`${aIdx + 1}. ${att.label.substring(0, 85)}`, {
-              x: 60,
+              x: 55,
               y: listY,
-              size: 8.5,
+              size: 9,
               font: helveticaNormal,
               color: rgb(0.3, 0.3, 0.3)
             })
-            listY -= 17
+            listY -= 18
           }
         })
 
         // Process and append each file
         for (let i = 0; i < attachments.length; i++) {
           const att = attachments[i]
-          const fileUrl = getFileUrl(att.path)
-          if (!fileUrl) continue
+          if (!att.path) continue
 
           try {
             console.log(`PDF: Procesando respaldo ${i + 1}/${attachments.length}:`, att.label)
-            const res = await fetch(fileUrl)
-            if (!res.ok) continue
-            const fileBytes = await res.arrayBuffer()
-            const contentType = res.headers.get('content-type') || ''
-            const isPdfFile = att.path.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
+            const cleanPath = att.path.replace(/^\/+/, '').replace(/^storage\//, '')
+
+            let fileBytes = null
+            let contentType = ''
+
+            // 1. Primary: fetch through CORS-enabled stream API via axios
+            try {
+              const res = await api.get(`/files/stream?path=${encodeURIComponent(cleanPath)}`, {
+                responseType: 'arraybuffer'
+              })
+              fileBytes = new Uint8Array(res.data)
+              contentType = String(res.headers['content-type'] || '').toLowerCase()
+            } catch (apiErr) {
+              console.warn(`Fallback de descarga directa para ${cleanPath}:`, apiErr)
+              const fallbackUrl = getFileUrl(att.path)
+              const res2 = await fetch(fallbackUrl)
+              if (res2.ok) {
+                fileBytes = new Uint8Array(await res2.arrayBuffer())
+                contentType = String(res2.headers.get('content-type') || '').toLowerCase()
+              }
+            }
+
+            if (!fileBytes || fileBytes.length === 0) {
+              console.warn(`No se pudieron obtener datos para el respaldo: ${att.label}`)
+              continue
+            }
+
+            const isPdfFile = cleanPath.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
 
             if (isPdfFile) {
               try {
@@ -491,40 +523,38 @@ const generatePDF = async () => {
                   const { width: pW, height: pH } = page.getSize()
                   page.drawRectangle({
                     x: 0,
-                    y: pH - 20,
+                    y: pH - 22,
                     width: pW,
-                    height: 20,
-                    color: rgb(0.95, 0.93, 0.98)
+                    height: 22,
+                    color: rgb(0.4, 0.2, 0.6)
                   })
                   page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
                     x: 15,
-                    y: pH - 14,
-                    size: 8,
+                    y: pH - 15,
+                    size: 8.5,
                     font: helveticaFont,
-                    color: rgb(0.4, 0.2, 0.6)
+                    color: rgb(1, 1, 1)
                   })
                   mergedPdf.addPage(page)
                 })
-              } catch (e) {
-                console.warn('No se pudo fusionar PDF anexo:', e)
+              } catch (pdfErr) {
+                console.warn('No se pudo fusionar PDF anexo:', pdfErr)
               }
             } else {
               // Image attachment
               try {
                 let embeddedImg = null
-                const isPng = att.path.toLowerCase().endsWith('.png') || contentType.includes('png')
 
-                if (isPng) {
+                // Try direct JPG
+                try {
+                  embeddedImg = await mergedPdf.embedJpg(fileBytes)
+                } catch {
+                  // Try direct PNG
                   try {
                     embeddedImg = await mergedPdf.embedPng(fileBytes)
                   } catch {
-                    embeddedImg = await convertImageToJpg(fileUrl, mergedPdf)
-                  }
-                } else {
-                  try {
-                    embeddedImg = await mergedPdf.embedJpg(fileBytes)
-                  } catch {
-                    embeddedImg = await convertImageToJpg(fileUrl, mergedPdf)
+                    // Fallback using Blob & Canvas conversion
+                    embeddedImg = await convertBlobToJpg(fileBytes, contentType, mergedPdf)
                   }
                 }
 
@@ -556,13 +586,13 @@ const generatePDF = async () => {
                   })
 
                   // Scale image nicely
-                  const maxW = ipW - 50
-                  const maxH = ipH - 80
+                  const maxW = ipW - 40
+                  const maxH = ipH - 60
                   const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
 
                   imgPage.drawImage(embeddedImg, {
                     x: (ipW - drawW) / 2,
-                    y: (maxH - drawH) / 2 + 35,
+                    y: (maxH - drawH) / 2 + 15,
                     width: drawW,
                     height: drawH
                   })
