@@ -116,13 +116,44 @@
     </q-dialog>
 
     <!-- BUSY OVERLAY -->
-    <q-inner-loading :showing="store.submitting || store.uploadingFiles" class="z-max" style="backdrop-filter: blur(4px); background: rgba(255,255,255,0.7)">
-      <q-spinner-dots size="80px" color="primary" />
-      <div class="text-primary font-black mt-4 uppercase tracking-tighter">
-        {{ store.uploadingFiles ? 'Subiendo documentos...' : 'Procesando Postulación...' }}
-      </div>
-      <div v-if="store.uploadingFiles" class="text-primary/70 text-xs font-bold mt-2 uppercase tracking-widest">
-        {{ store.uploadProgress.current }} / {{ store.uploadProgress.total }} {{ store.uploadProgress.label }}
+    <q-inner-loading :showing="store.submitting || store.uploadingFiles" class="z-max" style="backdrop-filter: blur(4px); background: rgba(255,255,255,0.82)">
+      <div class="flex flex-col items-center gap-4 px-8" style="max-width: 380px; width: 100%">
+        <q-spinner-dots size="60px" color="primary" />
+
+        <div v-if="store.uploadingFiles" class="text-center w-full">
+          <div class="text-primary font-black uppercase tracking-tighter text-base mb-1">
+            Subiendo documentos...
+          </div>
+          <div class="text-primary/60 text-[11px] font-bold uppercase tracking-widest mb-3 truncate">
+            {{ store.uploadProgress.label || 'Preparando...' }}
+          </div>
+          <q-linear-progress
+            :value="store.uploadProgress.total > 0 ? store.uploadProgress.current / store.uploadProgress.total : 0"
+            color="primary"
+            track-color="primary"
+            class="rounded-full"
+            style="height: 8px; opacity: 0.2"
+          />
+          <q-linear-progress
+            :value="store.uploadProgress.total > 0 ? store.uploadProgress.current / store.uploadProgress.total : 0"
+            color="primary"
+            class="rounded-full -mt-2"
+            style="height: 8px"
+            animated
+          />
+          <div class="text-primary/50 text-[10px] font-bold mt-2">
+            {{ store.uploadProgress.current }} de {{ store.uploadProgress.total }} archivos procesados
+          </div>
+        </div>
+
+        <div v-else class="text-center">
+          <div class="text-primary font-black uppercase tracking-tighter text-base">
+            Procesando Postulación...
+          </div>
+          <div class="text-primary/50 text-xs font-bold mt-1 uppercase tracking-widest">
+            Por favor no cierre esta ventana
+          </div>
+        </div>
       </div>
     </q-inner-loading>
   </q-page>
@@ -194,11 +225,23 @@ const handleSubmit = async () => {
     cantidadCargos.value = result.data.cantidad_cargos || 1
     showSuccess.value = true
 
-    $q.notify({
-      type: 'positive',
-      message: 'Postulación enviada correctamente',
-      position: 'top'
-    })
+    // Si el servidor guardó la postulación pero hubo un problema con archivos, avisar
+    if (result.archivos_warning) {
+      $q.dialog({
+        title: '<div class="text-warning flex items-center gap-2"><q-icon name="warning" size="sm" /> Postulación registrada con advertencia</div>',
+        message: result.archivos_warning,
+        html: true,
+        ok: { color: 'warning', label: 'Entendido', unelevated: true },
+        class: 'rounded-2xl'
+      })
+    } else {
+      $q.notify({
+        type: 'positive',
+        message: '¡Postulación enviada correctamente!',
+        position: 'top',
+        timeout: 5000
+      })
+    }
   } catch (error) {
     console.error('Submission technical details:', error)
 
@@ -221,6 +264,24 @@ const handleSubmit = async () => {
         ok: { color: 'primary', label: 'Corregir ahora', flat: true },
         class: 'rounded-2xl'
       })
+    } else if (error.type === 'upload_error') {
+      // Un archivo no se pudo subir después de los reintentos
+      $q.dialog({
+        title: '<div class="text-negative flex items-center gap-2"><q-icon name="upload_file" size="sm" /> Error al subir archivos</div>',
+        message: `${error.message}<br><br><b>Sus demás datos no se han perdido.</b> Por favor verifique su conexión a internet e intente nuevamente.`,
+        html: true,
+        ok: { color: 'primary', label: 'Intentar nuevamente', unelevated: true },
+        class: 'rounded-2xl'
+      })
+    } else if (error.type === 'timeout' || error.type === 'network') {
+      // Error de conexión
+      $q.dialog({
+        title: '<div class="text-warning flex items-center gap-2"><q-icon name="wifi_off" size="sm" /> Problema de conexión</div>',
+        message: `${error.message}<br><br><b>Sus datos podrían haber sido guardados.</b> Espere unos minutos y verifique en el sistema antes de intentar nuevamente para evitar duplicados.`,
+        html: true,
+        ok: { color: 'primary', label: 'Entendido', unelevated: true },
+        class: 'rounded-2xl'
+      })
     } else {
       // Error general o mensaje directo del backend (ej: "Usted ya tiene una postulación...")
       $q.notify({
@@ -233,6 +294,7 @@ const handleSubmit = async () => {
     }
   }
 }
+
 
 const resetAndStart = () => {
   showSuccess.value = false
