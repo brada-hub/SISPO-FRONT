@@ -114,7 +114,7 @@
       <q-icon name="search_off" size="80px" color="grey-5" />
       <h2 class="text-2xl font-bold text-gray-600 mt-4">Convocatoria no encontrada</h2>
       <p class="text-gray-500 mt-2">La convocatoria que buscas no existe o ya no está disponible.</p>
-      <q-btn label="Volver al Portal" color="primary" rounded class="mt-6" :to="portalHomeRoute" />
+      <q-btn label="Volver al Portal" color="primary" rounded class="mt-6" @click="handleBack" />
     </div>
   </q-page>
 </template>
