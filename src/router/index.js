@@ -80,8 +80,6 @@ export default route(function ({ store }) {
 
     // 4. Guardas de Protección
     const isAuthenticated = !!(authStore.token || localStorage.getItem('sispo_token'))
-    const isPortalPreview = to.path === '/' && to.query.public === '1'
-    const isPublicRoute = to.path === '/login' || to.path === '/'
     
     // Si la ruta empieza con /admin, protegerla
     const isAdminRoute = to.path.startsWith('/admin')

@@ -126,7 +126,6 @@ import { api } from 'boot/axios'
 
 const route = useRoute()
 const router = useRouter()
-const portalHomeRoute = { path: '/', query: { public: '1' } }
 
 const handleBack = () => {
   if (window.history.length > 1) {
