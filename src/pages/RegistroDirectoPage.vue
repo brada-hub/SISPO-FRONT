@@ -143,6 +143,16 @@
                        <q-input v-model="form.ref_personal_celular" label="Celular de la Referencia" outlined />
                     </div>
 
+                    <div class="col-12"><q-separator class="q-my-sm" /></div>
+                    <div class="col-12 text-subtitle2 text-indigo font-black uppercase tracking-widest text-[10px]">Referencia de Contacto (Laboral)</div>
+
+                    <div class="col-12 col-md-6">
+                       <q-input v-model="form.ref_laboral_detalle" label="Institución / Cargo / Referencia Laboral" outlined hint="Ej: Univ. Cosmos - Jefe de Carrera" />
+                    </div>
+                    <div class="col-12 col-md-6">
+                       <q-input v-model="form.ref_laboral_celular" label="Celular de la Referencia Laboral" outlined />
+                    </div>
+
                     <div class="col-12"><q-separator class="q-my-md" /></div>
 
                     <div class="col-12 text-subtitle2 text-primary font-black uppercase tracking-widest text-[10px]">Documentos Obligatorios</div>
@@ -312,7 +322,9 @@ const form = ref({
   clasificacion: 'ADMINISTRATIVO',
   ci_expedido: 'CB',
   ref_personal_celular: '',
-  ref_personal_parentesco: ''
+  ref_personal_parentesco: '',
+  ref_laboral_celular: '',
+  ref_laboral_detalle: ''
 })
 
 const files = ref({
@@ -417,6 +429,8 @@ const verifyFullIdentity = async () => {
       form.value.ci_expedido = p.ci_expedido || 'CB'
       form.value.ref_personal_celular = p.ref_personal_celular || ''
       form.value.ref_personal_parentesco = p.ref_personal_parentesco || ''
+      form.value.ref_laboral_celular = p.ref_laboral_celular || ''
+      form.value.ref_laboral_detalle = p.ref_laboral_detalle || ''
 
       // Load existing main files
       existingFiles.value.cv_pdf = p.cv_pdf_path

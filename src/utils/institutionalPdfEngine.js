@@ -541,6 +541,7 @@ export const generateInstitutionalExpedientePDF = async ({
     [{ content: 'CORREO INSTITUCIONAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, post.email_institucional || postulacion.email || 'Pendiente de asignación'],
     [{ content: 'PRETENSIÓN SALARIAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, pretension],
     [{ content: 'REFERENCIA PERSONAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, `${post.ref_personal_celular || 'Sin cel.'} - Relación: ${post.ref_personal_parentesco || 'No especificada'}`],
+    [{ content: 'REFERENCIA LABORAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, `${post.ref_laboral_celular || 'Sin cel.'} - Detalle: ${post.ref_laboral_detalle || 'No especificada'}`],
     [{ content: 'MOTIVACIÓN / POR QUÉ EL CARGO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, postulacion.porque_cargo || 'Declarado en formulario de méritos']
   ]
 

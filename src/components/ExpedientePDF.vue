@@ -105,8 +105,15 @@
             <tr>
               <td class="label">REFERENCIA PERSONAL:</td>
               <td class="value">
-                Telf: {{ postulacion?.postulante?.ref_personal_celular }} -
-                Relación: {{ postulacion?.postulante?.ref_personal_parentesco }}
+                Telf: {{ postulacion?.postulante?.ref_personal_celular || '---' }} -
+                Relación: {{ postulacion?.postulante?.ref_personal_parentesco || '---' }}
+              </td>
+            </tr>
+            <tr>
+              <td class="label">REFERENCIA LABORAL:</td>
+              <td class="value">
+                Telf: {{ postulacion?.postulante?.ref_laboral_celular || '---' }} -
+                Institución / Detalle: {{ postulacion?.postulante?.ref_laboral_detalle || '---' }}
               </td>
             </tr>
             <tr v-if="postulacion?.pretension_salarial && !postulacion?.rol_id">
