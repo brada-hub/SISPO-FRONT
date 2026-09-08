@@ -40,12 +40,17 @@
             <div class="flex items-center gap-4">
               <div class="text-right">
                   <div class="text-[11px] font-bold text-[#663399]">FOTOGRAFÍA<br/>PERSONAL:</div>
-                  <a v-if="postulacion?.postulante?.foto_perfil_path" @click="previewFile(postulacion.postulante.foto_perfil_path)" class="text-[9px] text-blue-8 underline cursor-pointer font-bold uppercase">
-                    VER AQUÍ
-                  </a>
               </div>
-              <div class="qr-box-header">
-                <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="80" level="M" render-as="svg" />
+              <div class="photo-box-header">
+                <img
+                  v-if="postulacion?.postulante?.foto_perfil_path"
+                  :src="getFileUrl(postulacion.postulante.foto_perfil_path)"
+                  class="photo-img"
+                  @error="(e) => e.target.style.display = 'none'"
+                />
+                <div v-else class="text-[9px] text-grey-6 text-center italic p-1">
+                  Sin fotografía registrada
+                </div>
               </div>
             </div>
           </div>
@@ -663,6 +668,8 @@ defineExpose({
 .data-table td, .merit-table td { padding: 6px 12px; border: 1px solid #663399; font-size: 12px; }
 .merit-table th { background-color: #f3efff; color: #663399; font-weight: 900; font-size: 10px; padding: 8px 4px; border: 1px solid #663399; text-transform: uppercase; }
 .data-table .label { width: 35%; font-weight: 900; color: #663399; text-align: right; background-color: #f3efff; }
+.photo-box-header { border: 1.5px solid #663399; padding: 2px; background: white; width: 75px; height: 95px; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.photo-img { width: 100%; height: 100%; object-fit: cover; }
 .qr-box-header { border: 1px solid #663399; padding: 2px; background: white; }
 .qr-box-small { border: 1px solid #663399; padding: 2px; background: white; width: auto; display: inline-block; }
 .qr-box-small.no-border { border: none; }

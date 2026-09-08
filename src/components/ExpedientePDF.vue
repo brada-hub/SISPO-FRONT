@@ -20,10 +20,17 @@
             <div class="flex items-center gap-4">
               <div class="text-right">
                   <div class="photo-label">FOTOGRAFÍA<br/>PERSONAL:</div>
-                  <span v-if="postulacion?.postulante?.foto_perfil_path" class="scan-hint">Escanear QR →</span>
               </div>
-              <div class="qr-box-header">
-                <QrcodeVue v-if="postulacion?.postulante?.foto_perfil_path" :value="getFileUrl(postulacion.postulante.foto_perfil_path)" :size="80" level="M" render-as="svg" />
+              <div class="photo-box-header">
+                <img
+                  v-if="postulacion?.postulante?.foto_perfil_path"
+                  :src="getFileUrl(postulacion.postulante.foto_perfil_path)"
+                  class="photo-img"
+                  @error="(e) => e.target.style.display = 'none'"
+                />
+                <div v-else class="no-photo-text">
+                  Sin fotografía registrada
+                </div>
               </div>
             </div>
           </div>
@@ -811,7 +818,29 @@ defineExpose({ generatePDF })
   font-size: 9px;
 }
 
-/* QR BOXES */
+/* PHOTO & QR BOXES */
+.photo-box-header {
+  border: 1.5px solid #663399;
+  padding: 2px;
+  background: white;
+  width: 75px;
+  height: 95px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.photo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.no-photo-text {
+  font-size: 8px;
+  color: #888;
+  font-style: italic;
+  text-align: center;
+}
 .qr-box-header {
   border: 1px solid #663399;
   padding: 2px;

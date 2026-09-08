@@ -484,6 +484,30 @@ const getMeritoFile = (merito, configId) => {
 }
 
 /**
+ * Helper to load candidate profile photo with streaming fallback
+ */
+const loadCandidatePhoto = async (path) => {
+  if (!path) return null
+  const directUrl = getFileUrl(path)
+  const img = await loadImg(directUrl)
+  if (img) return img
+
+  // Fallback via API stream if CORS or credentials needed
+  try {
+    const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '')
+    const res = await api.get(`/files/stream?path=${encodeURIComponent(cleanPath)}`, {
+      responseType: 'arraybuffer'
+    })
+    const blob = new Blob([res.data])
+    const blobUrl = URL.createObjectURL(blob)
+    return await loadImg(blobUrl)
+  } catch (err) {
+    console.warn('Fallback photo load error:', err)
+    return null
+  }
+}
+
+/**
  * Generate an official UNITEPC Expediente / Hoja de Vida PDF
  * Exact institutional design: Bolivian Oficio (216x330mm), Times typography,
  * corporate purple (#663399) borders, lilac (#f3efff) headers, and embedded QR codes.
@@ -507,9 +531,8 @@ export const generateInstitutionalExpedientePDF = async ({
     ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.`
     : null
 
-  // 1. Collect all URLs to pre-generate QR codes in parallel
+  // 1. Collect all URLs to pre-generate QR codes in parallel (excluding photo which is rendered directly)
   const urlsToFetch = new Set()
-  if (post.foto_perfil_path) urlsToFetch.add(getFileUrl(post.foto_perfil_path))
   if (post.ci_archivo_path) urlsToFetch.add(getFileUrl(post.ci_archivo_path))
   if (post.carta_postulacion_path || postulacion.carta_postulacion_path) {
     urlsToFetch.add(getFileUrl(post.carta_postulacion_path || postulacion.carta_postulacion_path))
@@ -529,14 +552,14 @@ export const generateInstitutionalExpedientePDF = async ({
     })
   }
 
-  // Pre-load escudo and generate all QR codes in parallel
-  const [escudoImg] = await Promise.all([
+  // Pre-load escudo and candidate photo in parallel with QR codes
+  const [escudoImg, candidatePhotoImg] = await Promise.all([
     loadImg(escudoUnitepcUrl),
+    post.foto_perfil_path ? loadCandidatePhoto(post.foto_perfil_path) : Promise.resolve(null),
     ...Array.from(urlsToFetch).map((url) => getQrDataUrl(url))
   ])
 
   // Lookups for QR Data URLs
-  const fotoQrUrl = post.foto_perfil_path ? await getQrDataUrl(getFileUrl(post.foto_perfil_path)) : null
   const ciQrUrl = post.ci_archivo_path ? await getQrDataUrl(getFileUrl(post.ci_archivo_path)) : null
   const cartaQrUrl = (post.carta_postulacion_path || postulacion.carta_postulacion_path)
     ? await getQrDataUrl(getFileUrl(post.carta_postulacion_path || postulacion.carta_postulacion_path))
@@ -585,9 +608,9 @@ export const generateInstitutionalExpedientePDF = async ({
   doc.text(convoTitle, pageWidth / 2, currentY, { align: 'center' })
   currentY += 6
 
-  // Row: Escudo UNITEPC (Left) & Fotografía Personal QR (Right)
-  const photoBoxWidth = 24
-  const photoBoxHeight = 24
+  // Row: Escudo UNITEPC (Left) & Fotografía Personal Directa (Right)
+  const photoBoxWidth = 26
+  const photoBoxHeight = 32
   const photoBoxX = pageWidth - margin - photoBoxWidth
   const photoBoxY = currentY
 
@@ -595,34 +618,36 @@ export const generateInstitutionalExpedientePDF = async ({
   if (escudoImg) {
     const origW = escudoImg.naturalWidth || escudoImg.width || 80
     const origH = escudoImg.naturalHeight || escudoImg.height || 100
-    const sHeight = Math.min(26, 24 * (origH / origW))
-    doc.addImage(escudoImg, 'PNG', margin, photoBoxY, 24, sHeight)
+    const sHeight = Math.min(30, 26 * (origH / origW))
+    doc.addImage(escudoImg, 'PNG', margin, photoBoxY + 1, 26, sHeight)
   }
 
-  // Label to the left of the Photo QR box
+  // Label to the left of the Photo box
   doc.setFont('times', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...purplePrimary)
-  doc.text('FOTOGRAFÍA\nPERSONAL:', photoBoxX - 4, photoBoxY + 8, { align: 'right' })
-  if (post.foto_perfil_path) {
-    doc.setFont('times', 'italic')
-    doc.setFontSize(7.5)
-    doc.text('Escanear QR →', photoBoxX - 4, photoBoxY + 16, { align: 'right' })
-  }
+  doc.text('FOTOGRAFÍA\nPERSONAL:', photoBoxX - 4, photoBoxY + 12, { align: 'right' })
 
-  // Photo QR Box
+  // Photo Box Frame
   doc.setDrawColor(...purplePrimary)
   doc.setLineWidth(0.35)
-  doc.setFillColor(255, 255, 255)
+  doc.setFillColor(248, 245, 255)
   doc.rect(photoBoxX, photoBoxY, photoBoxWidth, photoBoxHeight, 'FD')
 
-  if (fotoQrUrl) {
-    doc.addImage(fotoQrUrl, 'PNG', photoBoxX + 1.5, photoBoxY + 1.5, photoBoxWidth - 3, photoBoxHeight - 3)
+  if (candidatePhotoImg) {
+    const pNatW = candidatePhotoImg.naturalWidth || candidatePhotoImg.width || 1
+    const pNatH = candidatePhotoImg.naturalHeight || candidatePhotoImg.height || 1
+    const scale = Math.min((photoBoxWidth - 1) / pNatW, (photoBoxHeight - 1) / pNatH)
+    const drawW = pNatW * scale
+    const drawH = pNatH * scale
+    const drawX = photoBoxX + (photoBoxWidth - drawW) / 2
+    const drawY = photoBoxY + (photoBoxHeight - drawH) / 2
+    doc.addImage(candidatePhotoImg, 'JPEG', drawX, drawY, drawW, drawH)
   } else {
     doc.setFont('times', 'italic')
-    doc.setFontSize(6.5)
+    doc.setFontSize(7)
     doc.setTextColor(...textMuted)
-    doc.text('Sin fotografía\nregistrada', photoBoxX + photoBoxWidth / 2, photoBoxY + 10, { align: 'center' })
+    doc.text('Sin fotografía\nregistrada', photoBoxX + photoBoxWidth / 2, photoBoxY + photoBoxHeight / 2 - 2, { align: 'center' })
   }
 
   currentY = photoBoxY + photoBoxHeight + 6
