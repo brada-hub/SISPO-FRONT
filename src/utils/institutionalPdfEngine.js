@@ -1,5 +1,7 @@
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import QRCode from 'qrcode'
+import { api } from 'boot/axios'
 import logoUnitepcUrl from 'src/assets/logo_unitepc.png'
 import escudoUnitepcUrl from 'src/assets/unitepc_escudo.png'
 
@@ -398,7 +400,68 @@ export const generateInstitutionalEvaluationPDF = async ({
 }
 
 /**
- * Generate an official UNITEPC Expediente / Hoja de Vida PDF in Portrait A4 (210x297mm)
+ * Helper to cache and generate QR codes as crisp PNG Data URLs
+ */
+const qrCache = new Map()
+const getQrDataUrl = async (text) => {
+  if (!text) return null
+  if (qrCache.has(text)) return qrCache.get(text)
+  try {
+    const dataUrl = await QRCode.toDataURL(text, {
+      width: 140,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: {
+        dark: '#000000',
+        light: '#ffffff'
+      }
+    })
+    qrCache.set(text, dataUrl)
+    return dataUrl
+  } catch (err) {
+    console.warn('Error generating QR:', err)
+    return null
+  }
+}
+
+/**
+ * Format storage file path to full absolute URL
+ */
+const getFileUrl = (path) => {
+  if (!path) return ''
+  const baseUrl = (api?.defaults?.baseURL || '').replace(/\/api$/, '') || 'https://api.sipost.xpertiaplus.com'
+  const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '')
+  return `${baseUrl}/storage/${cleanPath}`
+}
+
+/**
+ * Roman numerals converter (1 -> I, 2 -> II, etc.)
+ */
+const romanize = (num) => {
+  const lookup = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 }
+  let roman = ''
+  for (const i in lookup) {
+    while (num >= lookup[i]) {
+      roman += i
+      num -= lookup[i]
+    }
+  }
+  return roman
+}
+
+/**
+ * Helper to extract backing file path from a merito item
+ */
+const getMeritoFile = (merito, configId) => {
+  if (!merito?.archivos) return null
+  const arch = merito.archivos.find((a) => a.config_archivo_id === configId)
+  return arch ? arch.archivo_path : null
+}
+
+/**
+ * Generate an official UNITEPC Expediente / Hoja de Vida PDF
+ * Exact institutional design: Bolivian Oficio (216x330mm), Times typography,
+ * corporate purple (#663399) borders, lilac (#f3efff) headers, and embedded QR codes.
  */
 export const generateInstitutionalExpedientePDF = async ({
   postulacion = {},
@@ -409,303 +472,561 @@ export const generateInstitutionalExpedientePDF = async ({
     throw new Error('No se encontraron datos del postulante para generar el expediente.')
   }
 
-  const [escudoImg, logoImg] = await Promise.all([
-    loadImg(escudoUnitepcUrl),
-    loadImg(logoUnitepcUrl)
-  ])
-
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  })
-
-  const pageWidth = 210
-  const pageHeight = 297
-  const margin = 12
-  const printableWidth = pageWidth - margin * 2 // 186mm
-
-  // Colors
-  const purplePrimary = [74, 21, 75]    // #4A154B
-  const purpleSoft = [92, 45, 145]     // #5C2D91
-  const goldAccent = [197, 160, 89]     // #C5A059
-  const emeraldAccent = [15, 118, 110]  // #0F766E
-  const slateDark = [30, 41, 59]        // #1E293B
-  const grayBorder = [226, 232, 240]
-
   const post = postulacion.postulante || {}
   const fullName = `${post.nombres || ''} ${post.apellidos || ''}`.trim().toUpperCase()
   const cargoName = (postulacion.oferta?.cargo?.nombre || postulacion.rol?.nombre || 'POSTULANTE').toUpperCase()
   const sedeName = (postulacion.oferta?.sede?.nombre || postulacion.sede?.nombre || 'SEDE GENERAL').toUpperCase()
-  const convoTitle = (postulacion.oferta?.convocatoria?.titulo || 'CONVOCATORIA INSTITUCIONAL').toUpperCase()
-  const convoCode = (postulacion.oferta?.convocatoria?.codigo_interno || `CONV-${postulacion.oferta?.convocatoria?.id || 'UNITEPC'}`).toUpperCase()
+  const convoTitle = (postulacion.oferta?.convocatoria?.titulo || 'HOJA DE VIDA INSTITUCIONAL').toUpperCase()
   const ciFull = `${post.ci || ''} ${post.ci_expedido || ''}`.trim()
   const pretension = postulacion.pretension_salarial
-    ? `Bs. ${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')}`
-    : 'No especificada'
+    ? `${Math.round(Number(postulacion.pretension_salarial)).toLocaleString('de-DE')} Bs.`
+    : null
 
-  const drawHeaderAndFooter = (data) => {
-    // 1. Top gold accent line
-    doc.setFillColor(...goldAccent)
-    doc.rect(margin, 8, printableWidth, 1.2, 'F')
+  // 1. Collect all URLs to pre-generate QR codes in parallel
+  const urlsToFetch = new Set()
+  if (post.foto_perfil_path) urlsToFetch.add(getFileUrl(post.foto_perfil_path))
+  if (post.ci_archivo_path) urlsToFetch.add(getFileUrl(post.ci_archivo_path))
+  if (post.carta_postulacion_path || postulacion.carta_postulacion_path) {
+    urlsToFetch.add(getFileUrl(post.carta_postulacion_path || postulacion.carta_postulacion_path))
+  }
+  if (post.cv_pdf_path) urlsToFetch.add(getFileUrl(post.cv_pdf_path))
 
-    // 2. Header frame
-    doc.setFillColor(255, 255, 255)
-    doc.roundedRect(margin, 9.5, printableWidth, 26, 2, 2, 'F')
-    doc.setDrawColor(...grayBorder)
-    doc.setLineWidth(0.2)
-    doc.roundedRect(margin, 9.5, printableWidth, 26, 2, 2, 'S')
-
-    // 3. Escudo & Logo
-    if (escudoImg) {
-      doc.addImage(escudoImg, 'PNG', margin + 3, 11, 15, 22)
-    }
-    if (logoImg) {
-      doc.addImage(logoImg, 'PNG', pageWidth - margin - 35, 12, 32, 18)
-    }
-
-    // 4. University Header Text
-    const textStartX = margin + (escudoImg ? 22 : 4)
-    doc.setTextColor(...purplePrimary)
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS', textStartX, 15)
-
-    doc.setTextColor(...goldAccent)
-    doc.setFontSize(6.5)
-    doc.setFont('helvetica', 'bold')
-    doc.text('VICERRECTORADO ACADÉMICO  •  DIRECCIÓN DE TALENTO HUMANO', textStartX, 19)
-
-    doc.setTextColor(...slateDark)
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.text('EXPEDIENTE Y HOJA DE VIDA DIGITAL', textStartX, 24)
-
-    doc.setTextColor(100, 116, 139)
-    doc.setFontSize(6.5)
-    doc.setFont('helvetica', 'normal')
-    doc.text(`${convoCode}  •  ${convoTitle.substring(0, 65)}`, textStartX, 28.5)
-
-    // 5. Footer on each page
-    const footerY = pageHeight - 10
-    doc.setDrawColor(...grayBorder)
-    doc.setLineWidth(0.2)
-    doc.line(margin, footerY - 3, pageWidth - margin, footerY - 3)
-
-    doc.setFontSize(6)
-    doc.setTextColor(148, 163, 184)
-    doc.setFont('helvetica', 'normal')
-    doc.text(
-      'Documento Institucional Oficial • Sistema de Selección y Postulación (SISPO) • UNITEPC',
-      margin,
-      footerY + 1
-    )
-    doc.text(
-      `Página ${data.pageNumber} de ${doc.internal.getNumberOfPages()}`,
-      pageWidth - margin,
-      footerY + 1,
-      { align: 'right' }
-    )
+  if (Array.isArray(filteredMeritos)) {
+    filteredMeritos.forEach((group) => {
+      const configArchs = group.tipo?.config_archivos || []
+      const items = group.items || []
+      items.forEach((m) => {
+        configArchs.forEach((ca) => {
+          const fPath = getMeritoFile(m, ca.id)
+          if (fPath) urlsToFetch.add(getFileUrl(fPath))
+        })
+      })
+    })
   }
 
-  // 1. CANDIDATE HERO BANNER
-  doc.setFillColor(248, 245, 255)
-  doc.roundedRect(margin, 38, printableWidth, 24, 2, 2, 'F')
-  doc.setDrawColor(216, 180, 254)
-  doc.setLineWidth(0.2)
-  doc.roundedRect(margin, 38, printableWidth, 24, 2, 2, 'S')
+  // Pre-load escudo and generate all QR codes in parallel
+  const [escudoImg] = await Promise.all([
+    loadImg(escudoUnitepcUrl),
+    ...Array.from(urlsToFetch).map((url) => getQrDataUrl(url))
+  ])
 
+  // Lookups for QR Data URLs
+  const fotoQrUrl = post.foto_perfil_path ? await getQrDataUrl(getFileUrl(post.foto_perfil_path)) : null
+  const ciQrUrl = post.ci_archivo_path ? await getQrDataUrl(getFileUrl(post.ci_archivo_path)) : null
+  const cartaQrUrl = (post.carta_postulacion_path || postulacion.carta_postulacion_path)
+    ? await getQrDataUrl(getFileUrl(post.carta_postulacion_path || postulacion.carta_postulacion_path))
+    : null
+  const cvQrUrl = post.cv_pdf_path ? await getQrDataUrl(getFileUrl(post.cv_pdf_path)) : null
+
+  // Create PDF in Bolivian Oficio (216mm x 330mm)
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: [216, 330]
+  })
+
+  const pageWidth = 216
+  const pageHeight = 330
+  const margin = 15
+  const printableWidth = pageWidth - margin * 2 // 186mm
+
+  // Official Institutional Palette
+  const purplePrimary = [102, 51, 153] // #663399
+  const purpleLight = [243, 239, 255]   // #f3efff
+  const textDark = [0, 0, 0]
+  const textMuted = [102, 102, 102]     // #666666
+
+  // -------------------------------------------------------------
+  // SECTION 0: INSTITUTIONAL HEADER (Page 1)
+  // -------------------------------------------------------------
+  let currentY = 16
+
+  doc.setFont('times', 'bold')
+  doc.setFontSize(36)
+  doc.setTextColor(...textDark)
+  doc.text('UNITEPC', pageWidth / 2, currentY, { align: 'center' })
+  currentY += 9
+
+  doc.setFontSize(18)
+  doc.text('UNIVERSIDAD TÉCNICA PRIVADA COSMOS', pageWidth / 2, currentY, { align: 'center' })
+  currentY += 7.5
+
+  doc.setFontSize(14)
+  doc.text('CURRICULUM VITAE', pageWidth / 2, currentY, { align: 'center' })
+  currentY += 6.5
+
+  doc.setFontSize(13)
   doc.setTextColor(...purplePrimary)
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'bold')
-  doc.text(fullName, margin + 5, 45)
+  doc.text(convoTitle, pageWidth / 2, currentY, { align: 'center' })
+  currentY += 6
 
-  doc.setFontSize(8)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...emeraldAccent)
-  doc.text(`POSTULACIÓN A: ${cargoName} — ${sedeName}`, margin + 5, 50.5)
+  // Row: Escudo UNITEPC (Left) & Fotografía Personal QR (Right)
+  const photoBoxWidth = 24
+  const photoBoxHeight = 24
+  const photoBoxX = pageWidth - margin - photoBoxWidth
+  const photoBoxY = currentY
 
-  doc.setFontSize(7)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(...slateDark)
-  doc.text(`C.I.: ${ciFull || 'No registrado'}    |    Nacionalidad: ${(post.nacionalidad || 'Boliviana').toUpperCase()}    |    Pretensión: ${pretension}`, margin + 5, 55.5)
-  doc.text(`Contacto: ${post.celular || '-'}    |    Email: ${post.email || '-'}    |    Domicilio: ${(post.direccion_domicilio || '-').substring(0, 50)}`, margin + 5, 59.5)
+  // Shield on Left
+  if (escudoImg) {
+    const origW = escudoImg.naturalWidth || escudoImg.width || 80
+    const origH = escudoImg.naturalHeight || escudoImg.height || 100
+    const sHeight = Math.min(26, 24 * (origH / origW))
+    doc.addImage(escudoImg, 'PNG', margin, photoBoxY, 24, sHeight)
+  }
 
-  // 2. SECTION I: DATOS PERSONALES
-  const personalTableData = [
-    [{ content: 'NOMBRE COMPLETO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, fullName],
-    [{ content: 'CÉDULA DE IDENTIDAD', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, ciFull],
-    [{ content: 'CARGO POSTULADO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, `${cargoName} (${sedeName})`],
-    [{ content: 'NACIONALIDAD', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, (post.nacionalidad || 'Boliviana').toUpperCase()],
-    [{ content: 'DIRECCIÓN DOMICILIO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, (post.direccion_domicilio || 'No especificada').toUpperCase()],
-    [{ content: 'TELÉFONO / CELULAR', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, post.celular || 'No registrado'],
-    [{ content: 'CORREO ELECTRÓNICO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, post.email || 'No registrado'],
-    [{ content: 'CORREO INSTITUCIONAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, post.email_institucional || postulacion.email || 'Pendiente de asignación'],
-    [{ content: 'PRETENSIÓN SALARIAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, pretension],
-    [{ content: 'REFERENCIA PERSONAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, `${post.ref_personal_celular || 'Sin cel.'} - Relación: ${post.ref_personal_parentesco || 'No especificada'}`],
-    [{ content: 'REFERENCIA LABORAL', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, `${post.ref_laboral_celular || 'Sin cel.'} - Detalle: ${post.ref_laboral_detalle || 'No especificada'}`],
-    [{ content: 'MOTIVACIÓN / POR QUÉ EL CARGO', styles: { fontStyle: 'bold', textColor: purplePrimary, fillColor: [248, 245, 255] } }, postulacion.porque_cargo || 'Declarado en formulario de méritos']
+  // Label to the left of the Photo QR box
+  doc.setFont('times', 'bold')
+  doc.setFontSize(9)
+  doc.setTextColor(...purplePrimary)
+  doc.text('FOTOGRAFÍA\nPERSONAL:', photoBoxX - 4, photoBoxY + 8, { align: 'right' })
+  if (post.foto_perfil_path) {
+    doc.setFont('times', 'italic')
+    doc.setFontSize(7.5)
+    doc.text('Escanear QR →', photoBoxX - 4, photoBoxY + 16, { align: 'right' })
+  }
+
+  // Photo QR Box
+  doc.setDrawColor(...purplePrimary)
+  doc.setLineWidth(0.35)
+  doc.setFillColor(255, 255, 255)
+  doc.rect(photoBoxX, photoBoxY, photoBoxWidth, photoBoxHeight, 'FD')
+
+  if (fotoQrUrl) {
+    doc.addImage(fotoQrUrl, 'PNG', photoBoxX + 1.5, photoBoxY + 1.5, photoBoxWidth - 3, photoBoxHeight - 3)
+  } else {
+    doc.setFont('times', 'italic')
+    doc.setFontSize(6.5)
+    doc.setTextColor(...textMuted)
+    doc.text('Sin fotografía\nregistrada', photoBoxX + photoBoxWidth / 2, photoBoxY + 10, { align: 'center' })
+  }
+
+  currentY = photoBoxY + photoBoxHeight + 6
+
+  // -------------------------------------------------------------
+  // SECTION I: DATOS PERSONALES
+  // -------------------------------------------------------------
+  doc.setFont('times', 'bold')
+  doc.setFontSize(13)
+  doc.setTextColor(...textDark)
+  doc.text('I. DATOS PERSONALES', margin, currentY)
+  currentY += 4
+
+  const personalRows = [
+    [
+      { content: 'NOMBRE COMPLETO:', styles: { halign: 'right' } },
+      { content: fullName, styles: { fontStyle: 'bold', fontSize: 10, textColor: purplePrimary } }
+    ],
+    [
+      {
+        content: (postulacion.tipo === 'staff' || postulacion.rol_id) ? 'CARGO INSTITUCIONAL:' : 'CARGO AL QUE POSTULA:',
+        styles: { halign: 'right' }
+      },
+      {
+        content: `${cargoName} (${sedeName})`,
+        styles: { fontStyle: 'bold', textColor: textDark }
+      }
+    ],
+    [
+      { content: 'Nº DE CÉDULA DE IDENTIDAD:', styles: { halign: 'right' } },
+      ciFull || '---'
+    ],
+    [
+      { content: 'CÉDULA DE IDENTIDAD:', styles: { halign: 'right' } },
+      ciQrUrl
+        ? { content: '', _qrImage: ciQrUrl, styles: { minCellHeight: 18, halign: 'center', valign: 'middle' } }
+        : { content: '—', styles: { textColor: textMuted, fontStyle: 'italic', halign: 'center' } }
+    ],
+    [
+      { content: 'NACIONALIDAD:', styles: { halign: 'right' } },
+      (post.nacionalidad || 'BOLIVIANA').toUpperCase()
+    ],
+    [
+      { content: 'DIRECCIÓN DE DOMICILIO:', styles: { halign: 'right' } },
+      (post.direccion_domicilio || '---').toUpperCase()
+    ],
+    [
+      { content: 'Nº DE TELÉFONO DE CONTACTO:', styles: { halign: 'right' } },
+      post.celular || '---'
+    ],
+    [
+      { content: 'CORREO PERSONAL:', styles: { halign: 'right' } },
+      { content: post.email || '---', styles: { textColor: [30, 64, 175] } }
+    ]
   ]
 
-  autoTable(doc, {
-    startY: 65,
-    head: [[{ content: 'I. ANTECEDENTES Y DATOS PERSONALES DEL POSTULANTE', colSpan: 2, styles: { fillColor: purplePrimary, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, halign: 'left' } }]],
-    body: personalTableData,
-    theme: 'grid',
-    styles: {
-      fontSize: 7,
-      cellPadding: 1.8,
-      lineColor: grayBorder,
-      lineWidth: 0.15
-    },
-    columnStyles: {
-      0: { cellWidth: 55, fontStyle: 'bold' },
-      1: { cellWidth: printableWidth - 55 }
-    },
-    margin: { left: margin, right: margin, bottom: 20 },
-    didDrawPage: drawHeaderAndFooter
-  })
-
-  // 3. DYNAMIC MERIT SECTIONS
-  let startY = doc.lastAutoTable.finalY + 8
-
-  const romanNumerals = ['II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
-
-  filteredMeritos.forEach((group, idx) => {
-    const secRoman = romanNumerals[idx] || `${idx + 2}`
-    const secTitle = `${secRoman}. ${group.tipo?.nombre || 'MÉRITOS Y EXPERIENCIA'}`.toUpperCase()
-    const campos = group.tipo?.campos || []
-    const items = group.items || []
-
-    // If too close to page bottom, add page
-    if (startY > pageHeight - 45) {
-      doc.addPage()
-      startY = 40
-    }
-
-    if (campos.length > 0 && items.length > 0) {
-      const headers = ['#', ...campos.map(c => (c.label || c.name || c.key || '').toUpperCase())]
-      const rows = items.map((item, iIdx) => [
-        iIdx + 1,
-        ...campos.map(c => {
-          const val = item.respuestas?.[c.key] ?? item.respuestas?.[c.name] ?? '-'
-          return String(val || '-').toUpperCase()
-        })
-      ])
-
-      autoTable(doc, {
-        startY,
-        head: [
-          [{ content: secTitle, colSpan: headers.length, styles: { fillColor: idx % 2 === 0 ? purpleSoft : emeraldAccent, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8, halign: 'left' } }],
-          headers.map(h => ({ content: h, styles: { fillColor: [248, 250, 252], textColor: slateDark, fontStyle: 'bold', fontSize: 6.5, halign: 'center' } }))
-        ],
-        body: rows,
-        theme: 'grid',
-        styles: {
-          fontSize: 6.5,
-          cellPadding: 1.5,
-          halign: 'center',
-          valign: 'middle',
-          lineColor: grayBorder,
-          lineWidth: 0.15
-        },
-        columnStyles: {
-          0: { cellWidth: 8, halign: 'center' }
-        },
-        margin: { left: margin, right: margin, bottom: 20 },
-        didDrawPage: drawHeaderAndFooter
-      })
-
-      startY = doc.lastAutoTable.finalY + 8
-    }
-  })
-
-  // 4. DECLARACIÓN JURADA Y FIRMAS (Always on bottom or new page if needed)
-  if (startY > pageHeight - 55) {
-    doc.addPage()
-    startY = 40
+  if (post.email_institucional || postulacion.email) {
+    personalRows.push([
+      { content: 'CORREO INSTITUCIONAL:', styles: { halign: 'right' } },
+      { content: post.email_institucional || postulacion.email, styles: { fontStyle: 'bold', textColor: purplePrimary } }
+    ])
   }
 
-  doc.setFillColor(248, 250, 252)
-  doc.roundedRect(margin, startY, printableWidth, 14, 1.5, 1.5, 'F')
-  doc.setDrawColor(...grayBorder)
-  doc.setLineWidth(0.2)
-  doc.roundedRect(margin, startY, printableWidth, 14, 1.5, 1.5, 'S')
+  if (post.carta_postulacion_path || postulacion.carta_postulacion_path) {
+    personalRows.push([
+      { content: 'CARTA DE POSTULACIÓN:', styles: { halign: 'right' } },
+      cartaQrUrl
+        ? { content: '', _qrImage: cartaQrUrl, styles: { minCellHeight: 18, halign: 'center', valign: 'middle' } }
+        : { content: '—', styles: { textColor: textMuted, fontStyle: 'italic', halign: 'center' } }
+    ])
+  }
 
-  doc.setFontSize(6)
-  doc.setFont('helvetica', 'bold')
+  if (post.cv_pdf_path) {
+    personalRows.push([
+      { content: 'CURRICULUM VITAE:', styles: { halign: 'right' } },
+      cvQrUrl
+        ? { content: '', _qrImage: cvQrUrl, styles: { minCellHeight: 18, halign: 'center', valign: 'middle' } }
+        : { content: '—', styles: { textColor: textMuted, fontStyle: 'italic', halign: 'center' } }
+    ])
+  }
+
+  personalRows.push([
+    { content: 'REFERENCIA PERSONAL:', styles: { halign: 'right' } },
+    `Telf: ${post.ref_personal_celular || '---'} - Relación: ${post.ref_personal_parentesco || '---'}`
+  ])
+
+  personalRows.push([
+    { content: 'REFERENCIA LABORAL:', styles: { halign: 'right' } },
+    `Telf: ${post.ref_laboral_celular || '---'} - Institución / Detalle: ${post.ref_laboral_detalle || '---'}`
+  ])
+
+  if (pretension && !postulacion.rol_id) {
+    personalRows.push([
+      { content: 'PRETENSIÓN SALARIAL:', styles: { halign: 'right' } },
+      { content: pretension, styles: { fontStyle: 'bold', textColor: purplePrimary } }
+    ])
+  }
+
+  if (postulacion.porque_cargo && !postulacion.rol_id) {
+    personalRows.push([
+      { content: 'POR QUÉ EL CARGO:', styles: { halign: 'right' } },
+      { content: String(postulacion.porque_cargo), styles: { fontStyle: 'italic' } }
+    ])
+  }
+
+  autoTable(doc, {
+    startY: currentY,
+    body: personalRows,
+    theme: 'grid',
+    styles: {
+      font: 'times',
+      fontSize: 8.5,
+      cellPadding: 1.8,
+      lineColor: purplePrimary,
+      lineWidth: 0.25,
+      textColor: textDark,
+      valign: 'middle'
+    },
+    columnStyles: {
+      0: {
+        cellWidth: 65,
+        fillColor: purpleLight,
+        textColor: purplePrimary,
+        fontStyle: 'bold',
+        halign: 'right'
+      },
+      1: {
+        cellWidth: printableWidth - 65,
+        fillColor: [255, 255, 255]
+      }
+    },
+    margin: { left: margin, right: margin, bottom: 22 },
+    didDrawCell: (data) => {
+      if (data.cell.raw && data.cell.raw._qrImage) {
+        const qrDim = 14
+        const x = data.cell.x + (data.cell.width - qrDim) / 2
+        const y = data.cell.y + (data.cell.height - qrDim) / 2
+        doc.addImage(data.cell.raw._qrImage, 'PNG', x, y, qrDim, qrDim)
+      }
+    }
+  })
+
+  let nextY = doc.lastAutoTable.finalY + 8
+
+  // -------------------------------------------------------------
+  // DYNAMIC MERIT SECTIONS (II, III, IV...)
+  // -------------------------------------------------------------
+  for (let idx = 0; idx < filteredMeritos.length; idx++) {
+    const group = filteredMeritos[idx]
+    const secRoman = romanize(idx + 2)
+    const secTitle = `${secRoman}. ${group.tipo?.nombre || 'MÉRITO'}`.toUpperCase()
+    const campos = group.tipo?.campos || []
+    const configArchs = group.tipo?.config_archivos || []
+    const items = group.items || []
+
+    // Build column headers with correct placement of config_archivos
+    const cols = []
+    campos.forEach((campo) => {
+      cols.push({
+        type: 'campo',
+        key: campo.key,
+        label: (campo.label || campo.key).toUpperCase()
+      })
+      configArchs
+        .filter((a) => a.after_campo && a.after_campo === campo.key)
+        .forEach((arch) => {
+          cols.push({
+            type: 'archivo',
+            id: arch.id,
+            label: (arch.label || 'RESPALDO').toUpperCase()
+          })
+        })
+    })
+
+    configArchs
+      .filter((a) => !a.after_campo || a.after_campo === '')
+      .forEach((arch) => {
+        cols.push({
+          type: 'archivo',
+          id: arch.id,
+          label: (arch.label || 'RESPALDO').toUpperCase()
+        })
+      })
+
+    // Check if remaining page height is too small for section title + table header
+    if (nextY > pageHeight - 50) {
+      doc.addPage()
+      nextY = 22
+    }
+
+    // Section title
+    doc.setFont('times', 'bold')
+    doc.setFontSize(13)
+    doc.setTextColor(...textDark)
+    doc.text(secTitle, margin, nextY)
+    nextY += 4.5
+
+    // Section description (if available)
+    if (group.tipo?.descripcion) {
+      doc.setFont('times', 'italic')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...textMuted)
+      doc.text(`(${String(group.tipo.descripcion).toUpperCase()})`, margin + 3, nextY)
+      nextY += 4
+    }
+
+    if (cols.length === 0 || items.length === 0) {
+      doc.setFont('times', 'italic')
+      doc.setFontSize(8)
+      doc.setTextColor(...textMuted)
+      doc.text('No se registraron ítems en esta sección.', margin + 3, nextY + 2)
+      nextY += 8
+      continue
+    }
+
+    const headRow = cols.map((c) => c.label)
+
+    // Calculate column widths
+    const tableColStyles = {}
+    const qrColCount = cols.filter((c) => c.type === 'archivo').length
+    const textColCount = cols.length - qrColCount
+    const qrColWidth = 24
+    const totalQrWidth = qrColCount * qrColWidth
+    const remainingWidth = printableWidth - totalQrWidth
+    const textColWidth = textColCount > 0 ? remainingWidth / textColCount : 30
+
+    cols.forEach((col, cIdx) => {
+      if (col.type === 'archivo') {
+        tableColStyles[cIdx] = { cellWidth: qrColWidth, halign: 'center', valign: 'middle' }
+      } else {
+        tableColStyles[cIdx] = { cellWidth: textColWidth, halign: 'center', valign: 'middle' }
+      }
+    })
+
+    const bodyRows = []
+    for (const merito of items) {
+      const rowCells = []
+      for (const col of cols) {
+        if (col.type === 'campo') {
+          const val = merito.respuestas?.[col.key] || '---'
+          rowCells.push({
+            content: String(val).toUpperCase(),
+            styles: { fontStyle: 'bold', fontSize: 7.5 }
+          })
+        } else {
+          const filePath = getMeritoFile(merito, col.id)
+          const qrUrl = filePath ? await getQrDataUrl(getFileUrl(filePath)) : null
+          if (qrUrl) {
+            rowCells.push({
+              content: '',
+              _qrImage: qrUrl,
+              styles: { minCellHeight: 18, halign: 'center', valign: 'middle' }
+            })
+          } else {
+            rowCells.push({
+              content: '—',
+              styles: { textColor: textMuted, fontStyle: 'italic', halign: 'center' }
+            })
+          }
+        }
+      }
+      bodyRows.push(rowCells)
+    }
+
+    autoTable(doc, {
+      startY: nextY,
+      head: [headRow],
+      body: bodyRows,
+      theme: 'grid',
+      styles: {
+        font: 'times',
+        fontSize: 7.5,
+        cellPadding: 1.5,
+        lineColor: purplePrimary,
+        lineWidth: 0.25,
+        textColor: textDark,
+        halign: 'center',
+        valign: 'middle'
+      },
+      headStyles: {
+        fillColor: purpleLight,
+        textColor: purplePrimary,
+        fontStyle: 'bold',
+        fontSize: 7.5,
+        lineColor: purplePrimary,
+        lineWidth: 0.35,
+        halign: 'center',
+        valign: 'middle'
+      },
+      columnStyles: tableColStyles,
+      margin: { left: margin, right: margin, bottom: 22 },
+      didDrawCell: (data) => {
+        if (data.cell.raw && data.cell.raw._qrImage) {
+          const qrDim = 14
+          const x = data.cell.x + (data.cell.width - qrDim) / 2
+          const y = data.cell.y + (data.cell.height - qrDim) / 2
+          doc.addImage(data.cell.raw._qrImage, 'PNG', x, y, qrDim, qrDim)
+        }
+      }
+    })
+
+    nextY = doc.lastAutoTable.finalY + 8
+  }
+
+  // -------------------------------------------------------------
+  // DECLARACIÓN JURADA Y FIRMAS (Conformidad)
+  // -------------------------------------------------------------
+  if (nextY > pageHeight - 65) {
+    doc.addPage()
+    nextY = 25
+  }
+
+  doc.setFillColor(...purpleLight)
+  doc.setDrawColor(...purplePrimary)
+  doc.setLineWidth(0.3)
+  doc.rect(margin, nextY, printableWidth, 14, 'FD')
+
+  doc.setFont('times', 'bold')
+  doc.setFontSize(7.5)
   doc.setTextColor(...purplePrimary)
-  doc.text('DECLARACIÓN JURADA DE VERACIDAD DE INFORMACIÓN Y DOCUMENTOS:', margin + 4, startY + 4.5)
+  doc.text('DECLARACIÓN JURADA DE VERACIDAD DE INFORMACIÓN Y DOCUMENTOS:', margin + 4, nextY + 4.5)
 
-  doc.setFontSize(5.5)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(71, 85, 105)
+  doc.setFont('times', 'normal')
+  doc.setFontSize(6.5)
+  doc.setTextColor(50, 50, 50)
   doc.text(
     'Declaro bajo juramento que todos los datos y respaldos documentales presentados en esta postulación son auténticos y fidedignos.',
     margin + 4,
-    startY + 8
+    nextY + 8
   )
   doc.text(
     'Autorizo expresamente a la Universidad Técnica Privada Cosmos a verificar y contrastar la veracidad de la información consignada.',
     margin + 4,
-    startY + 11.5
+    nextY + 11.5
   )
 
-  // Signatures
-  const sigY = startY + 32
+  const sigY = nextY + 34
   const colW = printableWidth / 2
 
-  // Postulante signature line
-  doc.setDrawColor(100, 116, 139)
-  doc.setLineWidth(0.2)
+  // Firma Postulante
+  doc.setDrawColor(...purplePrimary)
+  doc.setLineWidth(0.3)
   doc.line(margin + 15, sigY, margin + colW - 15, sigY)
-  doc.setFontSize(7)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...slateDark)
-  doc.text('FIRMA DEL POSTULANTE', margin + colW / 2, sigY + 4, { align: 'center' })
-  doc.setFontSize(6)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(148, 163, 184)
-  doc.text(fullName, margin + colW / 2, sigY + 7.5, { align: 'center' })
-  doc.text(`C.I. ${ciFull}`, margin + colW / 2, sigY + 10.5, { align: 'center' })
 
-  // Reception signature line
+  doc.setFont('times', 'bold')
+  doc.setFontSize(8)
+  doc.setTextColor(...textDark)
+  doc.text('FIRMA DEL POSTULANTE', margin + colW / 2, sigY + 4.5, { align: 'center' })
+
+  doc.setFont('times', 'normal')
+  doc.setFontSize(7)
+  doc.setTextColor(...textMuted)
+  doc.text(fullName, margin + colW / 2, sigY + 8, { align: 'center' })
+  doc.text(`C.I. ${ciFull}`, margin + colW / 2, sigY + 11.5, { align: 'center' })
+
+  // Firma Dirección Talento Humano
   const recX = margin + colW
   doc.line(recX + 15, sigY, recX + colW - 15, sigY)
+
+  doc.setFont('times', 'bold')
+  doc.setFontSize(8)
+  doc.setTextColor(...textDark)
+  doc.text('DIRECCIÓN DE TALENTO HUMANO', recX + colW / 2, sigY + 4.5, { align: 'center' })
+
+  doc.setFont('times', 'normal')
   doc.setFontSize(7)
-  doc.setFont('helvetica', 'bold')
-  doc.setTextColor(...slateDark)
-  doc.text('DIRECCIÓN DE TALENTO HUMANO', recX + colW / 2, sigY + 4, { align: 'center' })
-  doc.setFontSize(6)
-  doc.setFont('helvetica', 'normal')
-  doc.setTextColor(148, 163, 184)
-  doc.text('RECEPCIÓN Y REVISIÓN DOCUMENTAL', recX + colW / 2, sigY + 7.5, { align: 'center' })
-  doc.text('UNITEPC - SISPO', recX + colW / 2, sigY + 10.5, { align: 'center' })
+  doc.setTextColor(...textMuted)
+  doc.text('RECEPCIÓN Y REVISIÓN DOCUMENTAL', recX + colW / 2, sigY + 8, { align: 'center' })
+  doc.text('UNITEPC - SISPO', recX + colW / 2, sigY + 11.5, { align: 'center' })
 
-  const cleanName = fullName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30)
-  const baseFilename = `HOJA_DE_VIDA_${cleanName}_${ciFull.replace(/[^0-9]/g, '')}.pdf`
-  const fullFilename = `EXPEDIENTE_${cleanName}_${ciFull.replace(/[^0-9]/g, '')}.pdf`
+  // -------------------------------------------------------------
+  // INSTITUTIONAL FOOTER ON EVERY PAGE
+  // -------------------------------------------------------------
+  const totalPages = doc.internal.getNumberOfPages()
+  const now = new Date()
+  const d = now.getDate().toString().padStart(2, '0')
+  const m = (now.getMonth() + 1).toString().padStart(2, '0')
+  const y = now.getFullYear()
+  const hh = now.getHours().toString().padStart(2, '0')
+  const mm = now.getMinutes().toString().padStart(2, '0')
+  const dateStr = `${d}-${m}-${y} ${hh}:${mm}`
 
+  for (let pIdx = 1; pIdx <= totalPages; pIdx++) {
+    doc.setPage(pIdx)
+
+    doc.setDrawColor(...purplePrimary)
+    doc.setLineWidth(0.4)
+    doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15)
+
+    doc.setFont('times', 'bold')
+    doc.setFontSize(8)
+    doc.setTextColor(...purplePrimary)
+    doc.text('SISTEMA DE GESTIÓN DE CONVOCATORIAS UNITEPC', pageWidth / 2, pageHeight - 10, { align: 'center' })
+
+    doc.setFont('times', 'normal')
+    doc.setFontSize(6.5)
+    doc.setTextColor(...textMuted)
+    const footerInfo = `Expediente #${postulacion.id || ''} | Página ${pIdx} de ${totalPages} | Generado: ${dateStr}`
+    doc.text(footerInfo, pageWidth / 2, pageHeight - 6, { align: 'center' })
+  }
+
+  // Canonical file names
+  const nombreClean = String(post.nombres || 'Postulante').replace(/[^a-zA-Z]/g, '')
+  const ciClean = String(post.ci || '0').replace(/[^0-9]/g, '')
+  const baseFilename = `HojaDeVida_${nombreClean}_${ciClean}.pdf`
+  const fullFilename = `Expediente_${nombreClean}_${ciClean}.pdf`
+
+  // Mode: CV only (Instant ~200KB, 100% vector)
   if (!includeAttachments) {
     doc.save(baseFilename)
     return true
   }
 
-  // If attachments are requested, merge them using pdf-lib
+  // Mode: Full Expediente with merged backing documents (pdf-lib)
   try {
     const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib/dist/pdf-lib.esm.js')
     const { saveAs } = await import('file-saver')
-    const { api } = await import('boot/axios')
 
-    // Extract all attached files
     const attachments = []
-    if (post?.ci_archivo_path) {
+    if (post.ci_archivo_path) {
       attachments.push({ label: 'CÉDULA DE IDENTIDAD (C.I.)', path: post.ci_archivo_path })
     }
-    if (postulacion.carta_postulacion_path || post?.carta_postulacion_path) {
-      attachments.push({ label: 'CARTA DE POSTULACIÓN', path: postulacion.carta_postulacion_path || post?.carta_postulacion_path })
+    if (postulacion.carta_postulacion_path || post.carta_postulacion_path) {
+      attachments.push({
+        label: 'CARTA DE POSTULACIÓN',
+        path: postulacion.carta_postulacion_path || post.carta_postulacion_path
+      })
     }
-    if (post?.cv_pdf_path) {
+    if (post.cv_pdf_path) {
       attachments.push({ label: 'CURRICULUM VITAE ADJUNTO', path: post.cv_pdf_path })
     }
 
@@ -714,11 +1035,16 @@ export const generateInstitutionalExpedientePDF = async ({
         const secName = (group.tipo?.nombre || 'MÉRITO').toUpperCase()
         if (Array.isArray(group.items)) {
           group.items.forEach((item, itemIdx) => {
-            const itemDesc = item.respuestas?.titulo || item.respuestas?.carrera || item.respuestas?.profesion || item.respuestas?.institucion || `Ítem ${itemIdx + 1}`
+            const itemDesc =
+              item.respuestas?.titulo ||
+              item.respuestas?.carrera ||
+              item.respuestas?.profesion ||
+              item.respuestas?.institucion ||
+              `Ítem ${itemIdx + 1}`
             if (Array.isArray(item.archivos)) {
               item.archivos.forEach((arch) => {
                 if (arch.archivo_path) {
-                  const configArch = group.tipo?.config_archivos?.find(a => a.id === arch.config_archivo_id)
+                  const configArch = group.tipo?.config_archivos?.find((a) => a.id === arch.config_archivo_id)
                   const archLabel = configArch?.label || 'Respaldo'
                   attachments.push({
                     label: `${secName}: ${archLabel.toUpperCase()} (${String(itemDesc).toUpperCase()})`,
@@ -742,58 +1068,59 @@ export const generateInstitutionalExpedientePDF = async ({
     const helveticaFont = await mergedPdf.embedFont(StandardFonts.HelveticaBold)
     const helveticaNormal = await mergedPdf.embedFont(StandardFonts.Helvetica)
 
-    // Separator page for Annexes
-    const sepPage = mergedPdf.addPage([595.28, 841.89]) // A4
+    // Separator page in Bolivian Oficio (612 x 935 pt)
+    const sepPage = mergedPdf.addPage([612, 935])
     const { width: sW, height: sH } = sepPage.getSize()
 
+    // Purple banner box
     sepPage.drawRectangle({
-      x: 35,
-      y: sH - 110,
-      width: sW - 70,
-      height: 60,
-      color: rgb(0.29, 0.08, 0.29) // #4A154B
+      x: 40,
+      y: sH - 120,
+      width: sW - 80,
+      height: 65,
+      color: rgb(0.4, 0.2, 0.6) // #663399
     })
 
     sepPage.drawText('DOCUMENTOS DE RESPALDO Y ANEXOS', {
-      x: 50,
-      y: sH - 78,
-      size: 15,
+      x: 55,
+      y: sH - 85,
+      size: 16,
       font: helveticaFont,
       color: rgb(1, 1, 1)
     })
 
     sepPage.drawText(`POSTULANTE: ${fullName}`, {
-      x: 50,
-      y: sH - 96,
-      size: 9.5,
+      x: 55,
+      y: sH - 105,
+      size: 10,
       font: helveticaNormal,
       color: rgb(0.95, 0.95, 0.95)
     })
 
-    let listY = sH - 145
+    let listY = sH - 155
     sepPage.drawText('ÍNDICE DE RESPALDOS ADJUNTOS EN ESTE EXPEDIENTE:', {
-      x: 40,
+      x: 45,
       y: listY,
-      size: 10,
+      size: 11,
       font: helveticaFont,
       color: rgb(0.2, 0.2, 0.2)
     })
-    listY -= 20
+    listY -= 24
 
     attachments.forEach((att, aIdx) => {
-      if (listY > 50) {
+      if (listY > 60) {
         sepPage.drawText(`${aIdx + 1}. ${att.label.substring(0, 85)}`, {
-          x: 50,
+          x: 55,
           y: listY,
-          size: 8.5,
+          size: 9,
           font: helveticaNormal,
           color: rgb(0.3, 0.3, 0.3)
         })
-        listY -= 16
+        listY -= 18
       }
     })
 
-    // Parallel download of files
+    // Parallel concurrent download of backing files
     const downloadPromises = attachments.map(async (att, index) => {
       if (!att.path) return null
       const cleanPath = att.path.replace(/^\/+/, '').replace(/^storage\//, '')
@@ -807,14 +1134,14 @@ export const generateInstitutionalExpedientePDF = async ({
         contentType = String(res.headers['content-type'] || '').toLowerCase()
       } catch {
         try {
-          const baseUrl = api.defaults.baseURL.replace(/\/api$/, '')
-          const res2 = await fetch(`${baseUrl}/storage/${att.path}`)
+          const fallbackUrl = getFileUrl(att.path)
+          const res2 = await fetch(fallbackUrl)
           if (res2.ok) {
             fileBytes = new Uint8Array(await res2.arrayBuffer())
             contentType = String(res2.headers.get('content-type') || '').toLowerCase()
           }
         } catch (fetchErr) {
-          console.warn('Error en fallback fetch:', fetchErr)
+          console.warn('Fallback fetch failed:', fetchErr)
         }
       }
       if (!fileBytes || fileBytes.length === 0) return null
@@ -841,19 +1168,22 @@ export const generateInstitutionalExpedientePDF = async ({
               y: pH - 20,
               width: pW,
               height: 20,
-              color: rgb(0.29, 0.08, 0.29)
+              color: rgb(0.4, 0.2, 0.6)
             })
-            page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
-              x: 12,
-              y: pH - 14,
-              size: 8,
-              font: helveticaFont,
-              color: rgb(1, 1, 1)
-            })
+            page.drawText(
+              `RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`,
+              {
+                x: 14,
+                y: pH - 14,
+                size: 8,
+                font: helveticaFont,
+                color: rgb(1, 1, 1)
+              }
+            )
             mergedPdf.addPage(page)
           })
         } catch (pdfErr) {
-          console.warn('No se pudo fusionar PDF anexo:', pdfErr)
+          console.warn('Could not merge backing PDF:', pdfErr)
         }
       } else {
         // Image attachment
@@ -865,12 +1195,12 @@ export const generateInstitutionalExpedientePDF = async ({
             try {
               embeddedImg = await mergedPdf.embedPng(fileBytes)
             } catch (pngErr) {
-              console.warn('No se pudo incrustar imagen png:', pngErr)
+              console.warn('Could not embed png image:', pngErr)
             }
           }
 
           if (embeddedImg) {
-            const imgPage = mergedPdf.addPage([595.28, 841.89])
+            const imgPage = mergedPdf.addPage([612, 935])
             const { width: ipW, height: ipH } = imgPage.getSize()
 
             imgPage.drawRectangle({
@@ -878,25 +1208,25 @@ export const generateInstitutionalExpedientePDF = async ({
               y: ipH - 30,
               width: ipW,
               height: 30,
-              color: rgb(0.29, 0.08, 0.29)
+              color: rgb(0.4, 0.2, 0.6)
             })
             imgPage.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)}`, {
-              x: 15,
+              x: 16,
               y: ipH - 16,
               size: 8.5,
               font: helveticaFont,
               color: rgb(1, 1, 1)
             })
             imgPage.drawText(`UNITEPC • Postulante: ${fullName} • C.I. ${ciFull}`, {
-              x: 15,
+              x: 16,
               y: ipH - 26,
               size: 6.5,
               font: helveticaNormal,
               color: rgb(0.9, 0.9, 0.9)
             })
 
-            const maxW = ipW - 30
-            const maxH = ipH - 50
+            const maxW = ipW - 32
+            const maxH = ipH - 52
             const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
 
             imgPage.drawImage(embeddedImg, {
@@ -907,7 +1237,7 @@ export const generateInstitutionalExpedientePDF = async ({
             })
           }
         } catch (imgErr) {
-          console.warn('No se pudo adjuntar imagen anexa:', imgErr)
+          console.warn('Could not embed backing image:', imgErr)
         }
       }
     }
@@ -917,8 +1247,9 @@ export const generateInstitutionalExpedientePDF = async ({
     saveAs(blob, fullFilename)
     return true
   } catch (mergeErr) {
-    console.warn('Fallo al anexar respaldos con pdf-lib, guardando Hoja de Vida base:', mergeErr)
+    console.warn('Fallback to light Hoja de Vida due to merge error:', mergeErr)
     doc.save(baseFilename)
     return true
   }
 }
+
