@@ -47,21 +47,14 @@
 
     <!-- MAIN CONTENT -->
     <ExpedienteDetail ref="detailComp" :postulacion-id="$route.params.id" />
-
-    <!-- HIDDEN PDF GENERATOR COMPONENT (Connects to Detail Data) -->
-    <ExpedientePDF
-      ref="pdfExporter"
-      :postulacion="postulacionData"
-      :filtered-meritos="meritosData"
-    />
   </q-page>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import ExpedientePDF from 'components/ExpedientePDF.vue'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
+import { generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine.js'
 import { useQuasar } from 'quasar'
 
 const router = useRouter()
@@ -74,7 +67,6 @@ const goBack = () => {
     router.push('/admin/postulaciones')
   }
 }
-const pdfExporter = ref(null)
 const generatingPDF = ref(false)
 const detailComp = ref(null)
 
@@ -82,15 +74,23 @@ const postulacionData = computed(() => detailComp.value?.postulacion || null)
 const meritosData = computed(() => detailComp.value?.filteredMeritos || [])
 
 const downloadPDF = async (mode = 'cv') => {
-  if (!pdfExporter.value) return
+  if (!postulacionData.value) {
+    $q.notify({ type: 'warning', message: 'Los datos del postulante aún están cargando...' })
+    return
+  }
   generatingPDF.value = true
   try {
-    await pdfExporter.value.generatePDF(mode)
+    await generateInstitutionalExpedientePDF({
+      postulacion: postulacionData.value,
+      filteredMeritos: meritosData.value,
+      includeAttachments: mode === 'full'
+    })
     $q.notify({
       type: 'positive',
-      message: mode === 'cv' ? 'Hoja de vida generada con éxito' : 'Expediente completo generado con éxito'
+      message: mode === 'cv' ? 'Hoja de Vida Oficial generada (100% nítida)' : 'Expediente Completo generado con éxito'
     })
-  } catch {
+  } catch (err) {
+    console.error('Error generando PDF institucional:', err)
     $q.notify({ type: 'negative', message: 'Error al generar el PDF' })
   } finally {
     generatingPDF.value = false

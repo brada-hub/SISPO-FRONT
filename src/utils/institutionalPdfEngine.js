@@ -402,7 +402,8 @@ export const generateInstitutionalEvaluationPDF = async ({
  */
 export const generateInstitutionalExpedientePDF = async ({
   postulacion = {},
-  filteredMeritos = []
+  filteredMeritos = [],
+  includeAttachments = false
 }) => {
   if (!postulacion || !postulacion.postulante) {
     throw new Error('No se encontraron datos del postulante para generar el expediente.')
@@ -682,6 +683,242 @@ export const generateInstitutionalExpedientePDF = async ({
   doc.text('UNITEPC - SISPO', recX + colW / 2, sigY + 10.5, { align: 'center' })
 
   const cleanName = fullName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 30)
-  const filename = `EXPEDIENTE_${cleanName}_${ciFull.replace(/[^0-9]/g, '')}.pdf`
-  doc.save(filename)
+  const baseFilename = `HOJA_DE_VIDA_${cleanName}_${ciFull.replace(/[^0-9]/g, '')}.pdf`
+  const fullFilename = `EXPEDIENTE_${cleanName}_${ciFull.replace(/[^0-9]/g, '')}.pdf`
+
+  if (!includeAttachments) {
+    doc.save(baseFilename)
+    return true
+  }
+
+  // If attachments are requested, merge them using pdf-lib
+  try {
+    const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib/dist/pdf-lib.esm.js')
+    const { saveAs } = await import('file-saver')
+    const { api } = await import('boot/axios')
+
+    // Extract all attached files
+    const attachments = []
+    if (post?.ci_archivo_path) {
+      attachments.push({ label: 'CÉDULA DE IDENTIDAD (C.I.)', path: post.ci_archivo_path })
+    }
+    if (postulacion.carta_postulacion_path || post?.carta_postulacion_path) {
+      attachments.push({ label: 'CARTA DE POSTULACIÓN', path: postulacion.carta_postulacion_path || post?.carta_postulacion_path })
+    }
+    if (post?.cv_pdf_path) {
+      attachments.push({ label: 'CURRICULUM VITAE ADJUNTO', path: post.cv_pdf_path })
+    }
+
+    if (Array.isArray(filteredMeritos)) {
+      filteredMeritos.forEach((group) => {
+        const secName = (group.tipo?.nombre || 'MÉRITO').toUpperCase()
+        if (Array.isArray(group.items)) {
+          group.items.forEach((item, itemIdx) => {
+            const itemDesc = item.respuestas?.titulo || item.respuestas?.carrera || item.respuestas?.profesion || item.respuestas?.institucion || `Ítem ${itemIdx + 1}`
+            if (Array.isArray(item.archivos)) {
+              item.archivos.forEach((arch) => {
+                if (arch.archivo_path) {
+                  const configArch = group.tipo?.config_archivos?.find(a => a.id === arch.config_archivo_id)
+                  const archLabel = configArch?.label || 'Respaldo'
+                  attachments.push({
+                    label: `${secName}: ${archLabel.toUpperCase()} (${String(itemDesc).toUpperCase()})`,
+                    path: arch.archivo_path
+                  })
+                }
+              })
+            }
+          })
+        }
+      })
+    }
+
+    if (attachments.length === 0) {
+      doc.save(baseFilename)
+      return true
+    }
+
+    const cvBytes = doc.output('arraybuffer')
+    const mergedPdf = await PDFDocument.load(cvBytes)
+    const helveticaFont = await mergedPdf.embedFont(StandardFonts.HelveticaBold)
+    const helveticaNormal = await mergedPdf.embedFont(StandardFonts.Helvetica)
+
+    // Separator page for Annexes
+    const sepPage = mergedPdf.addPage([595.28, 841.89]) // A4
+    const { width: sW, height: sH } = sepPage.getSize()
+
+    sepPage.drawRectangle({
+      x: 35,
+      y: sH - 110,
+      width: sW - 70,
+      height: 60,
+      color: rgb(0.29, 0.08, 0.29) // #4A154B
+    })
+
+    sepPage.drawText('DOCUMENTOS DE RESPALDO Y ANEXOS', {
+      x: 50,
+      y: sH - 78,
+      size: 15,
+      font: helveticaFont,
+      color: rgb(1, 1, 1)
+    })
+
+    sepPage.drawText(`POSTULANTE: ${fullName}`, {
+      x: 50,
+      y: sH - 96,
+      size: 9.5,
+      font: helveticaNormal,
+      color: rgb(0.95, 0.95, 0.95)
+    })
+
+    let listY = sH - 145
+    sepPage.drawText('ÍNDICE DE RESPALDOS ADJUNTOS EN ESTE EXPEDIENTE:', {
+      x: 40,
+      y: listY,
+      size: 10,
+      font: helveticaFont,
+      color: rgb(0.2, 0.2, 0.2)
+    })
+    listY -= 20
+
+    attachments.forEach((att, aIdx) => {
+      if (listY > 50) {
+        sepPage.drawText(`${aIdx + 1}. ${att.label.substring(0, 85)}`, {
+          x: 50,
+          y: listY,
+          size: 8.5,
+          font: helveticaNormal,
+          color: rgb(0.3, 0.3, 0.3)
+        })
+        listY -= 16
+      }
+    })
+
+    // Parallel download of files
+    const downloadPromises = attachments.map(async (att, index) => {
+      if (!att.path) return null
+      const cleanPath = att.path.replace(/^\/+/, '').replace(/^storage\//, '')
+      let fileBytes = null
+      let contentType = ''
+      try {
+        const res = await api.get(`/files/stream?path=${encodeURIComponent(cleanPath)}`, {
+          responseType: 'arraybuffer'
+        })
+        fileBytes = new Uint8Array(res.data)
+        contentType = String(res.headers['content-type'] || '').toLowerCase()
+      } catch {
+        try {
+          const baseUrl = api.defaults.baseURL.replace(/\/api$/, '')
+          const res2 = await fetch(`${baseUrl}/storage/${att.path}`)
+          if (res2.ok) {
+            fileBytes = new Uint8Array(await res2.arrayBuffer())
+            contentType = String(res2.headers.get('content-type') || '').toLowerCase()
+          }
+        } catch (fetchErr) {
+          console.warn('Error en fallback fetch:', fetchErr)
+        }
+      }
+      if (!fileBytes || fileBytes.length === 0) return null
+      return { att, index, fileBytes, contentType, cleanPath }
+    })
+
+    const downloadedItems = await Promise.all(downloadPromises)
+
+    for (const item of downloadedItems) {
+      if (!item) continue
+      const { att, index: i, fileBytes, contentType, cleanPath } = item
+      const isPdfFile = cleanPath.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
+
+      if (isPdfFile) {
+        try {
+          const donorPdf = await PDFDocument.load(fileBytes, { ignoreEncryption: true })
+          const pageIndices = donorPdf.getPageIndices()
+          const copiedPages = await mergedPdf.copyPages(donorPdf, pageIndices)
+
+          copiedPages.forEach((page, pIdx) => {
+            const { width: pW, height: pH } = page.getSize()
+            page.drawRectangle({
+              x: 0,
+              y: pH - 20,
+              width: pW,
+              height: 20,
+              color: rgb(0.29, 0.08, 0.29)
+            })
+            page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
+              x: 12,
+              y: pH - 14,
+              size: 8,
+              font: helveticaFont,
+              color: rgb(1, 1, 1)
+            })
+            mergedPdf.addPage(page)
+          })
+        } catch (pdfErr) {
+          console.warn('No se pudo fusionar PDF anexo:', pdfErr)
+        }
+      } else {
+        // Image attachment
+        try {
+          let embeddedImg = null
+          try {
+            embeddedImg = await mergedPdf.embedJpg(fileBytes)
+          } catch {
+            try {
+              embeddedImg = await mergedPdf.embedPng(fileBytes)
+            } catch (pngErr) {
+              console.warn('No se pudo incrustar imagen png:', pngErr)
+            }
+          }
+
+          if (embeddedImg) {
+            const imgPage = mergedPdf.addPage([595.28, 841.89])
+            const { width: ipW, height: ipH } = imgPage.getSize()
+
+            imgPage.drawRectangle({
+              x: 0,
+              y: ipH - 30,
+              width: ipW,
+              height: 30,
+              color: rgb(0.29, 0.08, 0.29)
+            })
+            imgPage.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)}`, {
+              x: 15,
+              y: ipH - 16,
+              size: 8.5,
+              font: helveticaFont,
+              color: rgb(1, 1, 1)
+            })
+            imgPage.drawText(`UNITEPC • Postulante: ${fullName} • C.I. ${ciFull}`, {
+              x: 15,
+              y: ipH - 26,
+              size: 6.5,
+              font: helveticaNormal,
+              color: rgb(0.9, 0.9, 0.9)
+            })
+
+            const maxW = ipW - 30
+            const maxH = ipH - 50
+            const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
+
+            imgPage.drawImage(embeddedImg, {
+              x: (ipW - drawW) / 2,
+              y: (maxH - drawH) / 2 + 10,
+              width: drawW,
+              height: drawH
+            })
+          }
+        } catch (imgErr) {
+          console.warn('No se pudo adjuntar imagen anexa:', imgErr)
+        }
+      }
+    }
+
+    const mergedBytes = await mergedPdf.save()
+    const blob = new Blob([mergedBytes], { type: 'application/pdf' })
+    saveAs(blob, fullFilename)
+    return true
+  } catch (mergeErr) {
+    console.warn('Fallo al anexar respaldos con pdf-lib, guardando Hoja de Vida base:', mergeErr)
+    doc.save(baseFilename)
+    return true
+  }
 }

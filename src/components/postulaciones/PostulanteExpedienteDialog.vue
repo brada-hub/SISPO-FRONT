@@ -161,13 +161,6 @@
           />
         </div>
       </div>
-
-      <!-- HIDDEN PDF GENERATOR COMPONENT -->
-      <ExpedientePDF
-        ref="pdfExporter"
-        :postulacion="postulacionData"
-        :filtered-meritos="meritosData"
-      />
     </q-card>
   </q-dialog>
 </template>
@@ -175,7 +168,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useQuasar } from 'quasar'
-import ExpedientePDF from 'components/ExpedientePDF.vue'
+import { generateInstitutionalExpedientePDF } from 'src/utils/institutionalPdfEngine.js'
 import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 
 const props = defineProps({
@@ -194,7 +187,6 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'close', 'navigate', 'evaluate', 'decision'])
 
 const $q = useQuasar()
-const pdfExporter = ref(null)
 const generatingPDF = ref(false)
 const detailComp = ref(null)
 
@@ -233,13 +225,17 @@ const handleEscape = () => {
 }
 
 const downloadPDF = async (mode = 'cv') => {
-  if (!pdfExporter.value) return
+  if (!postulacionData.value) return
   generatingPDF.value = true
   try {
-    await pdfExporter.value.generatePDF(mode)
+    await generateInstitutionalExpedientePDF({
+      postulacion: postulacionData.value,
+      filteredMeritos: meritosData.value,
+      includeAttachments: mode === 'full'
+    })
     $q.notify({
       type: 'positive',
-      message: mode === 'cv' ? 'Hoja de vida generada con éxito' : 'Expediente completo generado con éxito'
+      message: mode === 'cv' ? 'Hoja de Vida Oficial generada (100% nítida)' : 'Expediente Completo generado con éxito'
     })
   } catch (error) {
     console.error(error)

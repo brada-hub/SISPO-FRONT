@@ -1914,7 +1914,7 @@ const aficheFontScale = computed(() => {
 const downloadPDF = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Generando PDF ultraligero (Calidad HD)...' })
+  $q.loading.show({ message: 'Generando PDF en Alta Definición (Nitidez Máxima)...' })
   try {
     const htmlToImage = await import('html-to-image')
     const { jsPDF } = await import('jspdf')
@@ -1923,21 +1923,11 @@ const downloadPDF = async () => {
     el.style.display = 'flex'
     el.style.visibility = 'visible'
 
-    const scale = 2
     const param = {
-      height: el.scrollHeight * scale,
-      width: 794 * scale,
-      style: {
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-        width: '794px',
-        height: `${el.scrollHeight}px`,
-        opacity: '1'
-      },
-      quality: 0.88,
+      pixelRatio: 2.5,
+      quality: 0.96,
       backgroundColor: '#ffffff',
-      cacheBust: true,
-      pixelRatio: 1
+      cacheBust: true
     }
 
     const dataUrl = await htmlToImage.toJpeg(el, param)
@@ -1946,7 +1936,7 @@ const downloadPDF = async () => {
     const imgProps = pdf.getImageProperties(dataUrl)
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-    pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST')
+    pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'SLOW')
     pdf.save(`Afiche_${form.value.titulo || 'Convocatoria'}.pdf`)
   } catch (error) {
     console.error(error)
@@ -1961,7 +1951,7 @@ const downloadPDF = async () => {
 const downloadImage = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Generando Imagen HD optimizada...' })
+  $q.loading.show({ message: 'Generando Imagen HD (Nitidez Máxima)...' })
   try {
     const htmlToImage = await import('html-to-image')
 
@@ -1969,26 +1959,15 @@ const downloadImage = async () => {
     el.style.display = 'flex'
     el.style.visibility = 'visible'
 
-    const scale = 2
     const param = {
-      height: el.scrollHeight * scale,
-      width: 794 * scale,
-      style: {
-        transform: `scale(${scale})`,
-        transformOrigin: 'top left',
-        width: '794px',
-        height: `${el.scrollHeight}px`,
-        opacity: '1'
-      },
-      quality: 0.90,
+      pixelRatio: 2.5,
       backgroundColor: '#ffffff',
-      cacheBust: true,
-      pixelRatio: 1
+      cacheBust: true
     }
 
-    const dataUrl = await htmlToImage.toJpeg(el, param)
+    const dataUrl = await htmlToImage.toPng(el, param)
     const link = document.createElement('a')
-    link.download = `Afiche_${form.value.titulo || 'Convocatoria'}.jpg`
+    link.download = `Afiche_${form.value.titulo || 'Convocatoria'}.png`
     link.href = dataUrl
     link.click()
   } catch (error) {
