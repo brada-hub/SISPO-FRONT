@@ -162,7 +162,7 @@
               <tr v-for="merito in group.items" :key="merito.id">
                 <template v-for="campo in group.tipo?.campos" :key="campo.key">
                   <td class="text-center font-bold uppercase">
-                    {{ merito.respuestas[campo.key] || '---' }}
+                    {{ formatCellValue(merito.respuestas[campo.key]) }}
                   </td>
                   <!-- Insert archivo QR right after its related campo (only if after_campo is explicitly set) -->
                   <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo && a.after_campo === campo.key)" :key="configArch.id">
@@ -225,6 +225,23 @@ const getMeritoFile = (merito, configId) => {
   if (!merito.archivos) return null
   const arch = merito.archivos.find(a => a.config_archivo_id === configId)
   return arch ? arch.archivo_path : null
+}
+
+const formatCellValue = (val) => {
+  if (val === null || val === undefined || val === '') return '---'
+  const str = String(val).trim()
+  if (!str) return '---'
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch
+    return `${d}/${m}/${y}`
+  }
+  const slashMatch = str.match(/^(\d{4})\/(\d{2})\/(\d{2})/)
+  if (slashMatch) {
+    const [, y, m, d] = slashMatch
+    return `${d}/${m}/${y}`
+  }
+  return str.toUpperCase()
 }
 
 const romanize = (num) => {

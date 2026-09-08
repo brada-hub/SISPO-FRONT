@@ -34,6 +34,31 @@ const formatDate = (d) => {
 }
 
 /**
+ * Format cell value for display, automatically transforming ISO dates (e.g. 2018-08-02T00:00:00.000000Z) to DD/MM/YYYY
+ */
+const formatCellValue = (val) => {
+  if (val === null || val === undefined || val === '') return '---'
+  const str = String(val).trim()
+  if (!str) return '---'
+
+  // Match ISO date format: YYYY-MM-DD or YYYY-MM-DDT...
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch
+    return `${d}/${m}/${y}`
+  }
+
+  // Match YYYY/MM/DD
+  const slashMatch = str.match(/^(\d{4})\/(\d{2})\/(\d{2})/)
+  if (slashMatch) {
+    const [, y, m, d] = slashMatch
+    return `${d}/${m}/${y}`
+  }
+
+  return str.toUpperCase()
+}
+
+/**
  * Generate an official UNITEPC Evaluation Matrix Report in Landscape Oficio (216x330mm)
  */
 export const generateInstitutionalEvaluationPDF = async ({
@@ -839,7 +864,7 @@ export const generateInstitutionalExpedientePDF = async ({
         if (col.type === 'campo') {
           const val = merito.respuestas?.[col.key] || '---'
           rowCells.push({
-            content: String(val).toUpperCase(),
+            content: formatCellValue(val),
             styles: { fontStyle: 'bold', fontSize: 7.5 }
           })
         } else {

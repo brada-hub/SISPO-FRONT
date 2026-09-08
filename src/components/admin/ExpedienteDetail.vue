@@ -187,7 +187,7 @@
               <tr v-for="merito in group.items" :key="merito.id">
                 <template v-for="campo in group.tipo?.campos" :key="campo.key">
                   <td class="text-center font-bold uppercase text-[10px]">
-                    {{ merito.respuestas[campo.key] || '---' }}
+                    {{ formatCellValue(merito.respuestas[campo.key]) }}
                   </td>
                   <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
                     <td class="text-center">
@@ -614,6 +614,23 @@ const getMeritoFile = (merito, configId) => {
 const isPdf = (path) => path.toLowerCase().endsWith('.pdf')
 
 const openFileNewTab = () => { if (currentFileUrl.value) window.open(currentFileUrl.value, '_blank') }
+
+const formatCellValue = (val) => {
+  if (val === null || val === undefined || val === '') return '---'
+  const str = String(val).trim()
+  if (!str) return '---'
+  const isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (isoMatch) {
+    const [, y, m, d] = isoMatch
+    return `${d}/${m}/${y}`
+  }
+  const slashMatch = str.match(/^(\d{4})\/(\d{2})\/(\d{2})/)
+  if (slashMatch) {
+    const [, y, m, d] = slashMatch
+    return `${d}/${m}/${y}`
+  }
+  return str.toUpperCase()
+}
 
 const romanize = (num) => {
   const lookup = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 }
