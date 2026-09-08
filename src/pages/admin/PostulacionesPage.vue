@@ -9,14 +9,17 @@
       style="height: 4px; z-index: 9999;"
     />
 
-    <!-- ATS TOP DASHBOARD BAR -->
-    <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+    <!-- ATS TOP DASHBOARD BAR (Only visible when viewing all convocatorias) -->
+    <div
+      v-if="!selectedConvocatoria"
+      class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 animate-fade-in"
+    >
       <div>
         <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase flex items-center gap-2">
-          Workspace ATS SISPO v2 <span class="text-[10px] bg-primary text-white px-2 py-0.5 rounded font-black tracking-widest">Enterprise</span>
+          Gestión de Postulaciones <span class="text-[10px] bg-primary text-white px-2 py-0.5 rounded font-black tracking-widest">UNITEPC</span>
         </h1>
         <p class="text-xs text-gray-400 mt-2 font-medium">
-          Operación HRTech Integral • Ranking-First • Flujo Continuo de Decisiones • Fila de Riesgo y Pipeline Kanban
+          Seleccione una convocatoria para evaluar méritos, revisar postulantes y emitir actas oficiales
         </p>
       </div>
 
@@ -353,10 +356,10 @@
         <!-- ATS MODE SELECTOR (Segmented control) -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div class="flex items-center gap-2">
-            <span class="text-xs font-black text-gray-400 uppercase tracking-widest">Modos ATS:</span>
+            <span class="text-xs font-black text-gray-400 uppercase tracking-widest">Vista de Trabajo:</span>
             <div class="flex bg-gray-100 p-1 rounded-xl flex-wrap">
               <div
-                v-for="mode in ['ranking', 'auditoria', 'pipeline', 'tradicional', 'matriz']"
+                v-for="mode in ['ranking', 'matriz', 'pipeline', 'auditoria']"
                 :key="mode"
                 @click="viewMode = mode"
                 :class="[
@@ -369,17 +372,15 @@
                 <q-icon
                   :name="
                     mode === 'ranking' ? 'emoji_events' :
-                    mode === 'auditoria' ? 'gavel' :
-                    mode === 'pipeline' ? 'dashboard' :
-                    mode === 'tradicional' ? 'table_rows' : 'edit_note'
+                    mode === 'matriz' ? 'edit_note' :
+                    mode === 'pipeline' ? 'dashboard' : 'gavel'
                   "
                   size="16px"
                 />
                 {{
-                  mode === 'ranking' ? '🏆 Ranking' :
-                  mode === 'auditoria' ? '⚠ Auditoría Humana' :
-                  mode === 'pipeline' ? '📌 Pipeline' :
-                  mode === 'tradicional' ? '👥 Candidatos' : '📝 Matriz'
+                  mode === 'ranking' ? '🏆 Ranking de Méritos' :
+                  mode === 'matriz' ? '📝 Baremo / Matriz' :
+                  mode === 'pipeline' ? '📌 Pipeline Estados' : '⚠️ Casos Observados'
                 }}
               </div>
             </div>
@@ -454,13 +455,15 @@
               <div
                 class="w-12 h-8 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 shadow-sm border"
                 :class="[
+                  row.evaluacion?.score_total === undefined ? 'bg-gray-50 text-gray-400 border-gray-100' :
                   index === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' :
                   index === 1 ? 'bg-slate-50 text-slate-600 border-slate-200' :
                   index === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                  'bg-gray-50 text-gray-400 border-gray-100'
+                  'bg-gray-50 text-gray-500 border-gray-100'
                 ]"
               >
-                <span v-if="index === 0">🥇 1º</span>
+                <span v-if="row.evaluacion?.score_total === undefined" class="text-[10px] text-gray-400 font-bold">#—</span>
+                <span v-else-if="index === 0">🥇 1º</span>
                 <span v-else-if="index === 1">🥈 2º</span>
                 <span v-else-if="index === 2">🥉 3º</span>
                 <span v-else>#{{ index + 1 }}</span>
@@ -1479,15 +1482,17 @@ const filteredRows = computed(() => {
 
   // Sort descending by score, sending unevaluated candidates to the bottom
   return [...filtered].sort((a, b) => {
-    const aEvaluated = !!a.evaluacion?.score_total
-    const bEvaluated = !!b.evaluacion?.score_total
+    const aVal = a.evaluacion?.score_total
+    const bVal = b.evaluacion?.score_total
+    const aEvaluated = aVal !== undefined && aVal !== null
+    const bEvaluated = bVal !== undefined && bVal !== null
 
     if (aEvaluated && !bEvaluated) return -1
     if (!aEvaluated && bEvaluated) return 1
     if (!aEvaluated && !bEvaluated) return 0
 
-    const aScore = toNumber(a.evaluacion?.score_total)
-    const bScore = toNumber(b.evaluacion?.score_total)
+    const aScore = toNumber(aVal)
+    const bScore = toNumber(bVal)
     return bScore - aScore
   })
 })
@@ -2011,14 +2016,45 @@ const selectConvocatoria = async (convocatoria) => {
   try {
     const { data } = await api.get(`/postulaciones?convocatoria_id=${convocatoria.id}`)
     
-    // Map with interactive merit variables
+    // Map with interactive merit variables and consolidate scores from Score Engine & AI
     rows.value = data.map((postulacion) => {
       const existing = {
         ...(postulacion.evaluacion?.detalle_evaluacion || {}),
         observaciones: postulacion.evaluacion?.observaciones || ''
       }
+
+      // Consolidate score & classification from all engine sources
+      const er = postulacion.evaluation_result || postulacion.evaluationResult || {}
+      const ai = postulacion.ai_matching_result || postulacion.aiMatchingResult || {}
+      const ev = postulacion.evaluacion || {}
+
+      let score = null
+      if (er.score_total !== undefined && er.score_total !== null) {
+        score = Number(er.score_total)
+      } else if (ai.score_total !== undefined && ai.score_total !== null) {
+        score = Number(ai.score_total)
+      } else if (ev.puntaje_total !== undefined && ev.puntaje_total !== null && Number(ev.puntaje_total) > 0) {
+        score = Number(ev.puntaje_total)
+      }
+
+      const clasificacion = er.classification || ai.clasificacion_ia || (score !== null ? (score >= 70 ? 'apto' : (score >= 50 ? 'auditoria_humana' : 'no_apto')) : null)
+      const nivel_riesgo = er.review_risk_level || (score !== null ? (score < 40 ? 'alto' : 'bajo') : null)
+
+      const unifiedEval = {
+        ...ev,
+        score_total: score !== null ? score : undefined,
+        puntaje_total: score !== null ? score : (ev.puntaje_total || 0),
+        clasificacion: clasificacion,
+        clasificacion_ia: ai.clasificacion_ia || clasificacion,
+        nivel_riesgo: nivel_riesgo,
+        requires_human_review: er.requires_human_review || false,
+        strengths: er.strengths_json || ai.fortalezas || [],
+        weaknesses: er.weaknesses_json || ai.debilidades || []
+      }
+
       return {
         ...postulacion,
+        evaluacion: unifiedEval,
         extraInfo: extractExtraInfo(postulacion),
         evalData: createEvalData(existing)
       }
@@ -2244,7 +2280,7 @@ const processImport = async () => {
 onMounted(async () => {
   await loadConvocatorias()
   // Restore convocatoria from query param (deep link)
-  const convId = route.query.conv_id
+  const convId = route.query.conv_id || route.query.convocatoria_id
   if (convId && convocatorias.value.length > 0) {
     const conv = convocatorias.value.find(c => String(c.id) === String(convId))
     if (conv) {

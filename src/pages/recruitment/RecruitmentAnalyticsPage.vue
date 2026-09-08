@@ -17,11 +17,11 @@
       <q-btn
         color="primary"
         icon="arrow_back"
-        label="Volver al Workspace"
+        label="Volver a Postulaciones"
         unelevated
         rounded
         class="font-black h-12 px-6 shadow-md"
-        @click="$router.push('/admin/decision-workspace')"
+        @click="$router.push('/admin/postulaciones')"
       />
     </div>
 

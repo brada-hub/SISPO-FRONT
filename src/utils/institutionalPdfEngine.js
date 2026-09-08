@@ -295,13 +295,14 @@ export const generateInstitutionalEvaluationPDF = async ({
       doc.setFont('helvetica', 'normal')
       doc.text(`${convoCode}  •  ${convoTitle.substring(0, 75)}`, textStartX, 29)
 
+      // INFO BADGE (RIGHT SIDE)
+      const badgeX = printableWidth - 85
+
       // LOGO INSTITUCIONAL (CENTER-RIGHT)
       if (logoImg) {
         doc.addImage(logoImg, 'PNG', badgeX - 34, 13, 30, 16)
       }
 
-      // INFO BADGE (RIGHT SIDE)
-      const badgeX = printableWidth - 85
       doc.setFillColor(248, 245, 255)
       doc.roundedRect(badgeX, 9, 85, 27, 2, 2, 'F')
       doc.setDrawColor(216, 180, 254)

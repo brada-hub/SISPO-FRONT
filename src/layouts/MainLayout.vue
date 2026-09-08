@@ -213,9 +213,8 @@ const adminMenuItems = computed(() => {
   const sispoItems = [
     { permission: 'dashboard', label: 'Dashboard', icon: 'dashboard', to: '/admin' },
     { permission: 'convocatorias', label: 'Convocatorias', icon: 'campaign', to: '/admin/convocatorias' },
-    { permission: 'convocatorias', label: 'Matrices de Evaluación', icon: 'assignment', to: '/admin/plantillas-matrices' },
     { permission: 'postulaciones', label: 'Postulaciones', icon: 'people_alt', to: '/admin/postulaciones' },
-    { permission: 'evaluaciones', label: 'Workspace de Decisiones', icon: 'gavel', to: '/admin/decision-workspace' },
+    { permission: 'convocatorias', label: 'Matrices de Evaluación', icon: 'assignment', to: '/admin/plantillas-matrices' },
     { permission: 'cargos', label: 'Cargos', icon: 'badge', to: '/admin/cargos' },
     { permission: 'usuarios', label: 'Usuarios SISPO', icon: 'manage_accounts', to: '/admin/usuarios' },
   ]

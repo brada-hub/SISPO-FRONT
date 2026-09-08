@@ -95,8 +95,7 @@ const routes = [
       },
       {
         path: 'decision-workspace',
-        component: () => import('pages/recruitment/DecisionWorkspacePage.vue'),
-        meta: { permissions: ['evaluaciones'] },
+        redirect: '/admin/postulaciones'
       },
       {
         path: 'recruitment-analytics',

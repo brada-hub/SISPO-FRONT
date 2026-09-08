@@ -1,12 +1,12 @@
 <template>
   <q-page class="bg-slate-50 q-pa-md q-pa-lg-lg">
-    <div class="max-w-[1500px] mx-auto space-y-8">
+    <div class="max-w-[1500px] mx-auto space-y-6">
 
       <!-- 1. INSTITUTIONAL EXECUTIVE HERO BANNER -->
-      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#311452] via-[#4A1D75] to-[#1E1B4B] text-white p-6 sm:p-8 shadow-xl border border-purple-900/30">
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#2A0E47] via-[#43196B] to-[#1E1B4B] text-white p-6 sm:p-8 shadow-xl border border-purple-900/30">
         <!-- Background decorative elements -->
-        <div class="absolute -right-16 -top-20 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl pointer-events-none"></div>
-        <div class="absolute right-32 -bottom-20 w-64 h-64 rounded-full bg-indigo-500/10 blur-2xl pointer-events-none"></div>
+        <div class="absolute -right-16 -top-20 w-80 h-80 rounded-full bg-purple-500/15 blur-3xl pointer-events-none"></div>
+        <div class="absolute right-32 -bottom-20 w-64 h-64 rounded-full bg-indigo-500/15 blur-2xl pointer-events-none"></div>
         <div class="absolute right-8 top-1/2 -translate-y-1/2 opacity-5 pointer-events-none hidden lg:block">
           <img src="~assets/unitepc_escudo.png" class="h-64 w-auto grayscale contrast-200" @error="(e) => e.target.style.display = 'none'" />
         </div>
@@ -18,21 +18,21 @@
                 <q-icon name="stars" size="14px" class="text-amber-300" />
                 UNITEPC • SISTEMA DE GESTIÓN DE TALENTO
               </span>
-              <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                En Línea
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                En Tiempo Real
               </span>
             </div>
             <h1 class="text-3xl sm:text-4xl font-black tracking-tight uppercase leading-tight text-white m-0">
               Panel de Control & Inteligencia Operativa
             </h1>
             <p class="text-purple-200/80 text-sm sm:text-base font-normal leading-relaxed m-0">
-              Monitoreo integral de convocatorias docentes y administrativas, avance de baremos de mérito y expedientes en tiempo real a nivel nacional.
+              Centro de monitoreo dinámico: filtra por sede, convocatoria o período, interactúa con el embudo de selección e inspecciona postulantes al instante.
             </p>
           </div>
 
           <!-- Quick Actions Hub -->
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="flex flex-wrap items-center gap-2.5">
             <q-btn
               unelevated
               rounded
@@ -47,9 +47,9 @@
               outline
               rounded
               style="color: white; border-color: rgba(255,255,255,0.4);"
-              icon="rule"
-              label="Mesa de Decisión"
-              to="/admin/decision-workspace"
+              icon="people_alt"
+              label="Ver Postulaciones"
+              to="/admin/postulaciones"
               class="font-bold px-4 h-11 hover:bg-white/10 transition-all"
             />
             <q-btn
@@ -61,19 +61,111 @@
               @click="loadStats"
               class="bg-white/10 hover:bg-white/20 transition-all"
             >
-              <q-tooltip>Actualizar Datos</q-tooltip>
+              <q-tooltip>Sincronizar Datos</q-tooltip>
             </q-btn>
           </div>
         </div>
       </div>
 
-      <!-- 2. HIGH-IMPACT KPI CARDS GRID -->
+      <!-- 2. DYNAMIC CONTROL BAR (INTERACTIVE CROSS-FILTERS) -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 transition-all">
+        <div class="flex flex-wrap items-center gap-3 flex-1">
+          <!-- Icon Tag -->
+          <div class="flex items-center gap-2 pr-2 text-slate-700 font-black text-xs uppercase tracking-wider hidden sm:flex">
+            <q-icon name="tune" size="18px" color="primary" />
+            <span>Filtros Dinámicos:</span>
+          </div>
+
+          <!-- Sede Selector -->
+          <div class="min-w-[170px] flex-1 sm:flex-initial">
+            <q-select
+              v-model="selectedSede"
+              :options="sedeOptions"
+              dense
+              outlined
+              rounded
+              emit-value
+              map-options
+              clearable
+              placeholder="Todas las Sedes"
+              class="bg-slate-50 text-xs font-semibold"
+              @update:model-value="onFilterChange"
+            >
+              <template v-slot:prepend>
+                <q-icon name="location_on" size="16px" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Convocatoria Selector -->
+          <div class="min-w-[210px] flex-1 sm:flex-initial">
+            <q-select
+              v-model="selectedConvocatoria"
+              :options="convocatoriaOptions"
+              dense
+              outlined
+              rounded
+              emit-value
+              map-options
+              clearable
+              placeholder="Todas las Convocatorias"
+              class="bg-slate-50 text-xs font-semibold"
+              @update:model-value="onFilterChange"
+            >
+              <template v-slot:prepend>
+                <q-icon name="campaign" size="16px" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Period Toggle -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl">
+            <button
+              v-for="p in periodOptions"
+              :key="p.value"
+              type="button"
+              :class="[
+                'px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                selectedPeriodo === p.value
+                  ? 'bg-white text-purple-900 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-800'
+              ]"
+              @click="setPeriodo(p.value)"
+            >
+              {{ p.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Reset Button and Active Filter Badge -->
+        <div class="flex items-center justify-between md:justify-end gap-2 border-t md:border-t-0 pt-2 md:pt-0 border-slate-100">
+          <div v-if="hasActiveFilters" class="flex items-center gap-1 text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1.5 rounded-xl">
+            <q-icon name="filter_alt" size="14px" />
+            <span>{{ activeFiltersCount }} filtro(s) activo(s)</span>
+          </div>
+
+          <q-btn
+            v-if="hasActiveFilters"
+            flat
+            dense
+            rounded
+            no-caps
+            color="negative"
+            icon="restart_alt"
+            label="Limpiar Filtros"
+            @click="resetFilters"
+            class="text-xs font-bold px-2"
+          />
+        </div>
+      </div>
+
+      <!-- 3. HIGH-IMPACT KPI CARDS GRID -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
 
         <!-- Card 1: Total Postulaciones -->
         <div class="stat-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-400">Postulaciones Totales</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-400">Postulaciones</span>
             <div class="w-10 h-10 rounded-xl bg-purple-50 text-[#663399] flex items-center justify-center">
               <q-icon name="groups" size="22px" />
             </div>
@@ -86,7 +178,7 @@
               <span class="text-emerald-600 font-bold flex items-center gap-0.5">
                 <q-icon name="trending_up" size="14px" /> {{ stats.kpis?.semana || 0 }}
               </span>
-              <span>registrados esta semana</span>
+              <span>registradas esta semana</span>
             </div>
           </div>
         </div>
@@ -104,7 +196,7 @@
               {{ stats.kpis?.activas || 0 }} <span class="text-lg font-bold text-slate-400">/ {{ stats.kpis?.total_convocatorias || 0 }}</span>
             </div>
             <div class="text-xs font-semibold text-slate-500">
-              {{ stats.kpis?.activas || 0 }} activas vigentes para postulación
+              {{ stats.kpis?.activas || 0 }} vigentes para postulación
             </div>
           </div>
         </div>
@@ -112,7 +204,7 @@
         <!-- Card 3: Avance Global de Evaluación -->
         <div class="stat-card bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
           <div class="flex items-center justify-between mb-3">
-            <span class="text-xs font-black uppercase tracking-wider text-slate-400">Avance de Baremos</span>
+            <span class="text-xs font-black uppercase tracking-wider text-slate-400">Avance Baremo</span>
             <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
               <q-icon name="task_alt" size="22px" />
             </div>
@@ -127,7 +219,6 @@
             <q-linear-progress
               :value="(stats.kpis?.avance_evaluacion || 0) / 100"
               color="positive"
-              track-color="emerald-100"
               rounded
               class="h-2 rounded-full"
             />
@@ -154,63 +245,116 @@
 
       </div>
 
-      <!-- 3. PIPELINE DE SELECCIÓN (FUNNEL MODERNO) -->
+      <!-- 4. PIPELINE INTERACTIVO DE SELECCIÓN (CLIQUEABLE CON CROSS-FILTER) -->
       <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
         <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
           <div>
-            <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Flujo del Proceso</div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black uppercase tracking-widest text-[#663399]">Pipeline Dinámico</span>
+              <span class="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                Haz clic en una etapa para filtrar la tabla
+              </span>
+            </div>
             <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight m-0">
               Embudo de Selección y Clasificación de Candidatos
             </h2>
           </div>
-          <q-btn
-            flat
-            no-caps
-            rounded
-            color="primary"
-            icon-right="arrow_forward"
-            label="Ver Bandeja Completa"
-            to="/admin/postulaciones"
-            class="font-bold text-xs"
-          />
+          <div class="flex items-center gap-2">
+            <q-btn
+              v-if="selectedFunnelStage"
+              flat
+              dense
+              rounded
+              no-caps
+              color="negative"
+              icon="clear"
+              label="Quitar Filtro de Etapa"
+              @click="toggleFunnelStage(null)"
+              class="text-xs font-bold"
+            />
+            <q-btn
+              flat
+              no-caps
+              rounded
+              color="primary"
+              icon-right="arrow_forward"
+              label="Ver Bandeja Completa"
+              to="/admin/postulaciones"
+              class="font-bold text-xs"
+            />
+          </div>
         </div>
 
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <div
             v-for="step in (stats.funnel || [])"
             :key="step.key"
-            class="p-4 rounded-2xl border border-slate-100 bg-slate-50/70 hover:bg-white hover:border-slate-300 hover:shadow-sm transition-all relative overflow-hidden"
+            :class="[
+              'p-4 rounded-2xl border transition-all relative overflow-hidden cursor-pointer select-none',
+              selectedFunnelStage === step.key
+                ? 'bg-purple-50/80 border-purple-600 shadow-md ring-2 ring-purple-500/20'
+                : 'border-slate-100 bg-slate-50/70 hover:bg-white hover:border-slate-300 hover:shadow-sm'
+            ]"
+            @click="toggleFunnelStage(step.key)"
           >
             <div class="flex items-center justify-between mb-2">
-              <span class="text-[11px] font-black uppercase tracking-wider text-slate-500">{{ step.label }}</span>
+              <span class="text-[11px] font-black uppercase tracking-wider text-slate-600">{{ step.label }}</span>
               <q-icon :name="step.icon" :style="{ color: step.color }" size="18px" />
             </div>
-            <div class="text-2xl font-black text-slate-900 mb-1">
-              {{ step.count }}
+            <div class="text-2xl font-black text-slate-900 mb-1 flex items-baseline justify-between">
+              <span>{{ step.count }}</span>
+              <span v-if="selectedFunnelStage === step.key" class="text-[10px] font-black uppercase text-purple-700 bg-purple-100 px-1.5 py-0.5 rounded">
+                Activo
+              </span>
             </div>
             <div class="text-[11px] font-bold text-slate-400">
               {{ stats.kpis?.total ? Math.round((step.count / stats.kpis.total) * 100) : 0 }}% del total
             </div>
             <!-- Bottom accent line -->
-            <div class="absolute bottom-0 left-0 right-0 h-1" :style="{ backgroundColor: step.color }"></div>
+            <div class="absolute bottom-0 left-0 right-0 h-1.5" :style="{ backgroundColor: step.color }"></div>
           </div>
         </div>
       </div>
 
-      <!-- 4. CHARTS SECTION (TIMELINE + SEDES) -->
+      <!-- 5. CHARTS SECTION (TIMELINE + SEDES CON TOGGLE DE VISTA) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         <!-- TIMELINE AREA CHART (7 COLS) -->
         <div class="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
               <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Tendencia Temporal</div>
               <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight m-0">
-                Afluencia de Postulaciones (Últimos Días Activos)
+                Afluencia de Postulaciones
               </h3>
             </div>
-            <div class="px-2.5 py-1 rounded-lg bg-purple-50 text-[#663399] font-black text-xs">
-              {{ stats.timeline?.reduce((acc, t) => acc + t.count, 0) || 0 }} Registros
+            <div class="flex items-center gap-2">
+              <!-- View mode toggle: Diario vs Acumulado -->
+              <div class="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold">
+                <button
+                  type="button"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    timelineViewMode === 'daily' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                  ]"
+                  @click="setTimelineViewMode('daily')"
+                >
+                  Diario
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    timelineViewMode === 'cumulative' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                  ]"
+                  @click="setTimelineViewMode('cumulative')"
+                >
+                  Acumulado
+                </button>
+              </div>
+              <div class="px-2.5 py-1 rounded-lg bg-purple-50 text-[#663399] font-black text-xs hidden sm:block">
+                {{ stats.timeline?.reduce((acc, t) => acc + t.count, 0) || 0 }} Registros
+              </div>
             </div>
           </div>
 
@@ -227,30 +371,60 @@
           </div>
           <div v-else class="h-[320px] flex flex-col items-center justify-center text-slate-400">
             <q-icon name="show_chart" size="48px" class="opacity-40 mb-2" />
-            <span class="text-sm font-semibold">Sin registros temporales recientes</span>
+            <span class="text-sm font-semibold">Sin registros temporales en este período</span>
           </div>
         </div>
 
-        <!-- SEDES DISTRIBUTION (5 COLS) -->
+        <!-- SEDES DISTRIBUTION (5 COLS CON TOGGLE DE TIPO DE GRÁFICO) -->
         <div class="lg:col-span-5 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
-          <div class="flex items-center justify-between">
+          <div class="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Cobertura Nacional</div>
+              <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Distribución Geográfica</div>
               <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight m-0">
                 Postulaciones por Sede
               </h3>
             </div>
-            <div class="text-xs text-slate-400 font-bold uppercase">
-              {{ stats.chart_sede?.length || 0 }} Sedes
+            <!-- Chart type toggle: Bar vs Donut -->
+            <div class="bg-slate-100 p-1 rounded-xl flex items-center text-xs font-bold">
+              <button
+                type="button"
+                :class="[
+                  'px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all',
+                  sedeChartType === 'bar' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                ]"
+                @click="setSedeChartType('bar')"
+              >
+                <q-icon name="bar_chart" size="14px" />
+                <span>Barras</span>
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all',
+                  sedeChartType === 'donut' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                ]"
+                @click="setSedeChartType('donut')"
+              >
+                <q-icon name="donut_small" size="14px" />
+                <span>Torta</span>
+              </button>
             </div>
           </div>
 
-          <div v-if="!loading && chartSede.series[0].data.length > 0" class="h-[320px]">
+          <div v-if="!loading && stats.chart_sede && stats.chart_sede.length > 0" class="h-[320px]">
             <apexchart
+              v-if="sedeChartType === 'bar'"
               type="bar"
               height="100%"
-              :options="chartSede.options"
-              :series="chartSede.series"
+              :options="chartSedeBar.options"
+              :series="chartSedeBar.series"
+            ></apexchart>
+            <apexchart
+              v-else
+              type="donut"
+              height="100%"
+              :options="chartSedeDonut.options"
+              :series="chartSedeDonut.series"
             ></apexchart>
           </div>
           <div v-else-if="loading" class="h-[320px] flex items-center justify-center">
@@ -258,34 +432,58 @@
           </div>
           <div v-else class="h-[320px] flex flex-col items-center justify-center text-slate-400">
             <q-icon name="location_off" size="48px" class="opacity-40 mb-2" />
-            <span class="text-sm font-semibold">Sin datos por sede</span>
+            <span class="text-sm font-semibold">Sin datos por sede para los filtros activos</span>
           </div>
         </div>
 
       </div>
 
-      <!-- 5. CONVOCATORIAS OPERATIVAS & TOP CARGOS SECTION -->
+      <!-- 6. CONVOCATORIAS EN CURSO (CON TABS INTERACTIVOS Y BÚSQUEDA) -->
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
         <!-- CONVOCATORIAS TABLE (7 COLS) -->
         <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
           <div>
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+            <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Gestión de Procesos</div>
                 <h3 class="text-lg font-black text-slate-900 uppercase tracking-tight m-0">
-                  Estado de Convocatorias en Curso
+                  Estado de Convocatorias
                 </h3>
               </div>
-              <q-btn
-                flat
-                rounded
-                no-caps
-                color="primary"
-                label="Ver Todas"
-                to="/admin/convocatorias"
-                class="font-bold text-xs"
-              />
+              <!-- Tab Filter: Todas / Vigentes / Urgentes / Concluidas -->
+              <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                <button
+                  type="button"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    convocatoriaTab === 'todas' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                  ]"
+                  @click="convocatoriaTab = 'todas'"
+                >
+                  Todas ({{ stats.convocatorias_gestion?.length || 0 }})
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    convocatoriaTab === 'activas' ? 'bg-white text-purple-900 shadow-sm font-black' : 'text-slate-500'
+                  ]"
+                  @click="convocatoriaTab = 'activas'"
+                >
+                  Vigentes ({{ countConvocatoriasActivas }})
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'px-2.5 py-1 rounded-lg transition-all',
+                    convocatoriaTab === 'urgentes' ? 'bg-white text-amber-900 shadow-sm font-black' : 'text-slate-500'
+                  ]"
+                  @click="convocatoriaTab = 'urgentes'"
+                >
+                  Por Vencer ({{ countConvocatoriasUrgentes }})
+                </button>
+              </div>
             </div>
 
             <div class="overflow-x-auto">
@@ -300,15 +498,16 @@
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-sm">
-                  <tr v-if="!stats.convocatorias_gestion || stats.convocatorias_gestion.length === 0">
+                  <tr v-if="filteredConvocatorias.length === 0">
                     <td colspan="5" class="px-6 py-10 text-center text-slate-400 font-semibold italic">
-                      No hay convocatorias registradas en este período
+                      No hay convocatorias en esta categoría
                     </td>
                   </tr>
                   <tr
-                    v-for="conv in (stats.convocatorias_gestion || []).slice(0, 6)"
+                    v-for="conv in filteredConvocatorias.slice(0, 6)"
                     :key="conv.id"
-                    class="hover:bg-purple-50/30 transition-colors"
+                    class="hover:bg-purple-50/30 transition-colors cursor-pointer"
+                    @click="filtrarPorConvocatoria(conv.id)"
                   >
                     <td class="px-6 py-3.5">
                       <div class="font-black text-slate-900 truncate max-w-[220px]" :title="conv.titulo">
@@ -369,8 +568,9 @@
               </table>
             </div>
           </div>
-          <div class="p-3 bg-slate-50/70 border-t border-slate-100 text-center">
-            <span class="text-xs font-semibold text-slate-500">Mostrando las convocatorias activas y con mayor concurrencia</span>
+          <div class="p-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 font-semibold px-6">
+            <span>Haz clic en una fila para filtrar el dashboard por esa convocatoria</span>
+            <q-btn flat dense no-caps color="primary" label="Gestionar Todas" to="/admin/convocatorias" class="font-bold" />
           </div>
         </div>
 
@@ -416,25 +616,31 @@
 
       </div>
 
-      <!-- 6. BANDEJA DE ACTIVIDAD RECIENTE CON BUSCADOR EN VIVO -->
-      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-4 p-6">
+      <!-- 7. BANDEJA DINÁMICA DE ACTIVIDAD RECIENTE (CON CROSS-FILTERING & QUICK PEEK) -->
+      <div id="seccion-actividad" class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden space-y-4 p-6">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <div class="text-xs font-black uppercase tracking-widest text-[#663399]">Seguimiento Continuo</div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black uppercase tracking-widest text-[#663399]">Seguimiento Continuo</span>
+              <span v-if="selectedFunnelStage" class="text-xs font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 flex items-center gap-1">
+                Etapa: {{ formatStatusLabel(selectedFunnelStage) }}
+                <q-icon name="close" size="14px" class="cursor-pointer" @click="toggleFunnelStage(null)" />
+              </span>
+            </div>
             <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight m-0">
               Actividad Reciente de Postulantes
             </h3>
           </div>
 
           <!-- Quick Search Filter -->
-          <div class="w-full sm:w-72">
+          <div class="w-full sm:w-80 flex items-center gap-2">
             <q-input
               v-model="searchQuery"
               dense
               outlined
               rounded
-              placeholder="Buscar postulante o CI..."
-              class="bg-slate-50"
+              placeholder="Buscar por postulante, CI o cargo..."
+              class="bg-slate-50 flex-1"
             >
               <template v-slot:prepend>
                 <q-icon name="search" size="18px" color="primary" />
@@ -456,13 +662,26 @@
                 <th class="px-6 py-3.5 text-center">Estado</th>
                 <th class="px-6 py-3.5 text-center">Puntaje Baremo</th>
                 <th class="px-6 py-3.5 text-center">Fecha Registro</th>
-                <th class="px-6 py-3.5 text-center">Acción</th>
+                <th class="px-6 py-3.5 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-100 text-sm">
               <tr v-if="filteredRecientes.length === 0">
                 <td colspan="7" class="px-6 py-12 text-center text-slate-400 font-semibold italic">
-                  No se encontraron postulantes que coincidan con la búsqueda
+                  <div class="flex flex-col items-center justify-center space-y-2">
+                    <q-icon name="person_search" size="40px" class="text-slate-300" />
+                    <span>No se encontraron postulantes que coincidan con los filtros actuales</span>
+                    <q-btn
+                      v-if="hasActiveFilters || selectedFunnelStage || searchQuery"
+                      flat
+                      rounded
+                      size="sm"
+                      color="primary"
+                      label="Restablecer Filtros"
+                      @click="resetFilters"
+                      class="font-bold mt-2"
+                    />
+                  </div>
                 </td>
               </tr>
               <tr
@@ -477,7 +696,9 @@
                       <span v-else>{{ (item.postulante || 'P').charAt(0) }}</span>
                     </q-avatar>
                     <div>
-                      <div class="font-black text-slate-900">{{ item.postulante }}</div>
+                      <div class="font-black text-slate-900 hover:text-[#663399] cursor-pointer" @click="openQuickPeek(item)">
+                        {{ item.postulante }}
+                      </div>
                       <div class="text-[11px] font-bold text-slate-400">CI: {{ item.ci || '---' }}</div>
                     </div>
                   </div>
@@ -512,22 +733,117 @@
                   <div class="text-[10px] text-slate-400">{{ item.fecha_exacta }}</div>
                 </td>
                 <td class="px-6 py-3.5 text-center">
-                  <q-btn
-                    unelevated
-                    rounded
-                    size="sm"
-                    color="primary"
-                    icon="visibility"
-                    label="Expediente"
-                    :to="`/admin/expediente/${item.id}`"
-                    class="font-black px-3"
-                  />
+                  <div class="flex items-center justify-center gap-1.5">
+                    <q-btn
+                      flat
+                      round
+                      size="sm"
+                      color="purple-9"
+                      icon="preview"
+                      @click="openQuickPeek(item)"
+                    >
+                      <q-tooltip>Vista Rápida</q-tooltip>
+                    </q-btn>
+                    <q-btn
+                      unelevated
+                      rounded
+                      size="sm"
+                      color="primary"
+                      icon="description"
+                      label="Expediente"
+                      :to="`/admin/expediente/${item.id}`"
+                      class="font-black px-2.5"
+                    />
+                  </div>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
       </div>
+
+      <!-- 8. QUICK PEEK MODAL (VISTA RÁPIDA DE POSTULANTE) -->
+      <q-dialog v-model="quickPeekOpen">
+        <q-card style="min-width: 360px; max-width: 520px; border-radius: 24px;" class="overflow-hidden shadow-2xl">
+          <!-- Header with gradient -->
+          <div class="bg-gradient-to-r from-[#2A0E47] to-[#43196B] p-6 text-white relative">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center gap-4">
+                <q-avatar size="60px" color="white" text-color="primary" class="font-black text-xl shadow-lg border-2 border-white/20">
+                  <img v-if="peekCandidate?.foto" :src="getFileUrl(peekCandidate.foto)" />
+                  <span v-else>{{ (peekCandidate?.postulante || 'P').charAt(0) }}</span>
+                </q-avatar>
+                <div>
+                  <h4 class="text-lg font-black m-0 leading-snug">{{ peekCandidate?.postulante }}</h4>
+                  <div class="text-xs text-purple-200/90 font-semibold mt-0.5">CI: {{ peekCandidate?.ci || 'Sin documento' }}</div>
+                  <div class="mt-2">
+                    <span :class="['px-2.5 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider', getStatusClass(peekCandidate?.estado)]">
+                      {{ formatStatusLabel(peekCandidate?.estado) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <q-btn flat round dense icon="close" color="white" v-close-popup />
+            </div>
+          </div>
+
+          <!-- Body details -->
+          <q-card-section class="q-pa-md space-y-3">
+            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-400 font-bold uppercase">Cargo Postulado:</span>
+                <span class="font-black text-slate-800">{{ peekCandidate?.cargo }}</span>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-400 font-bold uppercase">Convocatoria:</span>
+                <span class="font-black text-slate-800 truncate max-w-[200px]" :title="peekCandidate?.convocatoria">
+                  {{ peekCandidate?.convocatoria }}
+                </span>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-400 font-bold uppercase">Sede:</span>
+                <span class="font-black text-purple-900 bg-purple-50 px-2 py-0.5 rounded">{{ peekCandidate?.sede }}</span>
+              </div>
+              <div class="flex justify-between items-center text-xs">
+                <span class="text-slate-400 font-bold uppercase">Fecha de Registro:</span>
+                <span class="font-bold text-slate-600">{{ peekCandidate?.fecha_exacta || peekCandidate?.fecha }}</span>
+              </div>
+            </div>
+
+            <!-- Score highlight -->
+            <div class="p-4 rounded-xl bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-100 flex items-center justify-between">
+              <div>
+                <div class="text-[11px] font-black uppercase text-purple-900 tracking-wider">Calificación Baremo</div>
+                <div class="text-xs text-slate-500 font-medium">Evaluación curricular y de méritos</div>
+              </div>
+              <div class="text-2xl font-black text-purple-900">
+                {{ peekCandidate?.puntuacion !== null ? `${peekCandidate?.puntuacion} pts.` : 'Pendiente' }}
+              </div>
+            </div>
+          </q-card-section>
+
+          <!-- Actions -->
+          <q-card-section class="q-pa-md pt-0 flex gap-2">
+            <q-btn
+              unelevated
+              rounded
+              color="primary"
+              icon="open_in_new"
+              label="Ver Expediente Completo"
+              :to="`/admin/expediente/${peekCandidate?.id}`"
+              class="flex-1 font-black py-2.5"
+            />
+            <q-btn
+              flat
+              rounded
+              color="grey-7"
+              label="Cerrar"
+              v-close-popup
+              class="font-bold"
+            />
+          </q-card-section>
+        </q-card>
+      </q-dialog>
 
     </div>
   </q-page>
@@ -542,6 +858,23 @@ const apexchart = VueApexCharts
 
 const loading = ref(true)
 const searchQuery = ref('')
+const selectedSede = ref(null)
+const selectedConvocatoria = ref(null)
+const selectedPeriodo = ref('all')
+const selectedFunnelStage = ref(null)
+const convocatoriaTab = ref('todas')
+const timelineViewMode = ref('daily')
+const sedeChartType = ref('bar')
+
+const quickPeekOpen = ref(false)
+const peekCandidate = ref(null)
+
+const periodOptions = [
+  { label: '7 Días', value: '7d' },
+  { label: '30 Días', value: '30d' },
+  { label: 'Histórico', value: 'all' }
+]
+
 const stats = ref({
   kpis: {
     total: 0,
@@ -561,7 +894,60 @@ const stats = ref({
   chart_cargos: [],
   convocatorias_gestion: [],
   cierres_criticos: [],
+  sedes_catalogo: [],
+  convocatorias_catalogo: [],
   recientes: []
+})
+
+// Dynamic Sede Options for Select
+const sedeOptions = computed(() => {
+  return (stats.value.sedes_catalogo || []).map(s => ({
+    label: s.nombre,
+    value: s.id
+  }))
+})
+
+// Dynamic Convocatoria Options for Select
+const convocatoriaOptions = computed(() => {
+  return (stats.value.convocatorias_catalogo || []).map(c => ({
+    label: `${c.codigo} - ${c.titulo}`,
+    value: c.id
+  }))
+})
+
+// Active filters helper
+const hasActiveFilters = computed(() => {
+  return !!(selectedSede.value || selectedConvocatoria.value || selectedPeriodo.value !== 'all' || selectedFunnelStage.value)
+})
+
+const activeFiltersCount = computed(() => {
+  let count = 0
+  if (selectedSede.value) count++
+  if (selectedConvocatoria.value) count++
+  if (selectedPeriodo.value !== 'all') count++
+  if (selectedFunnelStage.value) count++
+  return count
+})
+
+// Convocatorias Counts
+const countConvocatoriasActivas = computed(() => {
+  return (stats.value.convocatorias_gestion || []).filter(c => c.is_activa).length
+})
+
+const countConvocatoriasUrgentes = computed(() => {
+  return (stats.value.convocatorias_gestion || []).filter(c => c.is_urgente).length
+})
+
+// Filtered Convocatorias by Tab
+const filteredConvocatorias = computed(() => {
+  const list = stats.value.convocatorias_gestion || []
+  if (convocatoriaTab.value === 'activas') {
+    return list.filter(c => c.is_activa)
+  }
+  if (convocatoriaTab.value === 'urgentes') {
+    return list.filter(c => c.is_urgente)
+  }
+  return list
 })
 
 // TIMELINE AREA CHART OPTIONS
@@ -580,7 +966,7 @@ const chartTimeline = reactive({
       type: 'gradient',
       gradient: {
         shadeIntensity: 1,
-        opacityFrom: 0.5,
+        opacityFrom: 0.45,
         opacityTo: 0.05,
         stops: [0, 90, 100]
       }
@@ -605,8 +991,8 @@ const chartTimeline = reactive({
   }
 })
 
-// SEDES BAR CHART OPTIONS
-const chartSede = reactive({
+// SEDES BAR CHART
+const chartSedeBar = reactive({
   series: [{ name: 'Postulantes', data: [] }],
   options: {
     chart: { toolbar: { show: false }, fontFamily: 'Inter, sans-serif' },
@@ -634,6 +1020,36 @@ const chartSede = reactive({
   }
 })
 
+// SEDES DONUT CHART
+const chartSedeDonut = reactive({
+  series: [],
+  options: {
+    chart: { fontFamily: 'Inter, sans-serif' },
+    labels: [],
+    colors: ['#663399', '#4F46E5', '#06B6D4', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'],
+    legend: { position: 'bottom', fontSize: '11px', fontWeight: 600 },
+    dataLabels: { enabled: true, formatter: (val) => `${Math.round(val)}%` },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: '65%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Total Sedes',
+              fontSize: '12px',
+              fontWeight: 800,
+              color: '#663399'
+            }
+          }
+        }
+      }
+    },
+    tooltip: { theme: 'dark' }
+  }
+})
+
 const getFileUrl = (path) => {
   if (!path) return ''
   const baseUrl = api.defaults.baseURL.replace(/\/api$/, '')
@@ -643,32 +1059,15 @@ const getFileUrl = (path) => {
 const loadStats = async () => {
   loading.value = true
   try {
-    const { data } = await api.get('/dashboard/stats')
+    const params = {}
+    if (selectedSede.value) params.sede_id = selectedSede.value
+    if (selectedConvocatoria.value) params.convocatoria_id = selectedConvocatoria.value
+    if (selectedPeriodo.value && selectedPeriodo.value !== 'all') params.periodo = selectedPeriodo.value
+
+    const { data } = await api.get('/dashboard/stats', { params })
     if (data.success) {
       stats.value = data
-
-      // Update Timeline Chart
-      if (data.timeline && data.timeline.length > 0) {
-        chartTimeline.series = [{
-          name: 'Nuevas Postulaciones',
-          data: data.timeline.map(t => t.count)
-        }]
-        chartTimeline.options = {
-          ...chartTimeline.options,
-          xaxis: {
-            ...chartTimeline.options.xaxis,
-            categories: data.timeline.map(t => t.fecha)
-          }
-        }
-      }
-
-      // Update Sede Chart
-      if (data.chart_sede && data.chart_sede.length > 0) {
-        chartSede.series = [{
-          name: 'Postulantes',
-          data: data.chart_sede.map(s => ({ x: s.nombre, y: s.postulaciones_count }))
-        }]
-      }
+      updateCharts(data)
     }
   } catch (err) {
     console.error('Error loading dashboard stats:', err)
@@ -677,11 +1076,115 @@ const loadStats = async () => {
   }
 }
 
-const filteredRecientes = computed(() => {
-  const query = searchQuery.value.trim().toLowerCase()
-  if (!query) return stats.value.recientes || []
+const updateCharts = (data) => {
+  // 1. Timeline
+  if (data.timeline && data.timeline.length > 0) {
+    let counts = data.timeline.map(t => t.count)
+    if (timelineViewMode.value === 'cumulative') {
+      let run = 0
+      counts = counts.map(c => (run += c))
+    }
+    chartTimeline.series = [{
+      name: timelineViewMode.value === 'cumulative' ? 'Postulaciones Acumuladas' : 'Nuevas Postulaciones',
+      data: counts
+    }]
+    chartTimeline.options = {
+      ...chartTimeline.options,
+      xaxis: {
+        ...chartTimeline.options.xaxis,
+        categories: data.timeline.map(t => t.fecha)
+      }
+    }
+  } else {
+    chartTimeline.series = [{ name: 'Nuevas Postulaciones', data: [] }]
+  }
 
-  return (stats.value.recientes || []).filter(item => {
+  // 2. Sedes Bar & Donut
+  if (data.chart_sede && data.chart_sede.length > 0) {
+    chartSedeBar.series = [{
+      name: 'Postulantes',
+      data: data.chart_sede.map(s => ({ x: s.nombre, y: s.postulaciones_count }))
+    }]
+
+    chartSedeDonut.series = data.chart_sede.map(s => s.postulaciones_count)
+    chartSedeDonut.options = {
+      ...chartSedeDonut.options,
+      labels: data.chart_sede.map(s => s.nombre)
+    }
+  } else {
+    chartSedeBar.series = [{ name: 'Postulantes', data: [] }]
+    chartSedeDonut.series = []
+  }
+}
+
+const onFilterChange = () => {
+  loadStats()
+}
+
+const setPeriodo = (p) => {
+  selectedPeriodo.value = p
+  loadStats()
+}
+
+const setTimelineViewMode = (mode) => {
+  timelineViewMode.value = mode
+  updateCharts(stats.value)
+}
+
+const setSedeChartType = (type) => {
+  sedeChartType.value = type
+}
+
+const toggleFunnelStage = (stageKey) => {
+  if (selectedFunnelStage.value === stageKey) {
+    selectedFunnelStage.value = null
+  } else {
+    selectedFunnelStage.value = stageKey
+    // Smooth scroll to table
+    const el = document.getElementById('seccion-actividad')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+}
+
+const filtrarPorConvocatoria = (convId) => {
+  selectedConvocatoria.value = convId
+  loadStats()
+}
+
+const resetFilters = () => {
+  selectedSede.value = null
+  selectedConvocatoria.value = null
+  selectedPeriodo.value = 'all'
+  selectedFunnelStage.value = null
+  searchQuery.value = ''
+  loadStats()
+}
+
+const openQuickPeek = (item) => {
+  peekCandidate.value = item
+  quickPeekOpen.value = true
+}
+
+const filteredRecientes = computed(() => {
+  let list = stats.value.recientes || []
+
+  // Funnel stage cross-filter
+  if (selectedFunnelStage.value) {
+    list = list.filter(item => {
+      if (selectedFunnelStage.value === 'apto') {
+        return item.estado === 'apto' || item.estado === 'habilitado'
+      }
+      return item.estado === selectedFunnelStage.value
+    })
+  }
+
+  // Live text query
+  const query = searchQuery.value.trim().toLowerCase()
+  if (!query) return list
+
+  return list.filter(item => {
     return (
       item.postulante?.toLowerCase().includes(query) ||
       item.ci?.toLowerCase().includes(query) ||
@@ -714,7 +1217,8 @@ const formatStatusLabel = (estado) => {
   switch (estado) {
     case 'enviada': return 'Por Evaluar'
     case 'en_revision': return 'En Revisión'
-    case 'habilitado': return 'Habilitado'
+    case 'habilitado':
+    case 'apto': return 'Habilitado'
     case 'seleccionado': return 'Seleccionado'
     case 'rechazada': return 'No Habilitado'
     case 'observada': return 'Observado'
