@@ -10,15 +10,38 @@
       </div>
       <q-space />
       <div class="flex items-center gap-4">
-        <q-btn
-          label="Descargar PDF (Oficio)"
-          icon="picture_as_pdf"
+        <q-btn-dropdown
+          split
+          label="Descargar Hoja de Vida"
+          icon="description"
           style="background-color: #663399; color: white;"
           unelevated
           rounded
-          @click="downloadPDF"
+          @click="downloadPDF('cv')"
           :loading="generatingPDF"
-        />
+        >
+          <q-list style="min-width: 260px;">
+            <q-item clickable v-close-popup @click="downloadPDF('cv')">
+              <q-item-section avatar>
+                <q-icon name="description" color="deep-purple" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Hoja de Vida (Ultraligero)</q-item-label>
+                <q-item-label caption>Genera el CV en 1 segundo (~350 KB)</q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-separator />
+            <q-item clickable v-close-popup @click="downloadPDF('full')">
+              <q-item-section avatar>
+                <q-icon name="attach_file" color="teal" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label class="text-weight-bold">Expediente Completo</q-item-label>
+                <q-item-label caption>Incluye todos los respaldos y anexos fusionados</q-item-label>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </div>
     </q-toolbar>
 
@@ -58,13 +81,15 @@ const detailComp = ref(null)
 const postulacionData = computed(() => detailComp.value?.postulacion || null)
 const meritosData = computed(() => detailComp.value?.filteredMeritos || [])
 
-
-const downloadPDF = async () => {
+const downloadPDF = async (mode = 'cv') => {
   if (!pdfExporter.value) return
   generatingPDF.value = true
   try {
-    await pdfExporter.value.generatePDF()
-    $q.notify({ type: 'positive', message: 'PDF generado con éxito' })
+    await pdfExporter.value.generatePDF(mode)
+    $q.notify({
+      type: 'positive',
+      message: mode === 'cv' ? 'Hoja de vida generada con éxito' : 'Expediente completo generado con éxito'
+    })
   } catch {
     $q.notify({ type: 'negative', message: 'Error al generar el PDF' })
   } finally {

@@ -1911,47 +1911,46 @@ const aficheFontScale = computed(() => {
   return 1.0
 })
 
-const loadHtmlToImageFromCDN = () => {
-  return new Promise((resolve, reject) => {
-    if (window.htmlToImage) return resolve(window.htmlToImage)
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/html-to-image@1.11.11/dist/html-to-image.js'
-    script.onload = () => resolve(window.htmlToImage)
-    script.onerror = () => reject(new Error('Error loading html-to-image from CDN'))
-    document.head.appendChild(script)
-  })
-}
-
 const downloadPDF = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Renderizando PDF (Calidad HD)...' })
+  $q.loading.show({ message: 'Generando PDF ultraligero (Calidad HD)...' })
   try {
-    const htmlToImage = await loadHtmlToImageFromCDN()
+    const htmlToImage = await import('html-to-image')
     const { jsPDF } = await import('jspdf')
 
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    el.style.display = 'flex'; el.style.visibility = 'visible'
+    el.style.display = 'flex'
+    el.style.visibility = 'visible'
 
-    const scale = 3
+    const scale = 2
     const param = {
-        height: el.scrollHeight * scale,
-        width: 794 * scale,
-        style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
-        quality: 1, backgroundColor: '#ffffff', cacheBust: true, pixelRatio: 1
+      height: el.scrollHeight * scale,
+      width: 794 * scale,
+      style: {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: '794px',
+        height: `${el.scrollHeight}px`,
+        opacity: '1'
+      },
+      quality: 0.88,
+      backgroundColor: '#ffffff',
+      cacheBust: true,
+      pixelRatio: 1
     }
 
-    const dataUrl = await htmlToImage.toPng(el, param)
+    const dataUrl = await htmlToImage.toJpeg(el, param)
 
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
     const imgProps = pdf.getImageProperties(dataUrl)
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-    pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(`Afiche_${form.value.titulo}.pdf`)
+    pdf.addImage(dataUrl, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST')
+    pdf.save(`Afiche_${form.value.titulo || 'Convocatoria'}.pdf`)
   } catch (error) {
-    console.error(error); $q.notify({ type: 'negative', message: 'Error al generar PDF' })
+    console.error(error)
+    $q.notify({ type: 'negative', message: 'Error al generar PDF' })
   } finally {
     const el = document.getElementById('afiche-perfect-capture')
     if (el) el.style.visibility = 'hidden'
@@ -1962,26 +1961,39 @@ const downloadPDF = async () => {
 const downloadImage = async () => {
   const el = document.getElementById('afiche-perfect-capture')
   if (!el) return
-  $q.loading.show({ message: 'Generando Imagen HD...' })
+  $q.loading.show({ message: 'Generando Imagen HD optimizada...' })
   try {
-    const htmlToImage = await loadHtmlToImageFromCDN()
+    const htmlToImage = await import('html-to-image')
 
     await document.fonts.ready
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    el.style.display = 'flex'; el.style.visibility = 'visible'
+    el.style.display = 'flex'
+    el.style.visibility = 'visible'
 
-    const scale = 3
+    const scale = 2
     const param = {
-        height: el.scrollHeight * scale, width: 794 * scale,
-        style: { transform: `scale(${scale})`, transformOrigin: 'top left', width: '794px', height: `${el.scrollHeight}px`, opacity: '1' },
-        quality: 1, backgroundColor: '#ffffff', cacheBust: true, pixelRatio: 1
+      height: el.scrollHeight * scale,
+      width: 794 * scale,
+      style: {
+        transform: `scale(${scale})`,
+        transformOrigin: 'top left',
+        width: '794px',
+        height: `${el.scrollHeight}px`,
+        opacity: '1'
+      },
+      quality: 0.90,
+      backgroundColor: '#ffffff',
+      cacheBust: true,
+      pixelRatio: 1
     }
 
-    const dataUrl = await htmlToImage.toPng(el, param)
+    const dataUrl = await htmlToImage.toJpeg(el, param)
     const link = document.createElement('a')
-    link.download = `Afiche_${form.value.titulo}.png`; link.href = dataUrl; link.click()
+    link.download = `Afiche_${form.value.titulo || 'Convocatoria'}.jpg`
+    link.href = dataUrl
+    link.click()
   } catch (error) {
-    console.error(error); $q.notify({ type: 'negative', message: 'Error al generar imagen' })
+    console.error(error)
+    $q.notify({ type: 'negative', message: 'Error al generar imagen' })
   } finally {
     const el = document.getElementById('afiche-perfect-capture')
     if (el) el.style.visibility = 'hidden'

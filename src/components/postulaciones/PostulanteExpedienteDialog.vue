@@ -41,12 +41,33 @@
             @click="$emit('navigate', 1)" title="Siguiente (→ / J)"
           />
           <q-separator vertical class="mx-1" />
-          <q-btn
+          <q-btn-dropdown
             flat dense icon="picture_as_pdf" size="sm" color="deep-purple"
             label="PDF" no-caps
-            @click="downloadPDF"
             :loading="generatingPDF"
-          />
+          >
+            <q-list style="min-width: 250px;">
+              <q-item clickable v-close-popup @click="downloadPDF('cv')">
+                <q-item-section avatar>
+                  <q-icon name="description" color="deep-purple" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Hoja de Vida (Rápido)</q-item-label>
+                  <q-item-label caption>CV oficial sin respaldos (~350 KB)</q-item-label>
+                </q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item clickable v-close-popup @click="downloadPDF('full')">
+                <q-item-section avatar>
+                  <q-icon name="attach_file" color="teal" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="text-weight-bold">Expediente Completo</q-item-label>
+                  <q-item-label caption>Con todos los anexos fusionados</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
         </div>
       </div>
 
@@ -211,12 +232,15 @@ const handleEscape = () => {
   closeDialog()
 }
 
-const downloadPDF = async () => {
+const downloadPDF = async (mode = 'cv') => {
   if (!pdfExporter.value) return
   generatingPDF.value = true
   try {
-    await pdfExporter.value.generatePDF()
-    $q.notify({ type: 'positive', message: 'PDF generado con éxito' })
+    await pdfExporter.value.generatePDF(mode)
+    $q.notify({
+      type: 'positive',
+      message: mode === 'cv' ? 'Hoja de vida generada con éxito' : 'Expediente completo generado con éxito'
+    })
   } catch (error) {
     console.error(error)
     $q.notify({ type: 'negative', message: 'Error al generar el PDF' })

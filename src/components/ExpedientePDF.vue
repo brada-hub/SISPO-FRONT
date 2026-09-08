@@ -242,13 +242,25 @@ const convertBlobToJpg = (bytes, mime, pdfDoc) => {
       img.onload = async () => {
         try {
           const canvas = document.createElement('canvas')
-          canvas.width = img.naturalWidth || img.width || 800
-          canvas.height = img.naturalHeight || img.height || 600
+          const maxDim = 1400
+          let w = img.naturalWidth || img.width || 800
+          let h = img.naturalHeight || img.height || 600
+          if (w > maxDim || h > maxDim) {
+            if (w > h) {
+              h = Math.round((h * maxDim) / w)
+              w = maxDim
+            } else {
+              w = Math.round((w * maxDim) / h)
+              h = maxDim
+            }
+          }
+          canvas.width = w
+          canvas.height = h
           const ctx = canvas.getContext('2d')
           ctx.fillStyle = '#FFFFFF'
           ctx.fillRect(0, 0, canvas.width, canvas.height)
-          ctx.drawImage(img, 0, 0)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+          ctx.drawImage(img, 0, 0, w, h)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.80)
           URL.revokeObjectURL(blobUrl)
           const embedded = await pdfDoc.embedJpg(dataUrl)
           resolve(embedded)
@@ -268,8 +280,9 @@ const convertBlobToJpg = (bytes, mime, pdfDoc) => {
   })
 }
 
-const generatePDF = async () => {
-  console.log('PDF: Iniciando generación por secciones...')
+const generatePDF = async (options = 'full') => {
+  const mode = typeof options === 'string' ? options : (options?.mode || 'full')
+  console.log(`PDF: Iniciando generación en modo '${mode}'...`)
 
   if (!props.postulacion || !expedienteClone.value) {
     console.error('PDF: No hay datos o elemento')
@@ -284,7 +297,7 @@ const generatePDF = async () => {
   pdfContainer.value.style.zIndex = '-1'
 
   await nextTick()
-  await new Promise(resolve => setTimeout(resolve, 500))
+  await new Promise(resolve => setTimeout(resolve, 200))
 
   try {
     // Create PDF in Oficio format (Bolivia: 216mm x 330mm)
@@ -307,7 +320,7 @@ const generatePDF = async () => {
       if (!element) return
 
       const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff'
@@ -322,23 +335,19 @@ const generatePDF = async () => {
         currentY = margin
       }
 
-      const imgData = canvas.toDataURL('image/png')
-      pdf.addImage(imgData, 'PNG', margin, currentY, imgWidth, imgHeight)
-      currentY += imgHeight + 5 // Add some spacing between sections
+      const imgData = canvas.toDataURL('image/jpeg', 0.85)
+      pdf.addImage(imgData, 'JPEG', margin, currentY, imgWidth, imgHeight, undefined, 'FAST')
+      currentY += imgHeight + 4 // Add clean spacing between sections
     }
 
     // Capture each section separately
-    console.log('PDF: Capturando header...')
     await addSection(sectionHeader.value)
-
-    console.log('PDF: Capturando datos personales...')
     await addSection(sectionDatosPersonales.value)
 
     // Capture merit sections
     for (let i = 0; i < meritSections.value.length; i++) {
       const section = meritSections.value[i]
       if (section) {
-        console.log(`PDF: Capturando sección de méritos ${i + 1}...`)
         await addSection(section)
       }
     }
@@ -374,6 +383,15 @@ const generatePDF = async () => {
     const p = props.postulacion.postulante
     const nombre = String(p?.nombres || 'Postulante').replace(/[^a-zA-Z]/g, '')
     const ci = String(p?.ci || '0').replace(/[^0-9]/g, '')
+
+    // If only CV requested, save immediately and exit (Instant ~300KB)
+    if (mode === 'cv') {
+      const cvFilename = `HojaDeVida_${nombre}_${ci}.pdf`
+      pdf.save(cvFilename)
+      console.log('Hoja de vida ligera guardada como:', cvFilename)
+      return true
+    }
+
     const filename = `Expediente_${nombre}_${ci}.pdf`
 
     // Extract all attached files (respaldos)
@@ -430,7 +448,7 @@ const generatePDF = async () => {
       const helveticaNormal = await mergedPdf.embedFont(StandardFonts.Helvetica)
 
       if (attachments.length > 0) {
-        console.log(`PDF: Anexando ${attachments.length} documentos de respaldo...`)
+        console.log(`PDF: Descargando en paralelo ${attachments.length} respaldos...`)
 
         // Separator page for Annexes
         const sepPage = mergedPdf.addPage([612, 935])
@@ -442,7 +460,7 @@ const generatePDF = async () => {
           y: sH - 120,
           width: sW - 80,
           height: 65,
-          color: rgb(0.4, 0.2, 0.6) // #663399
+          color: rgb(0.4, 0.2, 0.6)
         })
 
         sepPage.drawText('DOCUMENTOS DE RESPALDO Y ANEXOS', {
@@ -484,132 +502,125 @@ const generatePDF = async () => {
           }
         })
 
-        // Process and append each file
-        for (let i = 0; i < attachments.length; i++) {
-          const att = attachments[i]
-          if (!att.path) continue
+        // Concurrent parallel download of all attachments (drastically faster)
+        const downloadPromises = attachments.map(async (att, index) => {
+          if (!att.path) return null
+          const cleanPath = att.path.replace(/^\/+/, '').replace(/^storage\//, '')
+          let fileBytes = null
+          let contentType = ''
 
           try {
-            console.log(`PDF: Procesando respaldo ${i + 1}/${attachments.length}:`, att.label)
-            const cleanPath = att.path.replace(/^\/+/, '').replace(/^storage\//, '')
-
-            let fileBytes = null
-            let contentType = ''
-
-            // 1. Primary: fetch through CORS-enabled stream API via axios
+            const res = await api.get(`/files/stream?path=${encodeURIComponent(cleanPath)}`, {
+              responseType: 'arraybuffer'
+            })
+            fileBytes = new Uint8Array(res.data)
+            contentType = String(res.headers['content-type'] || '').toLowerCase()
+          } catch {
             try {
-              const res = await api.get(`/files/stream?path=${encodeURIComponent(cleanPath)}`, {
-                responseType: 'arraybuffer'
-              })
-              fileBytes = new Uint8Array(res.data)
-              contentType = String(res.headers['content-type'] || '').toLowerCase()
-            } catch (apiErr) {
-              console.warn(`Fallback de descarga directa para ${cleanPath}:`, apiErr)
               const fallbackUrl = getFileUrl(att.path)
               const res2 = await fetch(fallbackUrl)
               if (res2.ok) {
                 fileBytes = new Uint8Array(await res2.arrayBuffer())
                 contentType = String(res2.headers.get('content-type') || '').toLowerCase()
               }
+            } catch (fallbackErr) {
+              console.warn('Fallback fetch failed:', fallbackErr)
             }
+          }
 
-            if (!fileBytes || fileBytes.length === 0) {
-              console.warn(`No se pudieron obtener datos para el respaldo: ${att.label}`)
-              continue
-            }
+          if (!fileBytes || fileBytes.length === 0) return null
+          return { att, index, fileBytes, contentType, cleanPath }
+        })
 
-            const isPdfFile = cleanPath.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
+        const downloadedItems = await Promise.all(downloadPromises)
 
-            if (isPdfFile) {
-              try {
-                const donorPdf = await PDFDocument.load(fileBytes, { ignoreEncryption: true })
-                const pageIndices = donorPdf.getPageIndices()
-                const copiedPages = await mergedPdf.copyPages(donorPdf, pageIndices)
+        // Sequentially append each downloaded file into mergedPdf
+        for (const item of downloadedItems) {
+          if (!item) continue
+          const { att, index: i, fileBytes, contentType, cleanPath } = item
+          const isPdfFile = cleanPath.toLowerCase().endsWith('.pdf') || contentType.includes('pdf')
 
-                copiedPages.forEach((page, pIdx) => {
-                  const { width: pW, height: pH } = page.getSize()
-                  page.drawRectangle({
-                    x: 0,
-                    y: pH - 22,
-                    width: pW,
-                    height: 22,
-                    color: rgb(0.4, 0.2, 0.6)
-                  })
-                  page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
-                    x: 15,
-                    y: pH - 15,
-                    size: 8.5,
-                    font: helveticaFont,
-                    color: rgb(1, 1, 1)
-                  })
-                  mergedPdf.addPage(page)
+          if (isPdfFile) {
+            try {
+              const donorPdf = await PDFDocument.load(fileBytes, { ignoreEncryption: true })
+              const pageIndices = donorPdf.getPageIndices()
+              const copiedPages = await mergedPdf.copyPages(donorPdf, pageIndices)
+
+              copiedPages.forEach((page, pIdx) => {
+                const { width: pW, height: pH } = page.getSize()
+                page.drawRectangle({
+                  x: 0,
+                  y: pH - 22,
+                  width: pW,
+                  height: 22,
+                  color: rgb(0.4, 0.2, 0.6)
                 })
-              } catch (pdfErr) {
-                console.warn('No se pudo fusionar PDF anexo:', pdfErr)
-              }
-            } else {
-              // Image attachment
-              try {
-                let embeddedImg = null
-
-                // Try direct JPG
-                try {
-                  embeddedImg = await mergedPdf.embedJpg(fileBytes)
-                } catch {
-                  // Try direct PNG
-                  try {
-                    embeddedImg = await mergedPdf.embedPng(fileBytes)
-                  } catch {
-                    // Fallback using Blob & Canvas conversion
-                    embeddedImg = await convertBlobToJpg(fileBytes, contentType, mergedPdf)
-                  }
-                }
-
-                if (embeddedImg) {
-                  const imgPage = mergedPdf.addPage([612, 935])
-                  const { width: ipW, height: ipH } = imgPage.getSize()
-
-                  // Top header banner
-                  imgPage.drawRectangle({
-                    x: 0,
-                    y: ipH - 32,
-                    width: ipW,
-                    height: 32,
-                    color: rgb(0.4, 0.2, 0.6)
-                  })
-                  imgPage.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)}`, {
-                    x: 20,
-                    y: ipH - 18,
-                    size: 9.5,
-                    font: helveticaFont,
-                    color: rgb(1, 1, 1)
-                  })
-                  imgPage.drawText(`UNITEPC • Postulante: ${String(p?.nombres || '')} ${String(p?.apellidos || '')} • C.I. ${ci}`, {
-                    x: 20,
-                    y: ipH - 28,
-                    size: 7,
-                    font: helveticaNormal,
-                    color: rgb(0.9, 0.9, 0.9)
-                  })
-
-                  // Scale image nicely
-                  const maxW = ipW - 40
-                  const maxH = ipH - 60
-                  const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
-
-                  imgPage.drawImage(embeddedImg, {
-                    x: (ipW - drawW) / 2,
-                    y: (maxH - drawH) / 2 + 15,
-                    width: drawW,
-                    height: drawH
-                  })
-                }
-              } catch (imgErr) {
-                console.warn('No se pudo adjuntar imagen anexa:', imgErr)
-              }
+                page.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)} (Pág. ${pIdx + 1}/${copiedPages.length})`, {
+                  x: 15,
+                  y: pH - 15,
+                  size: 8.5,
+                  font: helveticaFont,
+                  color: rgb(1, 1, 1)
+                })
+                mergedPdf.addPage(page)
+              })
+            } catch (pdfErr) {
+              console.warn('No se pudo fusionar PDF anexo:', pdfErr)
             }
-          } catch (fileErr) {
-            console.warn('Error al cargar archivo de respaldo:', fileErr)
+          } else {
+            // Image attachment
+            try {
+              let embeddedImg = null
+              try {
+                embeddedImg = await mergedPdf.embedJpg(fileBytes)
+              } catch {
+                try {
+                  embeddedImg = await mergedPdf.embedPng(fileBytes)
+                } catch {
+                  embeddedImg = await convertBlobToJpg(fileBytes, contentType, mergedPdf)
+                }
+              }
+
+              if (embeddedImg) {
+                const imgPage = mergedPdf.addPage([612, 935])
+                const { width: ipW, height: ipH } = imgPage.getSize()
+
+                imgPage.drawRectangle({
+                  x: 0,
+                  y: ipH - 32,
+                  width: ipW,
+                  height: 32,
+                  color: rgb(0.4, 0.2, 0.6)
+                })
+                imgPage.drawText(`RESPALDO ${i + 1}: ${att.label.substring(0, 75)}`, {
+                  x: 20,
+                  y: ipH - 18,
+                  size: 9.5,
+                  font: helveticaFont,
+                  color: rgb(1, 1, 1)
+                })
+                imgPage.drawText(`UNITEPC • Postulante: ${String(p?.nombres || '')} ${String(p?.apellidos || '')} • C.I. ${ci}`, {
+                  x: 20,
+                  y: ipH - 28,
+                  size: 7,
+                  font: helveticaNormal,
+                  color: rgb(0.9, 0.9, 0.9)
+                })
+
+                const maxW = ipW - 40
+                const maxH = ipH - 60
+                const { width: drawW, height: drawH } = embeddedImg.scaleToFit(maxW, maxH)
+
+                imgPage.drawImage(embeddedImg, {
+                  x: (ipW - drawW) / 2,
+                  y: (maxH - drawH) / 2 + 15,
+                  width: drawW,
+                  height: drawH
+                })
+              }
+            } catch (imgErr) {
+              console.warn('No se pudo adjuntar imagen anexa:', imgErr)
+            }
           }
         }
       }
