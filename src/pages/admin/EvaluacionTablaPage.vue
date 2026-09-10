@@ -293,9 +293,71 @@
                        <td v-for="col in dynamicColumns" :key="col.id" class="score-cell">
                          <div class="cell-val" :class="col.sectionIndex % 2 === 0 ? 'text-primary' : 'text-secondary'">{{ row.evalData[col.id] }}</div>
                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                           <div class="bg-grey-9 text-white q-pa-sm text-center text-weight-bold" style="font-size: 11px;">{{ col.nombre }}</div>
-                           <div class="q-pa-xs bg-white shadow-10 rounded-borders row justify-center" style="max-width: 250px">
-                             <q-btn v-for="v in getDynamicOptions(col.puntaje)" :key="v" dense unelevated :label="v" :color="row.evalData[col.id] === v ? 'primary' : 'grey-2'" :text-color="row.evalData[col.id] === v ? 'white' : 'black'" class="q-ma-xs btn-fixed" @click="updateFieldAndSave(row, col.id, v)" v-close-popup />
+                           <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" style="min-width: 290px; max-width: 360px">
+                             <div class="bg-gray-900 text-white p-3">
+                               <div class="flex items-center justify-between gap-2 mb-1">
+                                 <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                                   {{ col.seccion || 'Criterio de Evaluación' }}
+                                 </span>
+                                 <q-badge color="primary" class="font-black text-[10px] px-2 py-0.5 rounded-md">
+                                   Máx: {{ col.puntaje }} pts
+                                 </q-badge>
+                               </div>
+                               <div class="text-xs font-black leading-snug text-white">
+                                 {{ col.nombre }}
+                               </div>
+                               <div class="text-[10px] text-gray-300 mt-1 truncate">
+                                 Postulante: <strong class="text-white">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</strong>
+                               </div>
+                             </div>
+
+                             <div class="p-3 bg-amber-50/60 border-b border-amber-100">
+                               <div class="flex items-start gap-1.5 text-amber-900">
+                                 <q-icon name="info" size="15px" class="mt-0.5 text-amber-700 flex-shrink-0" />
+                                 <div class="text-[11px] leading-relaxed">
+                                   <span class="font-bold text-amber-950 block">Descripción del Criterio:</span>
+                                   <div class="mt-0.5 text-gray-700 font-medium whitespace-pre-line">
+                                     {{ col.descripcion || getCriterionDefaultHelp(col) }}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+
+                             <div v-if="getCandidateMeritsForCriterion(row, col)" class="p-2.5 bg-indigo-50/40 border-b border-indigo-100/60">
+                               <div class="text-[10px] font-black uppercase text-indigo-900 flex items-center gap-1 mb-1">
+                                 <q-icon name="verified" size="13px" class="text-indigo-600" />
+                                 {{ getCandidateMeritsForCriterion(row, col).tipo }}:
+                               </div>
+                               <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                 <div
+                                   v-for="(item, iIdx) in getCandidateMeritsForCriterion(row, col).items"
+                                   :key="iIdx"
+                                   class="text-[10px] text-gray-700 bg-white p-1.5 rounded-md border border-gray-200/60 leading-tight"
+                                 >
+                                   {{ item }}
+                                 </div>
+                               </div>
+                             </div>
+
+                             <div class="p-3 bg-white">
+                               <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 text-center">
+                                 Asignar Puntuación:
+                               </div>
+                               <div class="flex flex-wrap justify-center gap-1.5">
+                                 <q-btn
+                                   v-for="v in getDynamicOptions(col.puntaje)"
+                                   :key="v"
+                                   dense
+                                   unelevated
+                                   :label="v"
+                                   :color="row.evalData[col.id] === v ? 'primary' : 'grey-2'"
+                                   :text-color="row.evalData[col.id] === v ? 'white' : 'black'"
+                                   class="w-9 h-9 font-black text-xs rounded-xl transition-transform hover:scale-105"
+                                   @click="updateFieldAndSave(row, col.id, v)"
+                                   v-close-popup
+                                 />
+                               </div>
+                             </div>
                            </div>
                          </q-popup-proxy>
                        </td>
@@ -304,9 +366,71 @@
                        <td v-for="field in meritFields" :key="field" class="score-cell">
                          <div class="cell-val" :class="getFieldColorClass(field)">{{ row.evalData[field] }}</div>
                          <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                           <div class="bg-grey-9 text-white q-pa-sm text-center text-weight-bold" style="font-size: 11px;">{{ getFieldLabel(field) }}</div>
-                           <div class="q-pa-xs bg-white shadow-10 rounded-borders row justify-center" style="max-width: 250px">
-                             <q-btn v-for="v in getOptionsForField(field)" :key="v" dense unelevated :label="v" :color="row.evalData[field] === v ? 'primary' : 'grey-2'" :text-color="row.evalData[field] === v ? 'white' : 'black'" class="q-ma-xs btn-fixed" @click="updateFieldAndSave(row, field, v)" v-close-popup />
+                           <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" style="min-width: 290px; max-width: 360px">
+                             <div class="bg-gray-900 text-white p-3">
+                               <div class="flex items-center justify-between gap-2 mb-1">
+                                 <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">
+                                   Criterio Institucional
+                                 </span>
+                                 <q-badge color="primary" class="font-black text-[10px] px-2 py-0.5 rounded-md">
+                                   Baremo Estándar
+                                 </q-badge>
+                               </div>
+                               <div class="text-xs font-black leading-snug text-white">
+                                 {{ getFieldLabel(field) }}
+                               </div>
+                               <div class="text-[10px] text-gray-300 mt-1 truncate">
+                                 Postulante: <strong class="text-white">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</strong>
+                               </div>
+                             </div>
+
+                             <div class="p-3 bg-amber-50/60 border-b border-amber-100">
+                               <div class="flex items-start gap-1.5 text-amber-900">
+                                 <q-icon name="info" size="15px" class="mt-0.5 text-amber-700 flex-shrink-0" />
+                                 <div class="text-[11px] leading-relaxed">
+                                   <span class="font-bold text-amber-950 block">Descripción del Criterio:</span>
+                                   <div class="mt-0.5 text-gray-700 font-medium">
+                                     {{ FIELD_DESCRIPTIONS[field] || 'Asigne el puntaje correspondiente según los documentos de respaldo.' }}
+                                   </div>
+                                 </div>
+                               </div>
+                             </div>
+
+                             <div v-if="getCandidateMeritsForCriterion(row, field)" class="p-2.5 bg-indigo-50/40 border-b border-indigo-100/60">
+                               <div class="text-[10px] font-black uppercase text-indigo-900 flex items-center gap-1 mb-1">
+                                 <q-icon name="verified" size="13px" class="text-indigo-600" />
+                                 {{ getCandidateMeritsForCriterion(row, field).tipo }}:
+                               </div>
+                               <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                 <div
+                                   v-for="(item, iIdx) in getCandidateMeritsForCriterion(row, field).items"
+                                   :key="iIdx"
+                                   class="text-[10px] text-gray-700 bg-white p-1.5 rounded-md border border-gray-200/60 leading-tight"
+                                 >
+                                   {{ item }}
+                                 </div>
+                               </div>
+                             </div>
+
+                             <div class="p-3 bg-white">
+                               <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 text-center">
+                                 Asignar Puntuación:
+                               </div>
+                               <div class="flex flex-wrap justify-center gap-1.5">
+                                 <q-btn
+                                   v-for="v in getOptionsForField(field)"
+                                   :key="v"
+                                   dense
+                                   unelevated
+                                   :label="v"
+                                   :color="row.evalData[field] === v ? 'primary' : 'grey-2'"
+                                   :text-color="row.evalData[field] === v ? 'white' : 'black'"
+                                   class="w-9 h-9 font-black text-xs rounded-xl transition-transform hover:scale-105"
+                                   @click="updateFieldAndSave(row, field, v)"
+                                   v-close-popup
+                                 />
+                               </div>
+                             </div>
                            </div>
                          </q-popup-proxy>
                        </td>
@@ -464,6 +588,8 @@ const dynamicColumns = computed(() => {
            id: `s${sIdx}_c${cIdx}`,
            nombre: crit.nombre,
            puntaje: Number(crit.puntaje) || 0,
+           descripcion: crit.descripcion || crit.detalle || crit.pautas || '',
+           seccion: sec.seccion || `Sección ${sIdx + 1}`,
            sectionIndex: sIdx
         })
      })
@@ -675,6 +801,130 @@ const getOptionsForField = (field) => {
     a4_distinciones: [0, 1, 2, 3, 4],
   }
   return options[field] || [0]
+}
+
+const FIELD_DESCRIPTIONS = {
+  a1_diplomado: 'Diplomado en Educación Superior o área afín (3 pts por título).',
+  a1_especialidad: 'Especialidad médica, clínica o profesional reconocida (4 pts).',
+  a1_maestria: 'Grado de Maestría concluida con título o diploma oficial (6 pts).',
+  a1_doctorado: 'Grado de Doctorado (Ph.D. / Dr.) con título en provisión nacional (7 pts).',
+  a2_cursos_120: 'Cursos de actualización y especialización mayores a 120 horas académicas (3 pts c/u, máx. 9 pts).',
+  a2_cursos_20: 'Cursillos, seminarios y talleres mayores a 20 horas académicas (1 pt c/u, máx. 5 pts).',
+  a2_disertante: 'Participación en calidad de disertante o expositor en congresos o seminarios (1 pt c/u, máx. 3 pts).',
+  a2_pedagogico: 'Cursos de formación pedagógica, didáctica universitaria o competencias docentes (1 pt c/u, máx. 3 pts).',
+  a3_ejercicio_prof: 'Años de ejercicio profesional certificado en el área específica (1 pt por año, máx. 15 pts).',
+  a3_docencia: 'Años de docencia universitaria certificada de pregrado (1 pt por año/materia, máx. 10 pts).',
+  a3_tutorias: 'Tutoría o asesoría de tesis de grado y proyectos de titulación aprobados (1 pt c/u, máx. 5 pts).',
+  a3_docente_post: 'Docencia universitaria ejercida en programas de postgrado (1 pt c/u, máx. 5 pts).',
+  a3_cargos_sim: 'Desempeño en cargos de jefatura, dirección académica o similar (máx. 15 pts).',
+  a4_revistas: 'Artículos científicos publicados en revistas indexadas (1 pt c/u, máx. 3 pts).',
+  a4_libros: 'Autoría o coautoría de libros, textos guía o manuales con ISBN/Depósito legal (máx. 3 pts).',
+  a4_distinciones: 'Distinciones académicas, premios o reconocimientos honoríficos institucionales (máx. 4 pts).'
+}
+
+const getCriterionDefaultHelp = (col) => {
+  if (col.descripcion) return col.descripcion
+  const n = (col.nombre || '').toUpperCase()
+  if (n.includes('EXPERIENCIA') || n.includes('LABORAL')) {
+    return `Evaluación de la trayectoria y experiencia laboral demostrable (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  if (n.includes('DOCENCIA')) {
+    return `Evaluación de la experiencia docente universitaria y ejercicio de cátedra (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  if (n.includes('FORMACIÓN') || n.includes('TÍTULO') || n.includes('LICENCIATURA')) {
+    return `Verificación del título profesional y formación académica habilitante (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  if (n.includes('POSTGRADO') || n.includes('DIPLOMADO') || n.includes('MAESTR') || n.includes('DOCTOR')) {
+    return `Cursos y programas de postgrado certificados en el área requerida (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  if (n.includes('CAPACITA') || n.includes('CURSO')) {
+    return `Horas académicas y certificados de actualización o formación continua (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  if (n.includes('PRODUCCI') || n.includes('LIBRO') || n.includes('ARTÍCULO')) {
+    return `Publicaciones científicas, libros y producción intelectual acreditada (Puntaje máximo: ${col.puntaje} pts).`
+  }
+  return `Asigne la puntuación correspondiente de acuerdo al baremo establecido (Puntaje máximo: ${col.puntaje} pts).`
+}
+
+const getCandidateMeritsForCriterion = (row, colOrField) => {
+  const p = row.postulante
+  if (!p) return null
+
+  const name = typeof colOrField === 'string'
+    ? (getFieldLabel(colOrField) + ' ' + (FIELD_DESCRIPTIONS[colOrField] || '')).toUpperCase()
+    : ((colOrField.nombre || '') + ' ' + (colOrField.descripcion || '') + ' ' + (colOrField.seccion || '')).toUpperCase()
+
+  if (name.includes('DOCEN') || name.includes('CÁTEDRA') || name.includes('ASIGNATURA')) {
+    const list = p.experiencias_docencia || p.experienciasDocencia || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Docencia Registrada',
+        items: list.map(d => `${d.asignatura || 'Docencia'} (${d.universidad || '-'}) - ${d.tipo_docencia || ''}`)
+      }
+    }
+  }
+
+  if (name.includes('LABORAL') || name.includes('EJERCICIO') || name.includes('PROFESIONAL') || name.includes('CARGO') || name.includes('TRABAJO')) {
+    const list = p.experiencias_profesionales || p.experienciasProfesionales || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Experiencia Laboral Registrada',
+        items: list.map(e => `${e.cargo_desempenado || 'Cargo'} en ${e.institucion_empresa || '-'} (${e.fecha_inicio ? String(e.fecha_inicio).substring(0,4) : ''} - ${e.fecha_fin ? String(e.fecha_fin).substring(0,4) : 'Actualidad'})`)
+      }
+    }
+  }
+
+  if (name.includes('POSTGRADO') || name.includes('POSGRADO') || name.includes('DIPLOMADO') || name.includes('MAESTR') || name.includes('DOCTOR') || name.includes('ESPECIAL')) {
+    const list = p.formaciones_postgrado || p.formacionesPostgrado || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Postgrados Registrados',
+        items: list.map(pos => `${pos.tipo_postgrado || 'Postgrado'}: ${pos.titulo_postgrado || '-'} (${pos.universidad || '-'})`)
+      }
+    }
+  }
+
+  if (name.includes('CURSO') || name.includes('CAPACITA') || name.includes('TALLER') || name.includes('SEMINARIO')) {
+    const list = p.capacitaciones || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Cursos y Capacitaciones Registrados',
+        items: list.map(c => `${c.nombre_curso || c.nombre || 'Curso'} - ${c.institucion || '-'} ${c.horas_academicas ? '(' + c.horas_academicas + ' hrs)' : ''}`)
+      }
+    }
+  }
+
+  if (name.includes('PRODUCCI') || name.includes('LIBRO') || name.includes('REVISTA') || name.includes('ARTÍCULO') || name.includes('PUBLICAC')) {
+    const list = p.producciones || p.producciones_intelectuales || p.produccionesIntelectuales || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Producción Intelectual Registrada',
+        items: list.map(pr => `${pr.tipo_produccion || 'Obra'}: ${pr.titulo_obra || pr.titulo || '-'} (${pr.editorial_revista || '-'})`)
+      }
+    }
+  }
+
+  if (name.includes('RECONOCIMIENTO') || name.includes('DISTINCI') || name.includes('PREMIO') || name.includes('HONOR')) {
+    const list = p.reconocimientos || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Reconocimientos Registrados',
+        items: list.map(r => `${r.descripcion_reconocimiento || r.titulo || 'Distinción'} - ${r.institucion_otorgante || '-'}`)
+      }
+    }
+  }
+
+  if (name.includes('FORMACI') || name.includes('LICENCIATURA') || name.includes('TÍTULO') || name.includes('ACADÉMIC')) {
+    const list = p.formaciones_academicas || p.formacionesAcademicas || []
+    if (list.length > 0) {
+      return {
+        tipo: 'Formación Pregrado Registrada',
+        items: list.map(f => `${f.academicLevel?.name || f.nivel_academico_raw || 'Licenciatura'}: ${f.career?.name || f.carrera_raw || '-'} (${f.universidad || '-'})`)
+      }
+    }
+  }
+
+  return null
 }
 
 const groupedRows = computed(() => {
