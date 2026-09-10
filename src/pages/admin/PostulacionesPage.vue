@@ -882,11 +882,32 @@
         <!-- MODE 5: INTERACTIVE MERITS MATRIX VIEW     -->
         <!-- ========================================== -->
         <div v-else-if="viewMode === 'matriz'" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
-          <div class="bg-primary text-white p-4 flex items-center justify-between">
+          <div class="bg-primary text-white p-4 flex flex-wrap items-center justify-between gap-3">
             <div class="text-xs font-black uppercase tracking-wider flex items-center gap-2">
               📝 Matriz de Evaluación de Méritos • {{ filterCargo }}
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- Orden selector estático para evitar desplazamientos al evaluar -->
+              <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl text-xs font-bold">
+                <span class="text-[10px] text-white/80 uppercase">Orden:</span>
+                <q-btn-toggle
+                  v-model="matrixSortBy"
+                  dense
+                  rounded
+                  toggle-color="white"
+                  toggle-text-color="primary"
+                  color="transparent"
+                  text-color="white"
+                  size="xs"
+                  unelevated
+                  class="font-black"
+                  :options="[
+                    { label: 'A-Z (Estático)', value: 'alfabetico' },
+                    { label: 'Registro', value: 'registro' },
+                    { label: 'Puntaje', value: 'puntaje' }
+                  ]"
+                />
+              </div>
               <q-btn
                 color="red-7"
                 icon="picture_as_pdf"
@@ -984,7 +1005,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(row, index) in filteredRows" :key="row.id" class="data-row">
+                <tr v-for="(row, index) in matrizRows" :key="row.id" class="data-row">
                   <td class="text-center font-bold sticky-col first-col bg-grey-1">{{ index + 1 }}</td>
                   <td class="font-bold sticky-col second-col bg-white">
                     <span class="text-primary text-xs font-black cursor-pointer hover:underline" @click="viewExpediente(row)">
@@ -992,8 +1013,11 @@
                     </span>
                   </td>
 
-                  <td class="text-center bg-grey-1 text-[9px] font-bold">{{ row.extraInfo?.area || '-' }}</td>
-                  <td class="text-center bg-grey-1 font-bold">{{ row.extraInfo?.anio || '-' }}</td>
+                  <td class="text-center bg-grey-1 font-bold px-2 py-1" style="min-width: 140px; max-width: 190px; font-size: 10px; line-height: 1.25; white-space: normal; word-break: normal;">
+                    {{ row.extraInfo?.area || '-' }}
+                    <q-tooltip v-if="row.extraInfo?.area && row.extraInfo?.area !== '-'">{{ row.extraInfo.area }}</q-tooltip>
+                  </td>
+                  <td class="text-center bg-grey-1 font-bold" style="min-width: 60px;">{{ row.extraInfo?.anio || '-' }}</td>
                   <td class="text-center bg-teal-1 font-bold text-secondary cursor-pointer">
                     Bs. {{ Math.round(row.pretension_salarial || 0) }}
                     <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope" @save="saveRow(row)">
@@ -1497,6 +1521,49 @@ const filteredRows = computed(() => {
   })
 })
 
+// Ordenamiento estático para la Matriz/Baremo de evaluación (evita que los nombres salten o se desplacen al calificar)
+const matrixSortBy = ref('alfabetico')
+
+const matrizRows = computed(() => {
+  const filtered = rows.value.filter((row) => {
+    if (filterSearch.value) {
+      const search = filterSearch.value.toLowerCase()
+      const fullName = `${row.postulante?.nombres} ${row.postulante?.apellidos}`.toLowerCase()
+      const ci = String(row.postulante?.ci || '').toLowerCase()
+      if (!fullName.includes(search) && !ci.includes(search)) return false
+    }
+
+    if (filterSede.value && row.oferta?.sede?.nombre !== filterSede.value) return false
+    if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
+
+    return true
+  })
+
+  return [...filtered].sort((a, b) => {
+    if (matrixSortBy.value === 'puntaje') {
+      const aVal = a.evaluacion?.score_total
+      const bVal = b.evaluacion?.score_total
+      const aEvaluated = aVal !== undefined && aVal !== null
+      const bEvaluated = bVal !== undefined && bVal !== null
+      if (aEvaluated && !bEvaluated) return -1
+      if (!aEvaluated && bEvaluated) return 1
+      if (!aEvaluated && !bEvaluated) return 0
+      return toNumber(bVal) - toNumber(aVal)
+    }
+
+    if (matrixSortBy.value === 'registro') {
+      return (a.id || 0) - (b.id || 0)
+    }
+
+    // Default: 'alfabetico' (ESTÁTICO). Mantiene las filas estables mientras se evalúa
+    const apeA = `${a.postulante?.apellidos || ''} ${a.postulante?.nombres || ''}`.trim().toLowerCase()
+    const apeB = `${b.postulante?.apellidos || ''} ${b.postulante?.nombres || ''}`.trim().toLowerCase()
+    const comp = apeA.localeCompare(apeB)
+    if (comp !== 0) return comp
+    return (a.id || 0) - (b.id || 0)
+  })
+})
+
 // FASE 5: RISK QUEUE COMPUTED (⚠ Auditoría Humana)
 const auditoriaRows = computed(() => {
   const list = rows.value.filter((row) => {
@@ -1620,16 +1687,101 @@ const dynamicColumns = computed(() => {
 const extractExtraInfo = (postulacion) => {
   const p = postulacion.postulante
   if (!p) return { area: '-', anio: '-' }
-  if (p.formaciones_academicas && Array.isArray(p.formaciones_academicas) && p.formaciones_academicas.length > 0) {
-    const mainFormacion = p.formaciones_academicas[0]
-    const area = mainFormacion.carrera || '-'
-    const fecha = mainFormacion.fecha_titulo || mainFormacion.fecha_diploma || ''
-    return {
-      area,
-      anio: String(fecha || '').match(/\d{4}/)?.[0] || '-'
+
+  let area = ''
+  let anio = ''
+
+  // 1. Prioridad: formaciones académicas (revisar camelCase y snake_case)
+  const formaciones = p.formaciones_academicas || p.formacionesAcademicas || []
+  if (Array.isArray(formaciones) && formaciones.length > 0) {
+    for (const f of formaciones) {
+      const cName =
+        f.career?.name ||
+        f.carrera_raw ||
+        f.carrera ||
+        f.professionalArea?.name ||
+        f.professional_area?.name ||
+        f.nivel_academico_normalizado ||
+        f.nivel_academico_raw
+      if (cName && !area) {
+        area = String(cName).trim()
+      }
+      const fecha = f.fecha_titulo || f.fecha_diploma
+      if (fecha && !anio) {
+        const match = String(fecha).match(/\b(19\d\d|20\d\d)\b/)
+        if (match) anio = match[0]
+      }
+      if (area && anio) break
     }
   }
-  return { area: '-', anio: '-' }
+
+  // 2. Prioridad: méritos del postulante (respuestas JSON con profesion/carrera/titulo)
+  const meritos = p.meritos || []
+  if ((!area || !anio) && Array.isArray(meritos) && meritos.length > 0) {
+    // Filtrar méritos de formación de pregrado / académica
+    const formacionMeritos = meritos.filter((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      const cat = (m.tipoDocumento?.categoria || m.tipo_documento?.categoria || '').toUpperCase()
+      const desc = (m.tipoDocumento?.descripcion || m.tipo_documento?.descripcion || '').toUpperCase()
+      return (
+        m.tipo_documento_id === 1 ||
+        cat.includes('FORMACIÓN') ||
+        cat.includes('FORMACION') ||
+        nom.includes('FORMACIÓN') ||
+        nom.includes('FORMACION') ||
+        nom.includes('PREGRADO') ||
+        nom.includes('TÍTULO') ||
+        nom.includes('TITULO') ||
+        desc.includes('PREGRADO')
+      )
+    })
+
+    const targetMeritos = formacionMeritos.length > 0 ? formacionMeritos : meritos
+    for (const m of targetMeritos) {
+      const r = m.respuestas || {}
+      if (!area) {
+        const cand = r.profesion || r.carrera || r.titulo || r.nombre_titulo || r.carrera_egreso || r.area
+        if (cand) area = String(cand).trim()
+      }
+      if (!anio) {
+        const rawDate = r.fecha_titulo || r.fecha_diploma || r.fecha || r.fecha_emision || r.anio || r.gestion
+        if (rawDate) {
+          const match = String(rawDate).match(/\b(19\d\d|20\d\d)\b/)
+          if (match) anio = match[0]
+        }
+      }
+      if (area && anio) break
+    }
+
+    // Si aún no se encontró área, buscar en cualquier mérito que contenga profesión/carrera
+    if (!area) {
+      for (const m of meritos) {
+        const r = m.respuestas || {}
+        const cand = r.profesion || r.carrera || r.titulo || r.nombre_titulo || r.area
+        if (cand) {
+          area = String(cand).trim()
+          if (!anio) {
+            const rawDate = r.fecha_titulo || r.fecha_diploma || r.fecha || r.anio
+            if (rawDate) {
+              const match = String(rawDate).match(/\b(19\d\d|20\d\d)\b/)
+              if (match) anio = match[0]
+            }
+          }
+          break
+        }
+      }
+    }
+  }
+
+  // 3. Fallback a campos directos del postulante si existiesen
+  if (!area && (p.profesion || p.titulo_profesional || p.carrera)) {
+    area = String(p.profesion || p.titulo_profesional || p.carrera).trim()
+  }
+
+  return {
+    area: area || '-',
+    anio: anio || '-'
+  }
 }
 
 const createEvalData = (existing = {}) => {
@@ -1737,7 +1889,7 @@ const debouncedSaveRow = debounce((row) => saveRow(row), 1000)
 const saveAll = async () => {
   saving.value = true
   try {
-    for (const row of filteredRows.value) {
+    for (const row of matrizRows.value) {
       await saveRow(row, true)
     }
     $q.notify({ color: 'positive', message: '¡Todo guardado correctamente!' })
@@ -1750,7 +1902,7 @@ const saveAll = async () => {
 }
 
 const exportMatrixPDF = async () => {
-  const items = filteredRows.value.length > 0 ? filteredRows.value : rows.value
+  const items = matrizRows.value.length > 0 ? matrizRows.value : rows.value
   if (!items || items.length === 0) {
     $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este filtro.' })
     return
@@ -1777,7 +1929,7 @@ const exportMatrixPDF = async () => {
 }
 
 const exportMatrixExcel = async () => {
-  const items = filteredRows.value.length > 0 ? filteredRows.value : rows.value
+  const items = matrizRows.value.length > 0 ? matrizRows.value : rows.value
   if (!items || items.length === 0) {
     $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este filtro.' })
     return
@@ -2338,10 +2490,11 @@ onMounted(async () => {
   padding: 12px 6px !important;
 }
 .sticky-col { position: sticky; z-index: 40; }
-.first-col { left: 0; width: 40px; background-color: #f8f9fa !important; z-index: 45; border-right: 2px solid rgba(102, 51, 153, 0.4); }
+.first-col { left: 0; width: 44px; min-width: 44px; max-width: 44px; background-color: #f8f9fa !important; z-index: 45; border-right: 2px solid rgba(102, 51, 153, 0.4); box-sizing: border-box; }
 .second-col {
-  left: 40px;
-  min-width: 200px;
+  left: 44px;
+  min-width: 220px;
+  max-width: 280px;
   z-index: 45;
   background-color: white !important;
   border-right: 2px solid rgba(102, 51, 153, 0.4);

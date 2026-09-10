@@ -216,8 +216,11 @@
                       </div>
                     </td>
 
-                    <td class="text-center bg-grey-1 text-[9px] font-bold" style="width: 80px; word-break: break-all;">{{ row.extraInfo.area }}</td>
-                    <td class="text-center bg-grey-1 font-bold">{{ row.extraInfo.anio }}</td>
+                    <td class="text-center bg-grey-1 font-bold px-2 py-1" style="min-width: 130px; max-width: 180px; font-size: 10px; line-height: 1.25; white-space: normal; word-break: normal;">
+                      {{ row.extraInfo?.area || '-' }}
+                      <q-tooltip v-if="row.extraInfo?.area && row.extraInfo?.area !== '-'">{{ row.extraInfo.area }}</q-tooltip>
+                    </td>
+                    <td class="text-center bg-grey-1 font-bold" style="min-width: 60px;">{{ row.extraInfo?.anio || '-' }}</td>
                     <td class="text-center bg-teal-1 font-bold text-secondary cursor-pointer">
                       Bs. <br>{{ Math.round(row.pretension_salarial || 0) }}
                       <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope" @save="saveRow(row)">
@@ -435,20 +438,97 @@ const extractExtraInfo = (postulacion) => {
     return { area: '-', anio: '-' }
   }
 
-  // 1. Direct Normalized Formación Académica
-  if (p.formaciones_academicas && Array.isArray(p.formaciones_academicas) && p.formaciones_academicas.length > 0) {
-    const mainFormacion = p.formaciones_academicas[0]
-    const area = mainFormacion.carrera || '-'
-    const fecha = mainFormacion.fecha_titulo || mainFormacion.fecha_diploma || ''
-    return {
-      area,
-      anio: String(fecha || '').match(/\d{4}/)?.[0] || '-'
+  let area = ''
+  let anio = ''
+
+  // 1. Prioridad: Formación Académica (normalizada camelCase y snake_case)
+  const formaciones = p.formaciones_academicas || p.formacionesAcademicas || []
+  if (Array.isArray(formaciones) && formaciones.length > 0) {
+    for (const f of formaciones) {
+      const cName =
+        f.career?.name ||
+        f.carrera_raw ||
+        f.carrera ||
+        f.professionalArea?.name ||
+        f.professional_area?.name ||
+        f.nivel_academico_normalizado ||
+        f.nivel_academico_raw
+      if (cName && !area) {
+        area = String(cName).trim()
+      }
+      const fecha = f.fecha_titulo || f.fecha_diploma
+      if (fecha && !anio) {
+        const match = String(fecha).match(/\b(19\d\d|20\d\d)\b/)
+        if (match) anio = match[0]
+      }
+      if (area && anio) break
     }
   }
 
+  // 2. Prioridad: Méritos del postulante (respuestas JSON con profesion/carrera/titulo)
+  const meritos = p.meritos || []
+  if ((!area || !anio) && Array.isArray(meritos) && meritos.length > 0) {
+    const formacionMeritos = meritos.filter((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      const cat = (m.tipoDocumento?.categoria || m.tipo_documento?.categoria || '').toUpperCase()
+      const desc = (m.tipoDocumento?.descripcion || m.tipo_documento?.descripcion || '').toUpperCase()
+      return (
+        m.tipo_documento_id === 1 ||
+        cat.includes('FORMACIÓN') ||
+        cat.includes('FORMACION') ||
+        nom.includes('FORMACIÓN') ||
+        nom.includes('FORMACION') ||
+        nom.includes('PREGRADO') ||
+        nom.includes('TÍTULO') ||
+        nom.includes('TITULO') ||
+        desc.includes('PREGRADO')
+      )
+    })
+
+    const targetMeritos = formacionMeritos.length > 0 ? formacionMeritos : meritos
+    for (const m of targetMeritos) {
+      const r = m.respuestas || {}
+      if (!area) {
+        const cand = r.profesion || r.carrera || r.titulo || r.nombre_titulo || r.carrera_egreso || r.area
+        if (cand) area = String(cand).trim()
+      }
+      if (!anio) {
+        const rawDate = r.fecha_titulo || r.fecha_diploma || r.fecha || r.fecha_emision || r.anio || r.gestion
+        if (rawDate) {
+          const match = String(rawDate).match(/\b(19\d\d|20\d\d)\b/)
+          if (match) anio = match[0]
+        }
+      }
+      if (area && anio) break
+    }
+
+    if (!area) {
+      for (const m of meritos) {
+        const r = m.respuestas || {}
+        const cand = r.profesion || r.carrera || r.titulo || r.nombre_titulo || r.area
+        if (cand) {
+          area = String(cand).trim()
+          if (!anio) {
+            const rawDate = r.fecha_titulo || r.fecha_diploma || r.fecha || r.anio
+            if (rawDate) {
+              const match = String(rawDate).match(/\b(19\d\d|20\d\d)\b/)
+              if (match) anio = match[0]
+            }
+          }
+          break
+        }
+      }
+    }
+  }
+
+  // 3. Fallback a campos directos del postulante si existiesen
+  if (!area && (p.profesion || p.titulo_profesional || p.carrera)) {
+    area = String(p.profesion || p.titulo_profesional || p.carrera).trim()
+  }
+
   return {
-    area: '-',
-    anio: '-'
+    area: area || '-',
+    anio: anio || '-'
   }
 }
 
@@ -553,6 +633,18 @@ const groupedRows = computed(() => {
     }
     groups[key].items.push(row)
   })
+
+  // Ensure deterministic, static alphabetical ordering
+  Object.values(groups).forEach(g => {
+    g.items.sort((a, b) => {
+      const apeA = `${a.postulante?.apellidos || ''} ${a.postulante?.nombres || ''}`.trim().toLowerCase()
+      const apeB = `${b.postulante?.apellidos || ''} ${b.postulante?.nombres || ''}`.trim().toLowerCase()
+      const comp = apeA.localeCompare(apeB)
+      if (comp !== 0) return comp
+      return (a.id || 0) - (b.id || 0)
+    })
+  })
+
   return groups
 })
 
