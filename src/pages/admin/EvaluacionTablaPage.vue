@@ -114,37 +114,90 @@
                 <span class="text-subtitle1 font-bold opacity-80 uppercase tracking-widest">{{ group.cargo }}</span>
               </div>
             </div>
-            <div class="row items-center gap-2">
-              <div class="text-subtitle2 font-black bg-white text-primary px-4 h-10 flex items-center rounded-xl shadow-inner mr-2">
+            <div class="row items-center gap-2 flex-wrap">
+              <div class="text-subtitle2 font-black bg-white text-primary px-3 h-9 flex items-center rounded-xl shadow-inner">
                 {{ group.items.length }} POSTULANTES
               </div>
+
+              <!-- ORDENADOR DE EVALUACIÓN -->
+              <div class="flex items-center gap-1 bg-white/10 px-2 py-1 rounded-xl text-xs font-bold border border-white/20">
+                <span class="text-[10px] text-white/80 uppercase mr-1">Orden:</span>
+                <q-btn-toggle
+                  v-model="sortMode"
+                  dense
+                  rounded
+                  toggle-color="white"
+                  toggle-text-color="primary"
+                  color="transparent"
+                  text-color="white"
+                  size="xs"
+                  unelevated
+                  class="font-black"
+                  :options="[
+                    { label: '🔤 A-Z', value: 'alfabetico' },
+                    { label: '🎯 Puntaje', value: 'puntaje' },
+                    { label: '⏱️ Registro', value: 'registro' }
+                  ]"
+                />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  :icon="sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'"
+                  :color="sortDirection === 'asc' ? 'amber-4' : 'white'"
+                  @click="sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'"
+                >
+                  <q-tooltip>{{ sortDirection === 'asc' ? 'Ascendente' : 'Descendente' }}</q-tooltip>
+                </q-btn>
+              </div>
+
               <q-btn
                 color="white"
                 text-color="red-9"
                 icon="picture_as_pdf"
                 label="PDF"
                 unelevated
+                size="sm"
                 @click="exportToPDF(group)"
-                class="rounded-xl font-black shadow-md h-10 min-w-[110px]"
-              />
+                class="rounded-xl font-black shadow-md h-9 px-3"
+              >
+                <q-tooltip>Descargar Acta Oficial en PDF</q-tooltip>
+              </q-btn>
               <q-btn
                 color="white"
                 text-color="green-8"
                 icon="description"
                 label="EXCEL"
                 unelevated
+                size="sm"
                 @click="exportToExcel(group)"
-                class="rounded-xl font-black shadow-md h-10 min-w-[110px]"
-              />
+                class="rounded-xl font-black shadow-md h-9 px-3"
+              >
+                <q-tooltip>Descargar Matriz en Excel</q-tooltip>
+              </q-btn>
+              <q-btn
+                color="white"
+                text-color="blue-9"
+                icon="article"
+                label="WORD"
+                unelevated
+                size="sm"
+                @click="exportToWord(group)"
+                class="rounded-xl font-black shadow-md h-9 px-3"
+              >
+                <q-tooltip>Descargar Acta Oficial en Word (.doc)</q-tooltip>
+              </q-btn>
               <q-btn
                 color="secondary"
                 text-color="white"
                 icon="save"
                 label="GUARDAR"
                 unelevated
+                size="sm"
                 :loading="saving"
                 @click="saveGroup(group.items)"
-                class="rounded-xl font-black shadow-md h-10 min-w-[130px]"
+                class="rounded-xl font-black shadow-md h-9 px-4"
               />
             </div>
           </div>
@@ -333,6 +386,7 @@ import ExpedienteDetail from 'components/admin/ExpedienteDetail.vue'
 import ExpedientePDF from 'components/ExpedientePDF.vue'
 import { generateInstitutionalEvaluationPDF } from 'src/utils/institutionalPdfEngine'
 import { exportInstitutionalMatrixExcel } from 'src/utils/institutionalExcelEngine'
+import { exportInstitutionalMatrixWord } from 'src/utils/institutionalWordEngine'
 
 const route = useRoute()
 const router = useRouter()
@@ -350,6 +404,9 @@ const loading = ref(false)
 const saving = ref(false)
 const activeTab = ref(null)
 const selectedSedeName = ref(null)
+
+const sortMode = ref('alfabetico') // 'alfabetico' | 'puntaje' | 'registro'
+const sortDirection = ref('asc')
 
 // Modal Logic
 const showExpedienteModal = ref(false)
@@ -634,14 +691,27 @@ const groupedRows = computed(() => {
     groups[key].items.push(row)
   })
 
-  // Ensure deterministic, static alphabetical ordering
+  const isAsc = sortDirection.value === 'asc'
+
+  // Ensure deterministic ordering based on sortMode
   Object.values(groups).forEach(g => {
     g.items.sort((a, b) => {
+      let diff = 0
+      if (sortMode.value === 'puntaje') {
+        const aVal = a.evaluacion?.score_total ?? calculateTotal(a)
+        const bVal = b.evaluacion?.score_total ?? calculateTotal(b)
+        diff = Number(bVal || 0) - Number(aVal || 0)
+        return isAsc ? -diff : diff
+      }
+      if (sortMode.value === 'registro') {
+        diff = (a.id || 0) - (b.id || 0)
+        return isAsc ? diff : -diff
+      }
       const apeA = `${a.postulante?.apellidos || ''} ${a.postulante?.nombres || ''}`.trim().toLowerCase()
       const apeB = `${b.postulante?.apellidos || ''} ${b.postulante?.nombres || ''}`.trim().toLowerCase()
-      const comp = apeA.localeCompare(apeB)
-      if (comp !== 0) return comp
-      return (a.id || 0) - (b.id || 0)
+      diff = apeA.localeCompare(apeB)
+      if (diff === 0) return (a.id || 0) - (b.id || 0)
+      return isAsc ? diff : -diff
     })
   })
 
@@ -822,6 +892,39 @@ const exportToExcel = async (targetGroup = null) => {
   } catch (err) {
     console.error('Error al exportar Excel:', err)
     $q.notify({ type: 'negative', message: 'Error al generar Excel: ' + (err.message || 'Error desconocido') })
+  } finally {
+    $q.loading.hide()
+  }
+}
+
+const exportToWord = async (targetGroup = null) => {
+  const group = targetGroup || (activeTab.value ? groupedRows.value[activeTab.value] : null) || Object.values(groupedRows.value)[0]
+  if (!group || !group.items || group.items.length === 0) {
+    $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este grupo.' })
+    return
+  }
+
+  try {
+    $q.loading.show({ message: 'Generando Matriz Institucional en Word (.doc)...' })
+    await exportInstitutionalMatrixWord({
+      convocatoria: {
+        titulo: headerInfo.value.nombre,
+        codigo_interno: headerInfo.value.codigo_interno || `CONV-${route.params.id}`,
+        gestion: headerInfo.value.gestion,
+        fecha_inicio: headerInfo.value.fecha_inicio,
+        fecha_cierre: headerInfo.value.fecha_cierre
+      },
+      sede: group.sede || 'TODAS LAS SEDES',
+      cargo: group.cargo || 'TODOS LOS CARGOS',
+      items: group.items,
+      currentMatriz: currentMatriz.value,
+      dynamicColumns: dynamicColumns.value,
+      calculateTotal
+    })
+    $q.notify({ type: 'positive', message: 'Acta Oficial Word descargada con éxito.' })
+  } catch (err) {
+    console.error('Error al exportar Word:', err)
+    $q.notify({ type: 'negative', message: 'Error al generar Word: ' + (err.message || 'Error desconocido') })
   } finally {
     $q.loading.hide()
   }

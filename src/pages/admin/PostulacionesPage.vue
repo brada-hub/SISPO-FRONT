@@ -887,9 +887,9 @@
               📝 Matriz de Evaluación de Méritos • {{ filterCargo }}
             </div>
             <div class="flex flex-wrap items-center gap-2">
-              <!-- Orden selector estático para evitar desplazamientos al evaluar -->
-              <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl text-xs font-bold">
-                <span class="text-[10px] text-white/80 uppercase">Orden:</span>
+              <!-- ORDENADOR FLEXIBLE DE CANDIDATOS EN MATRIZ -->
+              <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl text-xs font-bold border border-white/20">
+                <span class="text-[10px] text-white/80 uppercase">Ordenar:</span>
                 <q-btn-toggle
                   v-model="matrixSortBy"
                   dense
@@ -902,32 +902,62 @@
                   unelevated
                   class="font-black"
                   :options="[
-                    { label: 'A-Z (Estático)', value: 'alfabetico' },
-                    { label: 'Registro', value: 'registro' },
-                    { label: 'Puntaje', value: 'puntaje' }
+                    { label: '🔤 Alfabético (A-Z)', value: 'alfabetico' },
+                    { label: '🎯 Por Puntaje', value: 'puntaje' },
+                    { label: '🤖 Ranking ATS', value: 'ats' },
+                    { label: '⏱️ Registro', value: 'registro' }
                   ]"
                 />
+                <q-btn
+                  flat
+                  round
+                  dense
+                  size="xs"
+                  :icon="matrixSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'"
+                  :color="matrixSortDirection === 'asc' ? 'amber-4' : 'white'"
+                  @click="toggleSortDirection"
+                >
+                  <q-tooltip>{{ matrixSortDirection === 'asc' ? 'Ascendente (A-Z / Menor a Mayor)' : 'Descendente (Z-A / Mayor a Menor)' }}</q-tooltip>
+                </q-btn>
               </div>
+
+              <!-- DESCARGAS OFICIALES: PDF, EXCEL, WORD -->
               <q-btn
                 color="red-7"
                 icon="picture_as_pdf"
-                label="PDF (Oficio)"
+                label="PDF"
                 unelevated
                 rounded
                 size="sm"
                 class="font-black shadow-sm"
                 @click="exportMatrixPDF"
-              />
+              >
+                <q-tooltip>Descargar Acta Oficial PDF (Oficio con el orden actual)</q-tooltip>
+              </q-btn>
               <q-btn
                 color="green-8"
                 icon="table_view"
-                label="Excel (Matriz)"
+                label="Excel"
                 unelevated
                 rounded
                 size="sm"
                 class="font-black shadow-sm"
                 @click="exportMatrixExcel"
-              />
+              >
+                <q-tooltip>Descargar Matriz Excel (con el orden actual)</q-tooltip>
+              </q-btn>
+              <q-btn
+                color="blue-8"
+                icon="description"
+                label="Word"
+                unelevated
+                rounded
+                size="sm"
+                class="font-black shadow-sm"
+                @click="exportMatrixWord"
+              >
+                <q-tooltip>Descargar Acta Oficial en Word (.doc horizontal con el orden actual)</q-tooltip>
+              </q-btn>
               <q-btn
                 color="white"
                 text-color="primary"
@@ -1215,6 +1245,7 @@ import { useQuasar, date, debounce } from 'quasar'
 import { useRouter, useRoute } from 'vue-router'
 import { generateInstitutionalEvaluationPDF } from 'src/utils/institutionalPdfEngine'
 import { exportInstitutionalMatrixExcel, exportInstitutionalGeneralExcel } from 'src/utils/institutionalExcelEngine'
+import { exportInstitutionalMatrixWord } from 'src/utils/institutionalWordEngine'
 
 import { useAuthStore } from 'src/stores/auth-store'
 import PostulanteExpedienteDialog from 'src/components/postulaciones/PostulanteExpedienteDialog.vue'
@@ -1521,8 +1552,21 @@ const filteredRows = computed(() => {
   })
 })
 
-// Ordenamiento estático para la Matriz/Baremo de evaluación (evita que los nombres salten o se desplacen al calificar)
-const matrixSortBy = ref('alfabetico')
+// Ordenamiento flexible para la Matriz/Baremo de evaluación a voluntad del evaluador
+const matrixSortBy = ref('alfabetico') // 'alfabetico' | 'puntaje' | 'ats' | 'registro'
+const matrixSortDirection = ref('asc') // 'asc' | 'desc'
+
+const toggleSortDirection = () => {
+  matrixSortDirection.value = matrixSortDirection.value === 'asc' ? 'desc' : 'asc'
+}
+
+watch(matrixSortBy, (newVal) => {
+  if (newVal === 'puntaje' || newVal === 'ats') {
+    matrixSortDirection.value = 'desc'
+  } else {
+    matrixSortDirection.value = 'asc'
+  }
+})
 
 const matrizRows = computed(() => {
   const filtered = rows.value.filter((row) => {
@@ -1539,28 +1583,50 @@ const matrizRows = computed(() => {
     return true
   })
 
+  const isAsc = matrixSortDirection.value === 'asc'
+
   return [...filtered].sort((a, b) => {
+    let diff = 0
+
     if (matrixSortBy.value === 'puntaje') {
-      const aVal = a.evaluacion?.score_total
-      const bVal = b.evaluacion?.score_total
-      const aEvaluated = aVal !== undefined && aVal !== null
-      const bEvaluated = bVal !== undefined && bVal !== null
-      if (aEvaluated && !bEvaluated) return -1
-      if (!aEvaluated && bEvaluated) return 1
-      if (!aEvaluated && !bEvaluated) return 0
-      return toNumber(bVal) - toNumber(aVal)
+      // Puntaje actual de evaluación de méritos
+      const aVal = a.evaluacion?.score_total ?? calculateTotal(a)
+      const bVal = b.evaluacion?.score_total ?? calculateTotal(b)
+      const aEvaluated = aVal !== undefined && aVal !== null && aVal !== 0
+      const bEvaluated = bVal !== undefined && bVal !== null && bVal !== 0
+
+      if (aEvaluated && !bEvaluated) diff = -1
+      else if (!aEvaluated && bEvaluated) diff = 1
+      else {
+        diff = toNumber(bVal) - toNumber(aVal)
+      }
+      return isAsc ? -diff : diff
+    }
+
+    if (matrixSortBy.value === 'ats') {
+      // Ranking ATS / Compatibilidad global
+      const aAts = a.evaluacion?.score_total ?? a.aiMatchingResult?.score_global ?? a.evaluationResult?.score_total ?? 0
+      const bAts = b.evaluacion?.score_total ?? b.aiMatchingResult?.score_global ?? b.evaluationResult?.score_total ?? 0
+      diff = toNumber(bAts) - toNumber(aAts)
+      if (diff === 0) {
+        diff = (a.id || 0) - (b.id || 0)
+      }
+      return isAsc ? -diff : diff
     }
 
     if (matrixSortBy.value === 'registro') {
-      return (a.id || 0) - (b.id || 0)
+      diff = (a.id || 0) - (b.id || 0)
+      return isAsc ? diff : -diff
     }
 
-    // Default: 'alfabetico' (ESTÁTICO). Mantiene las filas estables mientras se evalúa
+    // Default: 'alfabetico' (A-Z Apellidos y Nombres)
     const apeA = `${a.postulante?.apellidos || ''} ${a.postulante?.nombres || ''}`.trim().toLowerCase()
     const apeB = `${b.postulante?.apellidos || ''} ${b.postulante?.nombres || ''}`.trim().toLowerCase()
-    const comp = apeA.localeCompare(apeB)
-    if (comp !== 0) return comp
-    return (a.id || 0) - (b.id || 0)
+    diff = apeA.localeCompare(apeB)
+    if (diff === 0) {
+      diff = (a.id || 0) - (b.id || 0)
+    }
+    return isAsc ? diff : -diff
   })
 })
 
@@ -1950,6 +2016,33 @@ const exportMatrixExcel = async () => {
   } catch (err) {
     console.error('Error al exportar Excel:', err)
     $q.notify({ type: 'negative', message: 'Error al generar Excel: ' + (err.message || 'Error desconocido') })
+  } finally {
+    $q.loading.hide()
+  }
+}
+
+const exportMatrixWord = async () => {
+  const items = matrizRows.value.length > 0 ? matrizRows.value : rows.value
+  if (!items || items.length === 0) {
+    $q.notify({ type: 'warning', message: 'No hay postulantes para exportar en este filtro.' })
+    return
+  }
+
+  try {
+    $q.loading.show({ message: 'Generando Acta Oficial Institucional en Word (.doc)...' })
+    await exportInstitutionalMatrixWord({
+      convocatoria: selectedConvocatoria.value || {},
+      sede: filterSede.value || 'TODAS LAS SEDES',
+      cargo: filterCargo.value || 'TODOS LOS CARGOS',
+      items,
+      currentMatriz: currentMatriz.value,
+      dynamicColumns: dynamicColumns.value,
+      calculateTotal
+    })
+    $q.notify({ type: 'positive', message: 'Acta Oficial Word descargada con éxito.' })
+  } catch (err) {
+    console.error('Error al exportar Word:', err)
+    $q.notify({ type: 'negative', message: 'Error al generar Word: ' + (err.message || 'Error desconocido') })
   } finally {
     $q.loading.hide()
   }
