@@ -207,7 +207,9 @@
             @click="evaluateAllPending"
             :loading="evaluatingBatch"
           />
-          <q-btn
+          <!-- EXPORT DROPDOWN BUTTON -->
+          <q-btn-dropdown
+            split
             label="Exportar Excel"
             icon="download"
             color="green-8"
@@ -216,7 +218,47 @@
             size="sm"
             class="font-black px-4"
             @click="exportGeneralReport"
-          />
+          >
+            <q-list dense class="min-w-[280px] py-2">
+              <q-item clickable v-close-popup @click="exportGeneralReport">
+                <q-item-section avatar>
+                  <q-icon name="table_chart" color="green-8" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="font-bold text-xs text-gray-800">Reporte Integral con Méritos</q-item-label>
+                  <q-item-label caption class="text-[10px] text-gray-500">
+                    Filtro actual: Formación, posgrados, experiencia, puntajes (24 columnas)
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+
+              <q-separator class="my-1" />
+
+              <q-item clickable v-close-popup @click="exportConvocatoriaReport(selectedConvocatoria)">
+                <q-item-section avatar>
+                  <q-icon name="apartment" color="indigo-8" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="font-bold text-xs text-gray-800">Convocatoria Completa</q-item-label>
+                  <q-item-label caption class="text-[10px] text-gray-500">
+                    Todas las sedes y todos los cargos de la convocatoria
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+
+              <q-item clickable v-close-popup @click="exportMatrixExcel">
+                <q-item-section avatar>
+                  <q-icon name="fact_check" color="teal-8" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label class="font-bold text-xs text-gray-800">Matriz Baremo de Calificación</q-item-label>
+                  <q-item-label caption class="text-[10px] text-gray-500">
+                    Cuadro institucional de puntuaciones por criterio
+                  </q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-btn-dropdown>
           <q-btn
             label="Exportar PDF"
             icon="picture_as_pdf"
@@ -292,7 +334,14 @@
         
         <!-- Cargo-Specific Detailed KPIs -->
         <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="filterEstado = null"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              filterEstado === null ? 'bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Mostrar todos los postulantes del cargo"
+          >
             <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black">
               👥
             </div>
@@ -302,7 +351,14 @@
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="setFilterEstado('evaluados')"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              filterEstado === 'evaluados' ? 'bg-teal-50/70 border-teal-300 ring-2 ring-teal-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Filtrar evaluados con score"
+          >
             <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-black">
               ✓
             </div>
@@ -312,7 +368,14 @@
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="setFilterEstado('sin_evaluar')"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              filterEstado === 'sin_evaluar' ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Filtrar pendientes sin evaluar"
+          >
             <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-black">
               ⏳
             </div>
@@ -322,7 +385,14 @@
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="setFilterEstado('validada')"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              filterEstado === 'validada' || filterEstado === 'seleccionado' ? 'bg-green-50/70 border-green-300 ring-2 ring-green-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Filtrar preseleccionados"
+          >
             <div class="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center font-black">
               ★
             </div>
@@ -332,7 +402,14 @@
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="viewMode = 'auditoria'"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              viewMode === 'auditoria' ? 'bg-orange-50/70 border-orange-300 ring-2 ring-orange-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Ver casos observados en auditoría"
+          >
             <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-700 flex items-center justify-center font-black">
               🔍
             </div>
@@ -342,7 +419,14 @@
             </div>
           </div>
 
-          <div class="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3">
+          <div
+            @click="setFilterEstado('riesgo')"
+            :class="[
+              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
+              filterEstado === 'riesgo' ? 'bg-red-50/70 border-red-300 ring-2 ring-red-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
+            ]"
+            title="Filtrar riesgo alto o crítico"
+          >
             <div class="w-8 h-8 rounded-xl bg-red-50 text-red-700 flex items-center justify-center font-black">
               ⚠
             </div>
@@ -387,7 +471,27 @@
           </div>
 
           <!-- Quick Filters in Workspace -->
-          <div class="flex items-center gap-3 w-full sm:w-auto">
+          <div class="flex items-center gap-2.5 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+            <q-select
+              v-model="filterEstado"
+              :options="statusFilterOptions"
+              option-label="label"
+              option-value="value"
+              emit-value
+              map-options
+              dense
+              outlined
+              rounded
+              bg-color="white"
+              clearable
+              placeholder="Estado ATS..."
+              class="w-full sm:min-w-[190px]"
+            >
+              <template v-slot:prepend>
+                <q-icon name="filter_alt" size="16px" color="primary" />
+              </template>
+            </q-select>
+
             <q-input
               v-model="filterSearch"
               placeholder="Buscar postulante..."
@@ -395,13 +499,40 @@
               outlined
               rounded
               bg-color="white"
-              class="w-full sm:min-w-[240px]"
+              class="w-full sm:min-w-[220px]"
             >
               <template v-slot:prepend>
                 <q-icon name="search" />
               </template>
+              <template v-if="filterSearch" v-slot:append>
+                <q-icon name="close" class="cursor-pointer" @click="filterSearch = ''" />
+              </template>
             </q-input>
           </div>
+        </div>
+
+        <!-- Active Filter Pill Indicator -->
+        <div v-if="filterEstado" class="mb-4 px-2 flex items-center gap-2 animate-fade-in">
+          <span class="text-xs text-gray-500 font-bold">Filtro de Estado Activo:</span>
+          <q-badge
+            color="primary"
+            class="px-3 py-1 text-xs font-black rounded-xl cursor-pointer flex items-center gap-2 shadow-sm"
+            @click="filterEstado = null"
+          >
+            <span>{{ getStatusFilterBadgeLabel(filterEstado) }}</span>
+            <q-icon name="close" size="14px" />
+          </q-badge>
+          <span class="text-xs text-gray-400 font-medium">({{ filteredRows.length }} postulantes encontrados)</span>
+          <q-btn
+            flat
+            dense
+            rounded
+            size="xs"
+            color="primary"
+            label="Limpiar Filtro"
+            class="font-black ml-2"
+            @click="filterEstado = null"
+          />
         </div>
 
         <!-- ========================================== -->
@@ -1395,11 +1526,37 @@ const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
   value,
 }))
 
+const statusFilterOptions = [
+  { label: 'Todos los Estados', value: null },
+  { label: '★ Preseleccionados', value: 'validada' },
+  { label: '📥 Postulados (Enviados)', value: 'enviada' },
+  { label: '⏱ En Evaluación', value: 'en_revision' },
+  { label: '🏆 Seleccionados', value: 'seleccionado' },
+  { label: '⚠️ Con Observación', value: 'observada' },
+  { label: '❌ No Seleccionados', value: 'rechazada' },
+  { label: '✓ Evaluados (Con Score)', value: 'evaluados' },
+  { label: '⏳ Sin Evaluar (Pendientes)', value: 'sin_evaluar' },
+  { label: '🚨 Riesgo Alto / Crítico', value: 'riesgo' },
+]
+
 // Workspace Sede/Cargo Filters
 const filterSearch = ref('')
 const filterEstado = ref(null)
 const filterSede = ref(null)
 const filterCargo = ref(null)
+
+const setFilterEstado = (estado) => {
+  if (filterEstado.value === estado) {
+    filterEstado.value = null
+  } else {
+    filterEstado.value = estado
+  }
+}
+
+const getStatusFilterBadgeLabel = (val) => {
+  const match = statusFilterOptions.find((o) => o.value === val)
+  return match ? match.label : String(val).toUpperCase()
+}
 
 // Watcher to auto-select first cargo when Sede changes
 watch(filterSede, (newSede) => {
@@ -1532,6 +1689,22 @@ const filteredRows = computed(() => {
     // Cargo filter
     if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
 
+    // Estado filter
+    if (filterEstado.value) {
+      if (filterEstado.value === 'validada') {
+        if (row.estado !== 'validada' && row.estado !== 'seleccionado') return false
+      } else if (filterEstado.value === 'evaluados') {
+        if (row.evaluacion?.score_total === undefined || row.evaluacion?.score_total === null) return false
+      } else if (filterEstado.value === 'sin_evaluar') {
+        if (row.evaluacion?.score_total !== undefined && row.evaluacion?.score_total !== null) return false
+      } else if (filterEstado.value === 'riesgo') {
+        const r = row.evaluacion?.nivel_riesgo
+        if (r !== 'critico' && r !== 'alto') return false
+      } else {
+        if (row.estado !== filterEstado.value) return false
+      }
+    }
+
     return true
   })
 
@@ -1579,6 +1752,22 @@ const matrizRows = computed(() => {
 
     if (filterSede.value && row.oferta?.sede?.nombre !== filterSede.value) return false
     if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
+
+    // Estado filter
+    if (filterEstado.value) {
+      if (filterEstado.value === 'validada') {
+        if (row.estado !== 'validada' && row.estado !== 'seleccionado') return false
+      } else if (filterEstado.value === 'evaluados') {
+        if (row.evaluacion?.score_total === undefined || row.evaluacion?.score_total === null) return false
+      } else if (filterEstado.value === 'sin_evaluar') {
+        if (row.evaluacion?.score_total !== undefined && row.evaluacion?.score_total !== null) return false
+      } else if (filterEstado.value === 'riesgo') {
+        const r = row.evaluacion?.nivel_riesgo
+        if (r !== 'critico' && r !== 'alto') return false
+      } else {
+        if (row.estado !== filterEstado.value) return false
+      }
+    }
 
     return true
   })
@@ -1714,13 +1903,21 @@ const moveCandidatePipeline = async (row, direction) => {
 }
 
 // CARGO WORKSPACE DETAILED KPIs
+const cargoRows = computed(() => {
+  return rows.value.filter((row) => {
+    if (filterSede.value && row.oferta?.sede?.nombre !== filterSede.value) return false
+    if (filterCargo.value && row.oferta?.cargo?.nombre !== filterCargo.value) return false
+    return true
+  })
+})
+
 const kpiCargo = computed(() => {
-  const list = filteredRows.value
+  const list = cargoRows.value
   const total = list.length
-  const evaluados = list.filter(r => r.evaluacion?.score_total !== undefined).length
+  const evaluados = list.filter(r => r.evaluacion?.score_total !== undefined && r.evaluacion?.score_total !== null).length
   const sinEvaluar = total - evaluados
   const preseleccionados = list.filter(r => r.estado === 'seleccionado' || r.estado === 'validada').length
-  const auditoria = list.filter(r => r.evaluacion?.clasificacion === 'auditoria_humana').length
+  const auditoria = list.filter(r => r.evaluacion?.clasificacion === 'auditoria_humana' || r.estado === 'observada').length
   const riesgo = list.filter(r => r.evaluacion?.nivel_riesgo === 'critico' || r.evaluacion?.nivel_riesgo === 'alto').length
 
   return { total, evaluados, sinEvaluar, preseleccionados, auditoria, riesgo }
@@ -2049,26 +2246,22 @@ const exportMatrixWord = async () => {
 }
 
 const exportGeneralReport = async () => {
-  if (viewMode.value === 'matriz') {
-    await exportMatrixExcel()
-    return
-  }
-
-  const items = filteredRows.value.length > 0 ? filteredRows.value : rows.value
+  const items = filteredRows.value
   if (!items || items.length === 0) {
-    $q.notify({ type: 'warning', message: 'No hay postulantes para exportar.' })
+    $q.notify({ type: 'warning', message: 'No hay postulantes con los filtros seleccionados para exportar.' })
     return
   }
 
   try {
-    $q.loading.show({ message: 'Generando Reporte General Institucional...' })
+    $q.loading.show({ message: 'Generando Reporte General Institucional con Méritos...' })
     await exportInstitutionalGeneralExcel({
       convocatoria: selectedConvocatoria.value || {},
       items,
       filterSede: filterSede.value || 'TODAS LAS SEDES',
-      filterCargo: filterCargo.value || 'TODOS LOS CARGOS'
+      filterCargo: filterCargo.value || 'TODOS LOS CARGOS',
+      filterEstado: filterEstado.value
     })
-    $q.notify({ type: 'positive', message: 'Reporte General Excel descargado con éxito.' })
+    $q.notify({ type: 'positive', message: 'Reporte General Excel con Méritos descargado con éxito.' })
   } catch (err) {
     console.error('Error al exportar Reporte General:', err)
     $q.notify({ type: 'negative', message: 'Error al generar Reporte General: ' + (err.message || 'Error desconocido') })

@@ -422,11 +422,266 @@ export const exportInstitutionalMatrixExcel = async ({
 /**
  * Export General Candidates Report in Excel with UNITEPC branding
  */
+// Helper functions to format applicant merits for Excel export
+const formatFormaciones = (p) => {
+  if (!p) return '-'
+  const list = []
+  const fArray = p.formaciones_academicas || p.formacionesAcademicas || []
+  if (Array.isArray(fArray) && fArray.length > 0) {
+    fArray.forEach((f) => {
+      const nivel = f.academicLevel?.name || f.nivel_academico_normalizado || f.nivel_academico_raw || 'LICENCIATURA'
+      const carrera = f.career?.name || f.carrera_raw || f.carrera || 'CARRERA NO ESPECIFICADA'
+      const univ = f.universidad || 'UNIVERSIDAD NO ESPECIFICADA'
+      const anio = formatDate(f.fecha_titulo || f.fecha_diploma)
+      list.push(`${nivel}: ${carrera}  |  ${univ}  |  Año: ${anio}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      const cat = (m.tipoDocumento?.categoria || m.tipo_documento?.categoria || '').toUpperCase()
+      if (m.tipo_documento_id === 1 || nom.includes('FORMACIÓN ACADÉMICA') || cat.includes('FORMACIÓN') || nom.includes('PREGRADO')) {
+        const r = m.respuestas || {}
+        const nivel = r.nivel || 'PREGRADO'
+        const carrera = r.profesion || r.carrera || r.titulo || ''
+        const univ = r.universidad || r.institucion || ''
+        const anio = r.fecha_titulo || r.fecha_diploma || r.anio || ''
+        if (carrera || univ) {
+          const entry = `${nivel}: ${carrera || 'PROFESIÓN'}  |  ${univ}  |  Año: ${formatDate(anio)}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatPostgrados = (p) => {
+  if (!p) return '-'
+  const list = []
+  const pArray = p.postgrados || p.formaciones_postgrado || p.formacionesPostgrado || []
+  if (Array.isArray(pArray) && pArray.length > 0) {
+    pArray.forEach((f) => {
+      const tipo = f.tipo_posgrado || 'POSGRADO'
+      const prog = f.nombre_programa || 'PROGRAMA'
+      const inst = f.institucion || 'INSTITUCIÓN'
+      const anio = formatDate(f.fecha_certificacion)
+      list.push(`${tipo}: ${prog}  |  ${inst}  |  Año: ${anio}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 2 || nom.includes('POSGRADO') || nom.includes('POSTGRADO')) {
+        const r = m.respuestas || {}
+        const tipo = r.tipo_posgrado || 'POSGRADO'
+        const prog = r.nombre_programa || r.programa || r.titulo || ''
+        const inst = r.institucion || r.universidad || ''
+        const anio = r.fecha_certificacion || r.fecha || r.anio || ''
+        if (prog || inst) {
+          const entry = `${tipo}: ${prog}  |  ${inst}  |  Año: ${formatDate(anio)}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatDocencia = (p) => {
+  if (!p) return '-'
+  const list = []
+  const dArray = p.experiencias_docencia || p.experienciasDocencia || []
+  if (Array.isArray(dArray) && dArray.length > 0) {
+    dArray.forEach((d) => {
+      const univ = d.universidad || 'UNIVERSIDAD'
+      const carr = d.carrera || 'CARRERA'
+      const asig = d.asignaturas || 'ASIGNATURAS'
+      const per = d.gestion_periodo || 'PERIODO'
+      list.push(`${univ} (${carr})  |  Materias: ${asig}  |  Gestión: ${per}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 3 || nom.includes('DOCENCIA')) {
+        const r = m.respuestas || {}
+        const univ = r.universidad || r.institucion || ''
+        const carr = r.carrera || ''
+        const asig = r.asignaturas || r.materias || ''
+        const per = r.gestion_periodo || r.gestion || r.periodo || ''
+        if (univ || asig) {
+          const entry = `${univ} ${carr ? '(' + carr + ')' : ''}  |  Materias: ${asig}  |  Gestión: ${per}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatExperienciaLaboral = (p) => {
+  if (!p) return '-'
+  const list = []
+  const expArray = p.experiencias_profesionales || p.experienciasProfesionales || []
+  if (Array.isArray(expArray) && expArray.length > 0) {
+    expArray.forEach((e) => {
+      const cargo = e.cargo || 'CARGO'
+      const emp = e.empresa || e.institucion || 'EMPRESA/INSTITUCIÓN'
+      const ini = formatDate(e.fecha_inicio)
+      const fin = e.fecha_fin ? formatDate(e.fecha_fin) : 'Actualidad'
+      const func = e.funciones ? `  |  Funciones: ${e.funciones}` : ''
+      list.push(`${cargo} en ${emp} (${ini} a ${fin})${func}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 4 || (nom.includes('EXPERIENCIA') && !nom.includes('DOCENCIA'))) {
+        const r = m.respuestas || {}
+        const cargo = r.cargo || ''
+        const emp = r.empresa || r.institucion || ''
+        const ini = formatDate(r.fecha_inicio)
+        const fin = r.fecha_fin ? formatDate(r.fecha_fin) : 'Actualidad'
+        if (cargo || emp) {
+          const entry = `${cargo} en ${emp} (${ini} a ${fin})`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatCapacitaciones = (p) => {
+  if (!p) return '-'
+  const list = []
+  const cArray = p.capacitaciones || []
+  if (Array.isArray(cArray) && cArray.length > 0) {
+    cArray.forEach((c) => {
+      const nom = c.nombre_curso || c.nombre || 'CURSO'
+      const inst = c.institucion || 'INSTITUCIÓN'
+      const hrs = c.horas_academicas || c.horas ? `${c.horas_academicas || c.horas} hrs` : ''
+      const fecha = formatDate(c.fecha)
+      list.push(`${nom}  |  ${inst}  |  ${hrs}  |  ${fecha}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 5 || nom.includes('CAPACITACI') || nom.includes('CURSO')) {
+        const r = m.respuestas || {}
+        const cNom = r.nombre || r.curso || ''
+        const inst = r.institucion || ''
+        const hrs = r.horas ? `${r.horas} hrs` : ''
+        const fecha = formatDate(r.fecha)
+        if (cNom || inst) {
+          const entry = `${cNom}  |  ${inst}  |  ${hrs}  |  ${fecha}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatProduccion = (p) => {
+  if (!p) return '-'
+  const list = []
+  const prodArray = p.producciones || p.producciones_intelectuales || p.produccionesIntelectuales || []
+  if (Array.isArray(prodArray) && prodArray.length > 0) {
+    prodArray.forEach((pr) => {
+      const tipo = pr.tipo_produccion || pr.tipo || 'PUBLICACIÓN'
+      const tit = pr.titulo_obra || pr.titulo || 'TÍTULO'
+      const ed = pr.editorial_revista || pr.editorial || ''
+      const fecha = formatDate(pr.fecha_publicacion || pr.fecha)
+      list.push(`${tipo}: ${tit}  |  ${ed}  |  ${fecha}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 6 || nom.includes('PRODUCCI') || nom.includes('LIBRO') || nom.includes('ARTÍCULO')) {
+        const r = m.respuestas || {}
+        const tipo = r.tipo || 'PUBLICACIÓN'
+        const tit = r.titulo || ''
+        const ed = r.editorial || ''
+        const fecha = formatDate(r.fecha)
+        if (tit) {
+          const entry = `${tipo}: ${tit}  |  ${ed}  |  ${fecha}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatReconocimientos = (p) => {
+  if (!p) return '-'
+  const list = []
+  const recArray = p.reconocimientos || []
+  if (Array.isArray(recArray) && recArray.length > 0) {
+    recArray.forEach((r) => {
+      const desc = r.descripcion_reconocimiento || r.titulo || 'DISTINCIÓN'
+      const inst = r.institucion_otorgante || r.institucion || ''
+      const fecha = formatDate(r.fecha)
+      list.push(`${desc}  |  ${inst}  |  ${fecha}`)
+    })
+  }
+
+  if (Array.isArray(p.meritos)) {
+    p.meritos.forEach((m) => {
+      const nom = (m.tipoDocumento?.nombre || m.tipo_documento?.nombre || '').toUpperCase()
+      if (m.tipo_documento_id === 7 || nom.includes('RECONOCIMIENTO') || nom.includes('DISTINCI')) {
+        const r = m.respuestas || {}
+        const tit = r.titulo || ''
+        const inst = r.institucion || ''
+        const fecha = formatDate(r.fecha)
+        if (tit) {
+          const entry = `${tit}  |  ${inst}  |  ${fecha}`
+          if (!list.includes(entry)) list.push(entry)
+        }
+      }
+    })
+  }
+
+  return list.length > 0 ? list.map((item, i) => `[${i + 1}] ${item}`).join('\n') : '-'
+}
+
+const formatReferencias = (p) => {
+  if (!p) return '-'
+  const refs = []
+  if (p.ref_personal_celular) {
+    refs.push(`Personal: ${p.ref_personal_parentesco ? '(' + p.ref_personal_parentesco + ')' : ''} Cel: ${p.ref_personal_celular}`)
+  }
+  if (p.ref_laboral_celular || p.ref_laboral_detalle) {
+    refs.push(`Laboral: ${p.ref_laboral_detalle || ''} Cel: ${p.ref_laboral_celular || '-'}`)
+  }
+  return refs.length > 0 ? refs.join('\n') : '-'
+}
+
+/**
+ * Export General Candidates Report in Excel with UNITEPC branding and ALL MERIT DETAILS
+ */
 export const exportInstitutionalGeneralExcel = async ({
   convocatoria = {},
   items = [],
   filterSede = 'TODAS LAS SEDES',
-  filterCargo = 'TODOS LOS CARGOS'
+  filterCargo = 'TODOS LOS CARGOS',
+  filterEstado = null
 }) => {
   if (!items || items.length === 0) {
     throw new Error('No hay postulantes para exportar en este reporte.')
@@ -441,16 +696,18 @@ export const exportInstitutionalGeneralExcel = async ({
   const convoGestion = convocatoria.gestion || new Date().getFullYear()
   const nowStr = new Date().toLocaleString('es-BO', { dateStyle: 'short', timeStyle: 'short' })
 
-  const worksheet = workbook.addWorksheet('Postulantes', {
+  const estadoLabel = filterEstado ? `ESTADO: ${String(filterEstado).toUpperCase()}` : 'TODOS LOS ESTADOS'
+
+  const worksheet = workbook.addWorksheet('Postulantes y Méritos', {
     views: [{ showGridLines: true }]
   })
 
-  // 1. BANNER ROWS
-  const lastColLetter = 'L' // 12 columns
+  // 1. BANNER ROWS (24 Columns: A to X)
+  const lastColLetter = 'X'
 
   worksheet.mergeCells(`A1:${lastColLetter}1`)
   const row1 = worksheet.getCell('A1')
-  row1.value = 'UNIVERSIDAD TÉCNICA PRIVADA COSMOS  •  REPORTE GENERAL DE POSTULANTES'
+  row1.value = 'UNIVERSIDAD TÉCNICA PRIVADA COSMOS  •  REPORTE INTEGRAL DE POSTULANTES Y MÉRITOS'
   row1.font = { name: 'Calibri', size: 14, bold: true, color: { argb: COLORS.white } }
   row1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.purplePrimary } }
   row1.alignment = { vertical: 'middle', horizontal: 'center' }
@@ -466,39 +723,53 @@ export const exportInstitutionalGeneralExcel = async ({
 
   worksheet.mergeCells(`A3:${lastColLetter}3`)
   const row3 = worksheet.getCell('A3')
-  row3.value = `CONVOCATORIA: [${convoCode}] ${convoTitle}  |  GESTIÓN: ${convoGestion}  |  TOTAL REGISTRADOS: ${items.length}  |  FECHA EMISIÓN: ${nowStr}`
+  row3.value = `CONVOCATORIA: [${convoCode}] ${convoTitle}  |  SEDE: ${filterSede.toUpperCase()}  |  CARGO: ${filterCargo.toUpperCase()}  |  ${estadoLabel}  |  TOTAL: ${items.length}  |  EMISIÓN: ${nowStr}`
   row3.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: COLORS.purplePrimary } }
   row3.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3EFF7' } }
   row3.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
-  worksheet.getRow(3).height = 20
+  worksheet.getRow(3).height = 22
 
   worksheet.getRow(4).height = 8 // Spacer
 
-  // 2. HEADERS (Row 5)
+  // 2. HEADERS (Row 5) - 24 Full Columns
   const headers = [
     'NO.',
-    'SEDE',
-    'CARGO INSTITUCIONAL',
+    'SEDE ACADÉMICA',
+    'CARGO CONCURSADO',
+    'ESTADO POSTULACIÓN',
     'NOMBRES Y APELLIDOS',
     'CÉDULA IDENTIDAD',
-    'CORREO ELECTRÓNICO',
     'CELULAR',
+    'CORREO ELECTRÓNICO',
+    'NACIONALIDAD',
+    'DIRECCIÓN DOMICILIO',
     'PRETENSIÓN (BS)',
-    'ESTADO POSTULACIÓN',
-    'PUNTAJE TOTAL',
+    'FECHA POSTULACIÓN',
+    'PUNTAJE EVALUACIÓN',
+    'CLASIFICACIÓN ATS',
     'NIVEL RIESGO',
-    'FECHA POSTULACIÓN'
+    'OBSERVACIONES EVALUACIÓN',
+    'FORMACIÓN ACADÉMICA (TÍTULOS PREGRADO)',
+    'FORMACIÓN EN POSGRADO (DIPLOMADOS / MAESTRÍAS / DOCTORADOS)',
+    'EXPERIENCIA DOCENTE UNIVERSITARIA',
+    'EXPERIENCIA LABORAL / PROFESIONAL',
+    'CURSOS, TALLERES Y CAPACITACIONES',
+    'PRODUCCIÓN INTELECTUAL (LIBROS / ARTÍCULOS)',
+    'DISTINCIONES Y RECONOCIMIENTOS',
+    'REFERENCIAS (PERSONALES Y LABORALES)'
   ]
 
   worksheet.addRow(headers)
   const headerRow = worksheet.getRow(5)
-  headerRow.height = 26
+  headerRow.height = 28
 
   for (let c = 1; c <= headers.length; c++) {
     const cell = headerRow.getCell(c)
     cell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: COLORS.white } }
-    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: COLORS.purplePrimary } }
-    cell.alignment = { vertical: 'middle', horizontal: 'center' }
+    // Columns 17-24 have slightly distinct header color for clarity
+    const bgHeader = c >= 17 ? COLORS.purpleSoft : COLORS.purplePrimary
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bgHeader } }
+    cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
     cell.border = {
       top: { style: 'thin', color: { argb: COLORS.borderLight } },
       left: { style: 'thin', color: { argb: COLORS.borderLight } },
@@ -511,25 +782,60 @@ export const exportInstitutionalGeneralExcel = async ({
   items.forEach((r, idx) => {
     const isEven = idx % 2 === 1
     const rowBg = isEven ? COLORS.slateLight : COLORS.white
-    const scoreVal = r.evaluacion?.score_total ? Number(r.evaluacion.score_total) : (r.score_total ? Number(r.score_total) : null)
+    const p = r.postulante || {}
+    const ev = r.evaluacion || {}
+    const scoreVal = ev.score_total !== undefined && ev.score_total !== null
+      ? Number(ev.score_total)
+      : (r.score_total ? Number(r.score_total) : null)
     const scoreStr = scoreVal !== null ? `${scoreVal.toFixed(1)} pts` : 'Sin evaluar'
+
+    const formacionesStr = formatFormaciones(p)
+    const postgradosStr = formatPostgrados(p)
+    const docenciaStr = formatDocencia(p)
+    const laboralStr = formatExperienciaLaboral(p)
+    const capacitacionesStr = formatCapacitaciones(p)
+    const produccionStr = formatProduccion(p)
+    const reconocimientosStr = formatReconocimientos(p)
+    const referenciasStr = formatReferencias(p)
+    const obsStr = ev.observaciones || ev.review_reason_summary || '-'
 
     const dataRow = worksheet.addRow([
       idx + 1,
       (r.oferta?.sede?.nombre || filterSede || '-').toUpperCase(),
       (r.oferta?.cargo?.nombre || filterCargo || '-').toUpperCase(),
-      `${r.postulante?.nombres || ''} ${r.postulante?.apellidos || ''}`.trim().toUpperCase(),
-      `${r.postulante?.ci || ''} ${r.postulante?.ci_expedido || ''}`.trim(),
-      (r.postulante?.email || '-').toLowerCase(),
-      r.postulante?.celular || '-',
-      Number(r.pretension_salarial || 0),
       (r.estado || 'PENDIENTE').toUpperCase(),
+      `${p.nombres || ''} ${p.apellidos || ''}`.trim().toUpperCase(),
+      `${p.ci || ''} ${p.ci_expedido || ''}`.trim(),
+      p.celular || '-',
+      (p.email || '-').toLowerCase(),
+      (p.nacionalidad || 'BOLIVIANA').toUpperCase(),
+      p.direccion_domicilio || '-',
+      Number(r.pretension_salarial || 0),
+      formatDate(r.fecha_postulacion || r.created_at),
       scoreStr,
-      (r.evaluacion?.nivel_riesgo || '-').toUpperCase(),
-      formatDate(r.fecha_postulacion || r.created_at)
+      (ev.clasificacion || ev.clasificacion_ia || '-').toUpperCase(),
+      (ev.nivel_riesgo || '-').toUpperCase(),
+      obsStr,
+      formacionesStr,
+      postgradosStr,
+      docenciaStr,
+      laboralStr,
+      capacitacionesStr,
+      produccionStr,
+      reconocimientosStr,
+      referenciasStr
     ])
 
-    dataRow.height = 20
+    // Dynamic row height based on content
+    const maxLines = Math.max(
+      formacionesStr.split('\n').length,
+      postgradosStr.split('\n').length,
+      docenciaStr.split('\n').length,
+      laboralStr.split('\n').length,
+      capacitacionesStr.split('\n').length,
+      1
+    )
+    dataRow.height = Math.min(Math.max(22, maxLines * 16), 140)
 
     for (let c = 1; c <= headers.length; c++) {
       const cell = dataRow.getCell(c)
@@ -540,51 +846,71 @@ export const exportInstitutionalGeneralExcel = async ({
         bottom: { style: 'thin', color: { argb: COLORS.borderSoft } },
         right: { style: 'thin', color: { argb: COLORS.borderSoft } }
       }
-      cell.alignment = { vertical: 'middle', horizontal: 'center' }
       cell.font = { name: 'Calibri', size: 8 }
+      cell.alignment = { vertical: 'top', horizontal: 'center' }
 
-      // Name & Email left-aligned
-      if (c === 4) {
-        cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
-        cell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: COLORS.slateDark } }
-      }
-      if (c === 6) {
-        cell.alignment = { vertical: 'middle', horizontal: 'left', indent: 1 }
+      // Names & Emails
+      if (c === 5 || c === 8 || c === 10) {
+        cell.alignment = { vertical: 'top', horizontal: 'left', indent: 1 }
+        if (c === 5) cell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: COLORS.slateDark } }
       }
 
       // Salary Pretension
-      if (c === 8) {
+      if (c === 11) {
         cell.numFmt = '"Bs." #,##0'
-        cell.alignment = { vertical: 'middle', horizontal: 'right', indent: 1 }
+        cell.alignment = { vertical: 'top', horizontal: 'right', indent: 1 }
+        cell.font = { name: 'Calibri', size: 8.5, bold: true, color: { argb: COLORS.emeraldAccent } }
       }
 
       // Score styling
-      if (c === 10 && scoreVal !== null) {
+      if (c === 13 && scoreVal !== null) {
         const isApproved = scoreVal >= 51
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: isApproved ? COLORS.approvedFill : COLORS.failedFill } }
         cell.font = { name: 'Calibri', size: 8, bold: true, color: { argb: isApproved ? COLORS.approvedText : COLORS.failedText } }
       }
+
+      // Observations and Merit columns (16 to 24): left align and wrap text
+      if (c >= 16) {
+        cell.alignment = { vertical: 'top', horizontal: 'left', wrapText: true }
+      }
     }
   })
 
-  // 4. COLUMN WIDTHS
+  // 4. COLUMN WIDTHS (24 Columns)
   worksheet.columns = [
-    { width: 6 },  // No.
-    { width: 16 }, // Sede
-    { width: 28 }, // Cargo
-    { width: 34 }, // Postulante
-    { width: 15 }, // CI
-    { width: 28 }, // Email
-    { width: 15 }, // Celular
-    { width: 17 }, // Pretensión
-    { width: 16 }, // Estado
-    { width: 15 }, // Score
-    { width: 14 }, // Riesgo
-    { width: 16 }  // Fecha
+    { width: 6 },  // 1: No.
+    { width: 16 }, // 2: Sede
+    { width: 28 }, // 3: Cargo
+    { width: 16 }, // 4: Estado
+    { width: 34 }, // 5: Postulante
+    { width: 15 }, // 6: CI
+    { width: 15 }, // 7: Celular
+    { width: 28 }, // 8: Email
+    { width: 14 }, // 9: Nacionalidad
+    { width: 22 }, // 10: Dirección
+    { width: 16 }, // 11: Pretensión
+    { width: 15 }, // 12: Fecha
+    { width: 15 }, // 13: Score
+    { width: 18 }, // 14: Clasificación
+    { width: 14 }, // 15: Riesgo
+    { width: 30 }, // 16: Observaciones
+    { width: 45 }, // 17: Formación Académica
+    { width: 45 }, // 18: Posgrados
+    { width: 45 }, // 19: Docencia
+    { width: 45 }, // 20: Experiencia Laboral
+    { width: 40 }, // 21: Capacitaciones
+    { width: 35 }, // 22: Producción Intelectual
+    { width: 30 }, // 23: Reconocimientos
+    { width: 30 }  // 24: Referencias
   ]
 
   // 5. SAVE
+  const cleanSede = filterSede.replace(/[\\/*?:[\]]/g, '_').substring(0, 15)
+  const cleanCargo = filterCargo.replace(/[\\/*?:[\]]/g, '_').substring(0, 20)
+  const cleanEstado = filterEstado ? `_${String(filterEstado).toUpperCase()}` : ''
+  const fileName = `REPORTE_POSTULANTES_${convoCode}_${cleanSede}_${cleanCargo}${cleanEstado}_${convoGestion}.xlsx`.replace(/\s+/g, '_')
+
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
-  saveAs(blob, `REPORTE_GENERAL_${convoCode}_${convoGestion}.xlsx`)
+  saveAs(blob, fileName)
 }
