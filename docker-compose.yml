@@ -1,0 +1,14 @@
+services:
+  sispo-front:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - VITE_SISPO_BACK_URL=${VITE_SISPO_BACK_URL:-http://localhost:8001}
+        - VITE_SSO_FRONT_URL=${VITE_SSO_FRONT_URL:-http://localhost:9000}
+        - VITE_SIGVA_FRONT_URL=${VITE_SIGVA_FRONT_URL:-http://localhost:9002}
+        - VITE_SHARED_ASSET_URL=${VITE_SHARED_ASSET_URL:-http://localhost:8000}
+    container_name: sispo-frontend
+    restart: unless-stopped
+    ports:
+      - "9001:9001"

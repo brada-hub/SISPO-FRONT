@@ -30,5 +30,18 @@ yarn-error.log*
 *.sln
 
 # local .env files
+.env
 .env.local*
 .env.*.local
+!.env.example
+!.env.production.example
+!.env.docker.example
+
+# Builds and archives
+dist
+dist/
+build/
+*.zip
+*.tar
+*.tar.gz
+
