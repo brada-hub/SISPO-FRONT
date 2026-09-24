@@ -19,13 +19,14 @@ ENV VITE_SISPO_BACK_URL=$VITE_SISPO_BACK_URL \
 # Copiar manifiesto de dependencias
 COPY package*.json ./
 
-# Instalar dependencias
-RUN npm ci || npm install
+# Instalar dependencias sin ejecutar scripts de postinstall antes de tiempo
+RUN npm ci --ignore-scripts || npm install --ignore-scripts
 
 # Copiar código fuente
 COPY . .
 
-# Compilar proyecto Quasar SPA
+# Preparar y compilar proyecto Quasar SPA
+RUN npx quasar prepare || true
 RUN npm run build
 
 # ==========================================
