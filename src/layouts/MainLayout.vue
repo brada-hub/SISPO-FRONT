@@ -219,14 +219,19 @@ const adminMenuItems = computed(() => {
     { permission: 'usuarios', label: 'Usuarios SISPO', icon: 'manage_accounts', to: '/admin/usuarios' },
   ]
 
-  const roleNames = [
-    String(user?.rol?.name || user?.rol?.nombre || '').toUpperCase(),
-    ...((user?.roles || []).map(role => String(role?.name || role?.nombre || role).toUpperCase())),
-  ].filter(Boolean)
+  const accessMetadata = user?.access_metadata || {}
+  const sispoAccess = accessMetadata['sispo'] || accessMetadata['SISPO'] || {}
 
-  const isGlobalAdmin = roleNames.some(role => ['ADMINISTRADOR', 'SUPER ADMIN', 'SUPERADMIN', 'ADMIN'].includes(role))
+  const isGlobalAdmin = !!user?.is_global_admin || (user?.roles || []).some(role => {
+    const sysId = Number(role?.sistema_id ?? 0)
+    const rName = String(role?.nombres || role?.name || role?.nombre || '').toUpperCase()
+    return sysId === 1 && ['ADMINISTRADOR', 'SUPER ADMIN', 'SUPERADMIN', 'ADMIN', 'DIRECTOR (ENCARGADO)'].includes(rName)
+  })
 
-  if (isGlobalAdmin) {
+  const isSispoAdmin = (sispoAccess.roles || []).some(r => ['ADMINISTRADOR', 'ADMIN'].includes(String(r).toUpperCase()))
+    || (user?.roles || []).some(role => Number(role?.sistema_id) === 2 && ['ADMINISTRADOR', 'ADMIN'].includes(String(role?.nombres || role?.name || role?.nombre || '').toUpperCase()))
+
+  if (isGlobalAdmin || isSispoAdmin) {
     return sispoItems
   }
 

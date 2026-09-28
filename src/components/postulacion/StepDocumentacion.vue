@@ -180,8 +180,21 @@ const $q = useQuasar()
 const emit = defineEmits(['next', 'back'])
 const store = usePostulacionStore()
 const myForm = ref(null)
-
 const handleNext = async () => {
+  // 1. Limpiar registros adicionales completamente vacíos antes de validar
+  store.meritos.forEach(m => {
+    if (m.registros && m.registros.length > 1) {
+      m.registros = m.registros.filter((r, idx) => {
+        const hasText = Object.values(r.respuestas || {}).some(v => v !== null && v !== undefined && String(v).trim() !== '')
+        const hasFile = Object.values(r.archivos || {}).some(f => !!f)
+        return hasText || hasFile || (!m.opcional && idx === 0)
+      })
+      if (m.registros.length === 0) {
+        m.registros = [{ respuestas: {}, archivos: {} }]
+      }
+    }
+  })
+
   const success = await myForm.value.validate()
 
   if (!success) {
@@ -189,36 +202,31 @@ const handleNext = async () => {
     return
   }
 
-  // Validación manual de seguridad extra
+  // 2. Validación manual de seguridad extra
   const faltyMerit = store.meritos.find(m => {
-    // Si es opcional, verificar si se ha empezado a llenar
-    if (m.opcional) {
-      const hasAnyContent = m.registros.some(r => {
-        const hasTextValue = Object.values(r.respuestas).some(v => v && String(v).trim() !== '')
-        const hasFileValue = Object.values(r.archivos).some(v => v)
-        return hasTextValue || hasFileValue
+    return m.registros.some(r => {
+      const hasTextValue = Object.values(r.respuestas || {}).some(v => v !== null && v !== undefined && String(v).trim() !== '')
+      const hasFileValue = Object.values(r.archivos || {}).some(v => !!v)
+
+      // Si el mérito es opcional y este registro está totalmente vacío, se permite
+      if (m.opcional && !hasTextValue && !hasFileValue) {
+        return false
+      }
+
+      const isFieldRequired = (c) => c.required !== false && c.requerido !== false && c.obligatorio !== false
+      const campos = m.campos || m.fields || []
+      const configArchivos = m.config_archivos || m.required_documents || []
+
+      const camposFaltantes = campos.filter(isFieldRequired).some((c, i) => {
+        const key = c.key || c.id || c.name || `campo_${i}`
+        const val = r.respuestas[key]
+        return val === null || val === undefined || String(val).trim() === ''
       })
 
-      // Si es opcional y no tiene nada lleno, se ignora la validación para este mérito
-      if (!hasAnyContent) return false
-    }
-
-    // Para exigidos o para opcionales con contenido, validar campos obligatorios
-    return m.registros.some(r => {
-      const isFieldRequired = (c) => c.required !== false && c.requerido !== false && c.obligatorio !== false && c.config?.required !== false && c.config?.requerido !== false
-
-      const camposFaltantes = (m.campos || []).filter(isFieldRequired)
-        .some((c, i) => {
-           const key = c.key || c.id || c.name || `campo_${i}`
-           const val = r.respuestas[key]
-           return !val || (typeof val === 'string' && val.trim() === '')
-        })
-
-      const archivosFaltantes = (m.config_archivos || []).filter(isFieldRequired)
-        .some((a, i) => {
-           const key = a.id || a.key || `archivo_${i}`
-           return !r.archivos[key]
-        })
+      const archivosFaltantes = configArchivos.filter(isFieldRequired).some((a, i) => {
+        const key = a.id || a.key || `archivo_${i}`
+        return !r.archivos[key]
+      })
 
       return camposFaltantes || archivosFaltantes
     })
@@ -227,7 +235,7 @@ const handleNext = async () => {
   if (faltyMerit) {
     $q.notify({
       type: 'negative',
-      message: `Debe completar la "Información Requerida" y los "Documentos de Respaldo" para: ${faltyMerit.nombre}`,
+      message: `Debe completar todos los datos requeridos y adjuntos para: ${faltyMerit.nombre}`,
       position: 'top',
       icon: 'warning'
     })

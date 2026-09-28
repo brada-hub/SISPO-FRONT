@@ -573,6 +573,13 @@ export const usePostulacionStore = defineStore('postulacion', () => {
         let globalIndex = 0
         for (const merito of meritos.value) {
           for (const reg of merito.registros) {
+            const hasText = reg.respuestas && typeof reg.respuestas === 'object' && Object.values(reg.respuestas).some(val => val !== null && val !== undefined && String(val).trim() !== '')
+            const hasFiles = reg.archivos && typeof reg.archivos === 'object' && Object.values(reg.archivos).some(file => file instanceof File)
+
+            if (merito.opcional && !hasText && !hasFiles) {
+              continue
+            }
+
             formData.append(`meritos[${globalIndex}][tipo_documento_id]`, merito.tipo_documento_id)
 
             // Add responses

@@ -44,22 +44,57 @@ export default route(function ({ store }) {
         authStore.setToken(tokenValue)
         localStorage.setItem('sispo_token', tokenValue)
         
-        const b64 = String(userEncoded).replace(/ /g, '+')
-        const decodedStr = decodeURIComponent(escape(atob(decodeURIComponent(b64))))
-        const userData = JSON.parse(decodedStr)
+        let userData = null
+        try {
+          const cleanB64 = decodeURIComponent(String(userEncoded)).replace(/ /g, '+')
+          const binary = atob(cleanB64)
+          const bytes = new Uint8Array(binary.length)
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i)
+          }
+          const decodedStr = new TextDecoder().decode(bytes)
+          userData = JSON.parse(decodedStr)
+        } catch {
+          const fallbackStr = decodeURIComponent(escape(atob(decodeURIComponent(String(userEncoded)).replace(/ /g, '+'))))
+          userData = JSON.parse(fallbackStr)
+        }
 
-        if (userData.persona) {
+        // === VERIFICACIÓN DE ACCESO A SISPO (STRICT RBAC) ===
+        const accessMetadata = userData.access_metadata || {}
+        const sispoAccess = accessMetadata['sispo'] || accessMetadata['SISPO'] || null
+        const isGlobalAdmin = !!userData.is_global_admin || (userData.roles || []).some(r => {
+          const sysId = Number(r?.sistema_id ?? 0)
+          const rName = String(r?.nombres || r?.name || r?.nombre || '').toUpperCase()
+          return sysId === 1 && ['ADMINISTRADOR', 'ADMIN', 'SUPER ADMIN', 'SUPERADMIN', 'DIRECTOR (ENCARGADO)'].includes(rName)
+        })
+        const sispoRole = (userData.roles || []).find(r => Number(r?.sistema_id) === 2)
+        const hasSispoAccess = isGlobalAdmin || !!sispoRole || (sispoAccess && ((sispoAccess.roles && sispoAccess.roles.length > 0) || (sispoAccess.permissions && sispoAccess.permissions.length > 0)))
+
+        if (!hasSispoAccess) {
+          console.warn('SSO: Usuario sin permisos para SISPO')
+          alert('Acceso no autorizado: No tienes permisos asignados para el sistema SISPO.')
+          authStore.logout()
+          const ssoBaseUrl = String(import.meta.env.VITE_SSO_FRONT_URL || 'http://localhost:9000').replace(/\/+$/, '')
+          window.location.href = ssoBaseUrl
+          return
+        }
+
+        if (userData && userData.persona) {
           userData.nombres = userData.persona.nombres || userData.nombres
           userData.apellido_paterno = userData.persona.apellido_paterno || userData.persona.primer_apellido || userData.apellido_paterno
           userData.apellido_materno = userData.persona.apellido_materno || userData.persona.segundo_apellido || userData.apellido_materno
         }
 
-        authStore.setUser(userData)
-        localStorage.setItem('sispo_user', JSON.stringify(userData))
+        if (userData) {
+          authStore.setUser(userData)
+          localStorage.setItem('sispo_user', JSON.stringify(userData))
+        }
         
         // Redirigir a admin limpio
-      } catch {
-        console.error('Error procesando SSO en Router')
+        window.history.replaceState({}, '', '/admin')
+        return next({ path: '/admin', replace: true })
+      } catch (e) {
+        console.error('Error procesando SSO en Router SISPO:', e)
       }
     }
 
@@ -80,32 +115,41 @@ export default route(function ({ store }) {
 
     // 4. Guardas de Protección
     const isAuthenticated = !!(authStore.token || localStorage.getItem('sispo_token'))
-    
-    // Si la ruta empieza con /admin, protegerla
     const isAdminRoute = to.path.startsWith('/admin')
 
-    if (isAdminRoute && !isAuthenticated) {
-      return next('/login')
+    if (isAdminRoute) {
+      if (!isAuthenticated) {
+        const ssoBaseUrl = String(import.meta.env.VITE_SSO_FRONT_URL || 'http://localhost:9000').replace(/\/+$/, '')
+        const returnTo = encodeURIComponent(`${window.location.origin}/admin`)
+        window.location.href = `${ssoBaseUrl}/login?returnTo=${returnTo}`
+        return
+      }
+
+      // Verificar que el usuario tenga acceso a SISPO
+      const currentUser = authStore.user
+      if (currentUser) {
+        const cMeta = currentUser.access_metadata || {}
+        const cSispo = cMeta['sispo'] || cMeta['SISPO']
+        const cIsGlobal = !!currentUser.is_global_admin || (currentUser.roles || []).some(r => {
+          const sysId = Number(r?.sistema_id ?? 0)
+          const rName = String(r?.nombres || r?.name || r?.nombre || '').toUpperCase()
+          return sysId === 1 && ['ADMINISTRADOR', 'ADMIN', 'SUPER ADMIN', 'SUPERADMIN', 'DIRECTOR (ENCARGADO)'].includes(rName)
+        })
+        const cHasRole = (currentUser.roles || []).some(r => Number(r?.sistema_id) === 2)
+        const cAllowed = cIsGlobal || cHasRole || (cSispo && ((cSispo.roles && cSispo.roles.length > 0) || (cSispo.permissions && cSispo.permissions.length > 0)))
+
+        if (!cAllowed) {
+          alert('Acceso no autorizado: No tienes permisos asignados para el sistema SISPO.')
+          authStore.logout()
+          const ssoBaseUrl = String(import.meta.env.VITE_SSO_FRONT_URL || 'http://localhost:9000').replace(/\/+$/, '')
+          window.location.href = ssoBaseUrl
+          return
+        }
+      }
     }
 
     if (isAuthenticated && to.path === '/login') {
       return next('/admin')
-    }
-
-    // 5. Validación de Permisos SISPO (Ultra-tolerante)
-    if (isAdminRoute && authStore.user) {
-      const metadata = authStore.user.access_metadata || {}
-      const perms = authStore.user.permisos || []
-      
-      // Chequear si tiene algo relacionado con SISPO o Postulaciones
-      const hasSispo = Object.keys(metadata).some(k => k.toLowerCase().includes('sispo')) || 
-                       perms.some((p) => p.includes('postulaciones') || p.includes('dashboard')) ||
-                       authStore.user.role === 'admin'
-
-      if (!hasSispo) {
-        // Si no tiene permiso de SISPO, pero tiene de SIGVA, avisar (pero no redirigir agresivamente todavía)
-        console.warn('Usuario sin permisos específicos de SISPO detectado.')
-      }
     }
 
     return next()

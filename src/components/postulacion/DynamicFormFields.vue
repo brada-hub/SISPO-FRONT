@@ -50,20 +50,19 @@
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-5">
             <div v-for="(campo, cIdx) in normalizedCampos" :key="cIdx" class="relative">
-              <!-- REMAINS CLEAN WITHOUT REPETITIVE BADGES -->
 
               <!-- SELECT -->
               <q-select
                 v-if="campo.tipo === 'select'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label + (campo.required ? ' *' : '')"
+                :label="campo.label + (isFieldRequired(campo, reg) ? ' *' : '')"
                 :options="campo.opciones || []"
                 outlined dense emit-value map-options
-                :placeholder="campo.required ? 'Obligatorio' : ''"
+                :placeholder="isFieldRequired(campo, reg) ? 'Obligatorio' : ''"
                 class="custom-field transition-all"
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
-                :rules="campo.required ? [val => !!val || 'Este campo es obligatorio'] : []"
+                :rules="isFieldRequired(campo, reg) ? [val => (val !== null && val !== undefined && String(val).trim() !== '') || 'Este campo es obligatorio'] : []"
                 lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
@@ -75,12 +74,12 @@
               <q-input
                 v-else-if="campo.tipo === 'date'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label + (campo.required ? ' *' : '')"
+                :label="campo.label + (isFieldRequired(campo, reg) ? ' *' : '')"
                 type="date" outlined dense stack-label
                 class="custom-field transition-all"
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
-                :rules="campo.required ? [val => !!val || 'Fecha requerida'] : []"
+                :rules="isFieldRequired(campo, reg) ? [val => !!val || 'Fecha requerida'] : []"
                 lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
@@ -92,13 +91,13 @@
               <q-input
                 v-else-if="campo.tipo === 'textarea'"
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label + (campo.required ? ' *' : '')"
+                :label="campo.label + (isFieldRequired(campo, reg) ? ' *' : '')"
                 type="textarea" rows="3" outlined dense class="md:col-span-2 custom-field transition-all"
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
                 style="text-transform: uppercase"
-                @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
-                :rules="campo.required ? [val => !!val || 'Detalle obligatorio'] : []"
+                @update:model-value="val => reg.respuestas[campo.key] = val ? val.toUpperCase() : ''"
+                :rules="isFieldRequired(campo, reg) ? [val => (val !== null && val !== undefined && String(val).trim() !== '') || 'Detalle obligatorio'] : []"
                 lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
@@ -110,15 +109,15 @@
               <q-input
                 v-else
                 v-model="reg.respuestas[campo.key]"
-                :label="campo.label + (campo.required ? ' *' : '')"
+                :label="campo.label + (isFieldRequired(campo, reg) ? ' *' : '')"
                 :type="campo.tipo === 'number' ? 'number' : 'text'"
                 outlined dense
                 class="custom-field transition-all"
                 :bg-color="reg.respuestas[campo.key] ? 'teal-50' : 'white'"
                 :color="reg.respuestas[campo.key] ? 'teal' : 'primary'"
-                style="text-transform: uppercase"
-                @update:model-value="val => reg.respuestas[campo.key] = val.toUpperCase()"
-                :rules="campo.required ? [val => !!val || 'Campo obligatorio'] : []"
+                :style="campo.tipo === 'number' ? '' : 'text-transform: uppercase'"
+                @update:model-value="val => { if (campo.tipo !== 'number') reg.respuestas[campo.key] = val ? val.toUpperCase() : '' }"
+                :rules="isFieldRequired(campo, reg) ? [val => (val !== null && val !== undefined && String(val).trim() !== '') || 'Campo obligatorio'] : []"
                 lazy-rules
               >
                 <template v-slot:append v-if="reg.respuestas[campo.key]">
@@ -141,7 +140,7 @@
               </div>
               <q-file
                 v-model="reg.archivos[archivo.key]"
-                :label="'Subir ' + archivo.label + (archivo.required ? ' *' : '')"
+                :label="'Subir ' + archivo.label + (isArchivoRequired(archivo, reg) ? ' *' : '')"
                 outlined dense
                 accept=".pdf,.jpg,.jpeg,.png"
                 max-file-size="2097152"
@@ -149,7 +148,7 @@
                 class="rounded-xl shadow-sm transition-all"
                 :color="reg.archivos[archivo.key] ? 'teal' : 'primary'"
                 :bg-color="reg.archivos[archivo.key] ? 'teal-50' : 'white'"
-                :rules="archivo.required ? [val => !!val || 'El archivo es obligatorio'] : []"
+                :rules="isArchivoRequired(archivo, reg) ? [val => !!val || 'El archivo es obligatorio'] : []"
                 lazy-rules
               >
                 <template v-slot:prepend>
@@ -215,15 +214,33 @@ const onRejected = (rejectedEntries) => {
   })
 }
 
+// Check if a specific record card has started being filled
+const isRecordActive = (reg) => {
+  if (!props.merito.opcional) return true
+  const hasText = Object.values(reg.respuestas || {}).some(v => v !== null && v !== undefined && String(v).trim() !== '')
+  const hasFiles = Object.values(reg.archivos || {}).some(f => !!f)
+  return hasText || hasFiles
+}
+
+const isFieldRequired = (campo, reg) => {
+  if (!campo.is_canonically_required) return false
+  return isRecordActive(reg)
+}
+
+const isArchivoRequired = (archivo, reg) => {
+  if (!archivo.is_canonically_required) return false
+  return isRecordActive(reg)
+}
+
 // Normalize campos to handle different data structures
 const normalizedCampos = computed(() => {
-  const campos = props.merito.campos || []
+  const campos = props.merito.campos || props.merito.fields || []
   if (Array.isArray(campos)) {
     return campos.map((c, i) => ({
       key: c.key || c.id || c.name || `campo_${i}`,
       label: c.label || c.nombre || c.name || `Campo ${i + 1}`,
       tipo: c.tipo || c.type || 'text',
-      required: !props.merito.opcional && c.required !== false && c.requerido !== false && c.obligatorio !== false,
+      is_canonically_required: c.required !== false && c.requerido !== false && c.obligatorio !== false,
       opciones: c.opciones || c.options || [],
     }))
   }
@@ -232,17 +249,12 @@ const normalizedCampos = computed(() => {
 
 // Normalize archivos to handle multiple file inputs per merit
 const normalizedArchivos = computed(() => {
-  const archivos = props.merito.config_archivos || []
+  const archivos = props.merito.config_archivos || props.merito.required_documents || []
   if (Array.isArray(archivos)) {
     return archivos.map((a, i) => ({
       key: a.id || a.key || `archivo_${i}`,
       label: a.label || a.nombre || a.name || `Archivo ${i + 1}`,
-      required: !props.merito.opcional && !!(
-        a.requerido || a.obligatorio || a.required || a.es_obligatorio ||
-        a.config?.required || a.config?.requerido || a.config?.obligatorio ||
-        a.requerido == 1 || a.requerido == '1' ||
-        a.obligatorio == 1 || a.obligatorio == '1'
-      ),
+      is_canonically_required: a.required !== false && a.requerido !== false && a.obligatorio !== false,
     }))
   }
   return []
@@ -258,39 +270,15 @@ const normalizedArchivos = computed(() => {
   box-shadow: 0 20px 40px -15px rgba(102, 51, 153, 0.08);
 }
 
-.custom-field :deep(.q-field__inner) {
-  border-radius: 14px;
-}
-
-.file-dropzone {
-  transition: all 0.3s ease;
-}
-.file-dropzone:hover {
-  background: rgba(0, 153, 153, 0.08);
-  border-color: #00999944;
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 3s infinite;
-}
-
-@keyframes bounce-slow {
-  0%, 100% { transform: translateY(-5%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
-  50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+.custom-field :deep(.q-field__control) {
+  border-radius: 12px;
 }
 
 .btn-gradient {
-  background: linear-gradient(135deg, #009999 0%, #663399 100%);
+  background: linear-gradient(135deg, #663399 0%, #009999 100%);
   color: white;
-  font-weight: 900;
+  font-weight: 800;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  letter-spacing: 0.15em;
-  transition: all 0.3s ease;
-  border: none;
-}
-.btn-gradient:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 20px -5px rgba(0, 153, 153, 0.4);
-  filter: brightness(1.1);
 }
 </style>

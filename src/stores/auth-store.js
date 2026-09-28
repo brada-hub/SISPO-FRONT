@@ -52,15 +52,17 @@ const normalizePersona = (persona) => {
 }
 
 const resolveRoleBySystem = (user, targetSystemId) => {
-  const matchingRole = (user?.roles || []).find((role) =>
-    (role?.permissions || []).some((permission) => Number(permission?.sistema_id) === targetSystemId)
-  )
+  const matchingRole = (user?.roles || []).find((role) => {
+    if (Number(role?.sistema_id) === targetSystemId) return true
+    return (role?.permissions || []).some((permission) => Number(permission?.sistema_id) === targetSystemId)
+  })
 
   if (!matchingRole) return null
 
+  const roleName = matchingRole.nombres || matchingRole.nombre || matchingRole.name || 'Usuario'
   return {
-    name: matchingRole.name || matchingRole.nombre || 'Usuario',
-    nombre: matchingRole.nombre || matchingRole.name || 'Usuario'
+    name: roleName,
+    nombre: roleName
   }
 }
 
@@ -115,7 +117,10 @@ export const useAuthStore = defineStore('auth', {
   getters: {
     isLoggedIn: (state) => !!state.token,
     currentUser: (state) => state.user,
-    can: (state) => (permission) => state.user?.permisos?.includes(permission),
+    can: (state) => (permission) => {
+      if (state.user?.is_global_admin) return true;
+      return state.user?.permisos?.includes(permission);
+    },
     fullName: (state) => buildFullName(state.user),
     userPhoto: (state) => normalizePhotoUrl(
       state.user?.persona?.foto_url
@@ -222,7 +227,7 @@ export const useAuthStore = defineStore('auth', {
       const sispoAccess = accessMetadata.sispo || accessMetadata.SISPO || { roles: [], permissions: [] }
       const permissionsFromRoles = (user.roles || [])
         .flatMap((role) => role?.permissions || [])
-        .map((permission) => permission?.nombres || permission?.name || permission)
+        .map((permission) => permission?.nombres || permission?.name || permission?.nombre || permission)
         .filter(Boolean)
 
       const normalizedPersona = normalizePersona(user.persona)
@@ -234,16 +239,16 @@ export const useAuthStore = defineStore('auth', {
       ]))
 
       if (sispoAccess.roles?.length > 0) {
-        user.rol = { name: sispoAccess.roles[0], nombre: sispoAccess.roles[0], ...user.rol }
+        const rName = sispoAccess.roles[0]
+        user.rol = { name: rName, nombre: rName, nombres: rName }
+      } else if (user.is_global_admin) {
+        user.rol = { name: 'Administrador', nombre: 'Administrador', nombres: 'Administrador' }
       } else {
         const systemRole = resolveRoleBySystem(user, 2)
         if (systemRole) {
           user.rol = { ...systemRole, ...user.rol }
-        } else if (!user.rol && user.roles?.length > 0) {
-          user.rol = {
-            name: user.roles[0].name || user.roles[0].nombre || user.roles[0],
-            nombre: user.roles[0].nombre || user.roles[0].name || user.roles[0]
-          }
+        } else {
+          user.rol = { name: 'Usuario', nombre: 'Usuario', nombres: 'Usuario' }
         }
       }
 

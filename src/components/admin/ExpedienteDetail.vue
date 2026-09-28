@@ -376,7 +376,18 @@ const filteredMeritos = computed(() => {
 
      // 2. Formación Postgrado
      if (!allowedIds || allowedIds.includes(2)) {
-        const items = (p.postgrados || []).map(row => ({
+        const rawRows = (p.postgrados || []).filter(row => {
+           if (!row.institucion && !row.fecha_certificacion) {
+              const hasComplete = (p.postgrados || []).some(other =>
+                 other.id !== row.id &&
+                 String(other.nombre_programa || '').trim().toUpperCase() === String(row.nombre_programa || '').trim().toUpperCase() &&
+                 (other.institucion || other.fecha_certificacion)
+              )
+              if (hasComplete) return false
+           }
+           return true
+        })
+        const items = rawRows.map(row => ({
            id: row.id,
            tipo_documento_id: 2,
            respuestas: {
@@ -412,7 +423,18 @@ const filteredMeritos = computed(() => {
 
      // 3. Experiencia Docencia
      if (!allowedIds || allowedIds.includes(3)) {
-        const items = (p.experiencias_docencia || []).map(row => ({
+        const rawRows = (p.experiencias_docencia || []).filter(row => {
+           if (!row.carrera && !row.asignaturas && !row.gestion_periodo) {
+              const hasComplete = (p.experiencias_docencia || []).some(other =>
+                 other.id !== row.id &&
+                 String(other.universidad || '').trim().toUpperCase() === String(row.universidad || '').trim().toUpperCase() &&
+                 (other.carrera || other.asignaturas || other.gestion_periodo)
+              )
+              if (hasComplete) return false
+           }
+           return true
+        })
+        const items = rawRows.map(row => ({
            id: row.id,
            tipo_documento_id: 3,
            respuestas: {
