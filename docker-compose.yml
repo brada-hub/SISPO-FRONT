@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
+        - VITE_API_BASE=${VITE_API_BASE:-https://api.sispo.unitepc.pro/api}
         - VITE_SISPO_BACK_URL=${VITE_SISPO_BACK_URL:-https://api.sispo.unitepc.pro}
         - VITE_SSO_FRONT_URL=${VITE_SSO_FRONT_URL:-https://sigeth.unitepc.pro}
         - VITE_SIGVA_FRONT_URL=${VITE_SIGVA_FRONT_URL:-https://sigva.unitepc.pro}
