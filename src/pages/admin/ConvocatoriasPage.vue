@@ -13,6 +13,25 @@
 
       <div class="flex gap-2">
         <q-btn
+          label="Solicitudes de Carrera"
+          icon="inbox"
+          color="indigo-9"
+          unelevated
+          rounded
+          class="shadow-sm font-bold px-4 py-2 relative"
+          @click="showSolicitudesModal = true"
+        >
+          <q-badge
+            v-if="solicitudesPendientesCount > 0"
+            color="orange-8"
+            floating
+            rounded
+            class="font-black text-[10px]"
+          >
+            {{ solicitudesPendientesCount }}
+          </q-badge>
+        </q-btn>
+        <q-btn
           label="Crear Convocatoria"
           icon="add_circle"
           color="teal-8"
@@ -1077,6 +1096,12 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Modal de Solicitudes de Convocatoria (Requerimientos de Carrera) -->
+    <SolicitudesConvocatoriasModal
+      v-model="showSolicitudesModal"
+      @convocatoria-creada="handleConvocatoriaCreadaDesdeSolicitud"
+    />
   </q-page>
 </template>
 
@@ -1086,6 +1111,7 @@ import { useRouter } from 'vue-router'
 import { api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import AficheV2 from 'components/AficheV2.vue'
+import SolicitudesConvocatoriasModal from 'components/convocatorias/SolicitudesConvocatoriasModal.vue'
 import { adaptSchemas } from 'src/utils/meritSchemaAdapter'
 
 const $q = useQuasar()
@@ -1101,6 +1127,9 @@ const isEdit = ref(false)
 const isViewMode = ref(false)
 const filter = ref('')
 const form = ref({ id: null, titulo: '', codigo_interno: '', descripcion: '', contenido_detalle: '', fecha_inicio: '', fecha_cierre: '', hora_limite: '23:59', ofertas: [], config_requisitos_ids: [], requisitos_opcionales: [], requisitos_afiche: {}, matriz_evaluacion: [], estado: 'draft', draft_versions: [], score_profile_id: null })
+
+const showSolicitudesModal = ref(false)
+const solicitudesPendientesCount = ref(0)
 
 const router = useRouter()
 const currentTab = ref('Todas')
@@ -1781,8 +1810,29 @@ watch(() => form.value.ofertas, (newOffers) => {
   form.value.codigo_interno = `CONV-${year}-${cSigla}-${sSigla}`.toUpperCase()
 }, { deep: true, immediate: true })
 
+const checkSolicitudesPendientes = async () => {
+  try {
+    const { data } = await api.get('/solicitudes-convocatorias?estado=pendiente')
+    solicitudesPendientesCount.value = data?.length || 0
+  } catch {
+    // silently catch
+  }
+}
+
+const handleConvocatoriaCreadaDesdeSolicitud = async (nuevaConv) => {
+  await loadData()
+  openDialog(nuevaConv)
+  $q.notify({
+    type: 'positive',
+    message: '¡Convocatoria creada desde la solicitud de carrera! Revise las fechas y requisitos en el wizard.',
+    position: 'top',
+    timeout: 4000
+  })
+}
+
 const loadData = async () => {
   loading.value = true
+  checkSolicitudesPendientes()
   try {
     const [convRes, sedeRes, cargoRes, reqRes, plantillasRes] = await Promise.all([
        api.get('/convocatorias'), 

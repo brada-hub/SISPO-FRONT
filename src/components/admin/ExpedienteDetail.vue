@@ -41,7 +41,7 @@
               <div class="text-right">
                   <div class="text-[11px] font-bold text-[#663399]">FOTOGRAFÍA<br/>PERSONAL:</div>
               </div>
-              <div class="photo-box-header">
+              <div class="photo-box-header relative group cursor-pointer" @click="openUploadModal('foto', 'Fotografía Personal')">
                 <img
                   v-if="postulacion?.postulante?.foto_perfil_path"
                   :src="getFileUrl(postulacion.postulante.foto_perfil_path)"
@@ -50,6 +50,9 @@
                 />
                 <div v-else class="text-[9px] text-grey-6 text-center italic p-1">
                   Sin fotografía registrada
+                </div>
+                <div class="no-print text-[9px] text-blue-7 font-bold text-center mt-1 underline">
+                  {{ postulacion?.postulante?.foto_perfil_path ? 'Cambiar Foto' : '+ Subir Foto' }}
                 </div>
               </div>
             </div>
@@ -79,12 +82,21 @@
               <td class="label">CÉDULA DE IDENTIDAD:</td>
               <td class="value">
                 <div class="row no-wrap items-center gap-4">
-                  <a v-if="postulacion?.postulante?.ci_archivo_path" @click="previewFile(postulacion.postulante.ci_archivo_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
-                    VER AQUÍ
-                  </a>
-                  <div class="qr-box-small">
-                    <QrcodeVue v-if="postulacion?.postulante?.ci_archivo_path" :value="getFileUrl(postulacion.postulante.ci_archivo_path)" :size="60" level="M" render-as="svg" />
-                  </div>
+                  <template v-if="postulacion?.postulante?.ci_archivo_path">
+                    <a @click="previewFile(postulacion.postulante.ci_archivo_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
+                    </a>
+                    <q-btn flat round dense icon="upload" color="primary" size="xs" class="no-print" @click="openUploadModal('ci', 'Cédula de Identidad')">
+                      <q-tooltip>Reemplazar C.I. (Admin)</q-tooltip>
+                    </q-btn>
+                    <div class="qr-box-small">
+                      <QrcodeVue :value="getFileUrl(postulacion.postulante.ci_archivo_path)" :size="60" level="M" render-as="svg" />
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-xs text-grey-6 italic">Sin documento adjunto</span>
+                    <q-btn unelevated dense size="xs" color="primary" icon="cloud_upload" label="Subir C.I." class="no-print q-px-sm" @click="openUploadModal('ci', 'Cédula de Identidad')" />
+                  </template>
                 </div>
               </td>
             </tr>
@@ -110,16 +122,25 @@
                 {{ postulacion?.email || postulacion?.postulante?.email_institucional }}
               </td>
             </tr>
-            <tr v-if="postulacion?.postulante?.carta_postulacion_path && !postulacion?.rol_id">
+            <tr v-if="!postulacion?.rol_id">
               <td class="label">CARTA DE POSTULACIÓN:</td>
               <td class="value">
                 <div class="row no-wrap items-center gap-4">
-                  <a v-if="postulacion?.postulante?.carta_postulacion_path" @click="previewFile(postulacion.postulante.carta_postulacion_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
-                    VER AQUÍ
-                  </a>
-                  <div class="qr-box-small">
-                    <QrcodeVue v-if="postulacion?.postulante?.carta_postulacion_path" :value="getFileUrl(postulacion.postulante.carta_postulacion_path)" :size="60" level="M" render-as="svg" />
-                  </div>
+                  <template v-if="postulacion?.postulante?.carta_postulacion_path">
+                    <a @click="previewFile(postulacion.postulante.carta_postulacion_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
+                    </a>
+                    <q-btn flat round dense icon="upload" color="primary" size="xs" class="no-print" @click="openUploadModal('carta', 'Carta de Postulación')">
+                      <q-tooltip>Reemplazar Carta (Admin)</q-tooltip>
+                    </q-btn>
+                    <div class="qr-box-small">
+                      <QrcodeVue :value="getFileUrl(postulacion.postulante.carta_postulacion_path)" :size="60" level="M" render-as="svg" />
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-xs text-grey-6 italic">Sin documento adjunto</span>
+                    <q-btn unelevated dense size="xs" color="primary" icon="cloud_upload" label="Subir Carta" class="no-print q-px-sm" @click="openUploadModal('carta', 'Carta de Postulación')" />
+                  </template>
                 </div>
               </td>
             </tr>
@@ -127,12 +148,21 @@
               <td class="label">CURRICULUM VITAE:</td>
               <td class="value">
                 <div class="row no-wrap items-center gap-4">
-                  <a v-if="postulacion?.postulante?.cv_pdf_path" @click="previewFile(postulacion.postulante.cv_pdf_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
-                    VER AQUÍ
-                  </a>
-                  <div class="qr-box-small">
-                    <QrcodeVue v-if="postulacion?.postulante?.cv_pdf_path" :value="getFileUrl(postulacion.postulante.cv_pdf_path)" :size="60" level="M" render-as="svg" />
-                  </div>
+                  <template v-if="postulacion?.postulante?.cv_pdf_path">
+                    <a @click="previewFile(postulacion.postulante.cv_pdf_path)" class="text-xs text-blue-8 underline cursor-pointer flex-1 font-bold uppercase">
+                      VER AQUÍ
+                    </a>
+                    <q-btn flat round dense icon="upload" color="primary" size="xs" class="no-print" @click="openUploadModal('cv', 'Curriculum Vitae (PDF)')">
+                      <q-tooltip>Reemplazar CV (Admin)</q-tooltip>
+                    </q-btn>
+                    <div class="qr-box-small">
+                      <QrcodeVue :value="getFileUrl(postulacion.postulante.cv_pdf_path)" :size="60" level="M" render-as="svg" />
+                    </div>
+                  </template>
+                  <template v-else>
+                    <span class="text-xs text-grey-6 italic">Sin documento adjunto</span>
+                    <q-btn unelevated dense size="xs" color="primary" icon="cloud_upload" label="Subir CV" class="no-print q-px-sm" @click="openUploadModal('cv', 'Curriculum Vitae (PDF)')" />
+                  </template>
                 </div>
               </td>
             </tr>
@@ -197,32 +227,48 @@
                   <template v-for="configArch in group.tipo?.config_archivos?.filter(a => a.after_campo === campo.key)" :key="configArch.id">
                     <td class="text-center">
                       <div v-if="getMeritoFile(merito, configArch.id)" class="flex flex-col items-center justify-center">
-                        <div class="no-print mb-1">
+                        <div class="no-print mb-1 flex items-center justify-center gap-1">
                           <a @click="previewFile(getMeritoFile(merito, configArch.id))" class="text-[9px] text-blue-7 underline cursor-pointer font-bold uppercase tracking-tighter">
                             VER AQUÍ
                           </a>
+                          <q-btn flat round dense icon="upload" color="primary" size="xs" class="no-print" @click="openUploadModal(getUploadTypeForMerito(group.tipo?.id, configArch.id), configArch.label || 'Certificado', merito.id)">
+                            <q-tooltip>Reemplazar archivo</q-tooltip>
+                          </q-btn>
                         </div>
                         <div class="qr-box-small no-border">
                           <QrcodeVue :value="getFileUrl(getMeritoFile(merito, configArch.id))" :size="75" level="M" render-as="svg" />
                         </div>
                       </div>
-                      <div v-else>—</div>
+                      <div v-else class="flex flex-col items-center justify-center py-1">
+                        <span class="text-grey-5 text-xs">—</span>
+                        <q-btn flat dense icon="cloud_upload" color="primary" size="xs" class="no-print mt-1" label="Subir" @click="openUploadModal(getUploadTypeForMerito(group.tipo?.id, configArch.id), configArch.label || 'Certificado', merito.id)">
+                          <q-tooltip>Subir archivo de respaldo</q-tooltip>
+                        </q-btn>
+                      </div>
                     </td>
                   </template>
                 </template>
                 <template v-for="configArch in group.tipo?.config_archivos?.filter(a => !a.after_campo)" :key="configArch.id">
                   <td class="text-center">
                     <div v-if="getMeritoFile(merito, configArch.id)" class="flex flex-col items-center justify-center">
-                      <div class="no-print mb-1">
+                      <div class="no-print mb-1 flex items-center justify-center gap-1">
                         <a @click="previewFile(getMeritoFile(merito, configArch.id))" class="text-[9px] text-blue-7 underline cursor-pointer font-bold uppercase tracking-tighter">
                           VER AQUÍ
                         </a>
+                        <q-btn flat round dense icon="upload" color="primary" size="xs" class="no-print" @click="openUploadModal(getUploadTypeForMerito(group.tipo?.id, configArch.id), configArch.label || 'Certificado', merito.id)">
+                          <q-tooltip>Reemplazar archivo</q-tooltip>
+                        </q-btn>
                       </div>
                       <div class="qr-box-small no-border">
                         <QrcodeVue :value="getFileUrl(getMeritoFile(merito, configArch.id))" :size="75" level="M" render-as="svg" />
                       </div>
                     </div>
-                    <div v-else>—</div>
+                    <div v-else class="flex flex-col items-center justify-center py-1">
+                      <span class="text-grey-5 text-xs">—</span>
+                      <q-btn flat dense icon="cloud_upload" color="primary" size="xs" class="no-print mt-1" label="Subir" @click="openUploadModal(getUploadTypeForMerito(group.tipo?.id, configArch.id), configArch.label || 'Certificado', merito.id)">
+                        <q-tooltip>Subir archivo de respaldo</q-tooltip>
+                      </q-btn>
+                    </div>
                   </td>
                 </template>
               </tr>
@@ -277,6 +323,16 @@
          </div>
       </div>
     </div>
+
+    <!-- ADMIN DOCUMENT UPLOAD MODAL -->
+    <AdminDocumentUploadModal
+      v-model="uploadModalOpen"
+      :postulacion-id="postulacion?.id || props.postulacionId"
+      :document-type="uploadDocType"
+      :document-title="uploadDocTitle"
+      :record-id="uploadRecordId"
+      @uploaded="handleDocumentUploaded"
+    />
   </div>
 </template>
 
@@ -285,6 +341,7 @@ import { ref, computed, watch } from 'vue'
 import { api } from 'boot/axios'
 import QrcodeVue from 'qrcode.vue'
 import AiPanel from '../Ai/AiPanel.vue'
+import AdminDocumentUploadModal from './AdminDocumentUploadModal.vue'
 
 const activeTab = ref('tradicional')
 
@@ -663,6 +720,42 @@ const romanize = (num) => {
   const lookup = { M: 1000, CM: 900, D: 500, CD: 400, C: 100, XC: 90, L: 50, XL: 40, X: 10, IX: 9, V: 5, IV: 4, I: 1 }
   let roman = ''; for (let i in lookup) { while (num >= lookup[i]) { roman += i; num -= lookup[i] } }
   return roman
+}
+
+// ==========================================
+// ADMIN DOCUMENT UPLOAD MANAGEMENT
+// ==========================================
+const uploadModalOpen = ref(false)
+const uploadDocType = ref('ci')
+const uploadDocTitle = ref('Cédula de Identidad')
+const uploadRecordId = ref(null)
+
+const openUploadModal = (type, title, recordId = null) => {
+  uploadDocType.value = type
+  uploadDocTitle.value = title
+  uploadRecordId.value = recordId
+  uploadModalOpen.value = true
+}
+
+const getUploadTypeForMerito = (tipoId, configId) => {
+  if (tipoId === 1) return configId === 'diploma' ? 'diploma' : 'titulo'
+  if (tipoId === 2) return 'certificado_posgrado'
+  if (tipoId === 3) return 'respaldo_docencia'
+  if (tipoId === 4) return 'certificado_trabajo'
+  if (tipoId === 5) return 'certificado_capacitacion'
+  if (tipoId === 6) return 'evidencia_produccion'
+  if (tipoId === 7) return 'reconocimiento'
+  return configId || 'certificado_trabajo'
+}
+
+const handleDocumentUploaded = async ({ path, postulante: updatedPostulante }) => {
+  if (postulacion.value?.postulante && updatedPostulante) {
+    postulacion.value.postulante = { ...postulacion.value.postulante, ...updatedPostulante }
+  }
+  await loadExpediente()
+  if (path) {
+    previewFile(path)
+  }
 }
 
 defineExpose({

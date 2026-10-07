@@ -10,161 +10,27 @@
     />
 
     <!-- ATS TOP DASHBOARD BAR (Only visible when viewing all convocatorias) -->
-    <div
+    <PostulacionesKpis
       v-if="!selectedConvocatoria"
-      class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 animate-fade-in"
-    >
-      <div>
-        <h1 class="text-2xl font-black text-gray-900 tracking-tight leading-none uppercase flex items-center gap-2">
-          Gestión de Postulaciones <span class="text-[10px] bg-primary text-white px-2 py-0.5 rounded font-black tracking-widest">UNITEPC</span>
-        </h1>
-        <p class="text-xs text-gray-400 mt-2 font-medium">
-          Seleccione una convocatoria para evaluar méritos, revisar postulantes y emitir actas oficiales
-        </p>
-      </div>
-
-      <!-- Compact Global KPIs -->
-      <div class="flex flex-wrap gap-4">
-        <div class="bg-indigo-50/60 px-4 py-3 rounded-2xl border border-indigo-100/50 text-center min-w-[90px] shadow-sm">
-          <div class="text-xl font-black text-indigo-700 leading-none">{{ convocatorias.length }}</div>
-          <div class="text-[9px] font-black text-indigo-400 uppercase tracking-widest mt-1">Convocatorias</div>
-        </div>
-        <div class="bg-teal-50/60 px-4 py-3 rounded-2xl border border-teal-100/50 text-center min-w-[90px] shadow-sm">
-          <div class="text-xl font-black text-teal-700 leading-none">{{ totalPostulantes }}</div>
-          <div class="text-[9px] font-black text-teal-400 uppercase tracking-widest mt-1">Postulantes</div>
-        </div>
-        <div class="bg-amber-50/60 px-4 py-3 rounded-2xl border border-amber-100/50 text-center min-w-[90px] shadow-sm">
-          <div class="text-xl font-black text-amber-700 leading-none">{{ convAbiertas }}</div>
-          <div class="text-[9px] font-black text-amber-400 uppercase tracking-widest mt-1">Vigentes</div>
-        </div>
-        <div class="bg-red-50/60 px-4 py-3 rounded-2xl border border-red-100/50 text-center min-w-[90px] shadow-sm">
-          <div class="text-xl font-black text-red-700 leading-none">{{ totalPendientesGlobal }}</div>
-          <div class="text-[9px] font-black text-red-400 uppercase tracking-widest mt-1">Pendientes</div>
-        </div>
-      </div>
-
-      <div class="flex gap-2">
-        <q-btn
-          v-if="canManageAll"
-          label="Importar Excel"
-          icon="upload_file"
-          color="deep-purple-8"
-          unelevated
-          size="sm"
-          rounded
-          class="shadow-sm font-bold px-4 py-2"
-          @click="showImportDialog = true"
-        />
-      </div>
-    </div>
+      :convocatorias-count="convocatorias.length"
+      :total-postulantes="totalPostulantes"
+      :conv-abiertas="convAbiertas"
+      :total-pendientes-global="totalPendientesGlobal"
+      :can-manage-all="canManageAll"
+      @import-click="showImportDialog = true"
+    />
 
     <!-- ========================================== -->
     <!-- FASE 2: UNIFIED CONVOCATORIAS ATS-STYLE VIEW -->
     <!-- ========================================== -->
-    <div v-if="!selectedConvocatoria" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
-      <div class="p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/30">
-        <div class="text-sm font-black text-gray-700 uppercase tracking-wider">
-          Convocatorias en Proceso
-        </div>
-        <q-input
-          v-model="globalSearch"
-          placeholder="Buscar convocatoria por código o título..."
-          dense
-          outlined
-          rounded
-          bg-color="white"
-          class="min-w-[300px]"
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" color="primary" />
-          </template>
-        </q-input>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="bg-gray-50 border-b border-gray-100">
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-16">#</th>
-              <th class="text-left text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-28">Código</th>
-              <th class="text-left text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3">Convocatoria</th>
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-28">Gestión</th>
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-40">Periodo</th>
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-24">Postulantes</th>
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-32">Estado</th>
-              <th class="text-center text-[10px] font-black text-gray-400 uppercase tracking-wider px-4 py-3 w-56">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="(conv, idx) in filteredConvocatoriasList"
-              :key="conv.id"
-              class="border-b border-gray-50 hover:bg-indigo-50/20 cursor-pointer transition-colors group"
-              @click="selectConvocatoria(conv)"
-            >
-              <td class="px-4 py-4 text-center font-bold text-gray-400 text-xs">{{ idx + 1 }}</td>
-              <td class="px-4 py-4">
-                <span class="text-[10px] font-black bg-indigo-50 text-indigo-700 px-2 py-1 rounded-md border border-indigo-100 uppercase tracking-wider">
-                  {{ conv.codigo_interno || `CONV-${conv.id}` }}
-                </span>
-              </td>
-              <td class="px-4 py-4">
-                <div class="font-black text-gray-800 uppercase text-xs truncate max-w-sm group-hover:text-primary transition-colors">
-                  {{ conv.titulo }}
-                </div>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <span class="text-xs font-bold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-md">
-                  {{ conv.gestion }}
-                </span>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <div class="text-[10px] font-bold text-gray-500">I: {{ formatDate(conv.fecha_inicio) }}</div>
-                <div class="text-[10px] font-bold text-red-500">C: {{ formatDate(conv.fecha_cierre) }}</div>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <q-badge :color="conv.postulaciones_count > 0 ? 'primary' : 'grey-4'" :text-color="conv.postulaciones_count > 0 ? 'white' : 'grey-6'" class="rounded-md font-black px-2">
-                  {{ conv.postulaciones_count }}
-                </q-badge>
-              </td>
-              <td class="px-4 py-4 text-center">
-                <q-badge
-                  :color="getConvStatus(conv).color"
-                  text-color="white"
-                  class="rounded-md text-[9px] font-black px-2 uppercase tracking-wide"
-                >{{ getConvStatus(conv).label }}</q-badge>
-              </td>
-              <td class="px-4 py-4 text-center" @click.stop>
-                <div class="flex items-center justify-center gap-1">
-                  <q-btn
-                    flat rounded dense icon="people" size="sm" color="primary"
-                    @click="selectConvocatoria(conv)" title="Gestionar Postulantes"
-                  />
-                  <q-btn
-                    flat rounded dense icon="emoji_events" size="sm" color="indigo"
-                    @click="selectConvocatoriaAndMode(conv, 'ranking')" title="Ver Ranking"
-                  />
-                  <q-btn
-                    flat rounded dense icon="edit_note" size="sm" color="teal"
-                    @click="selectConvocatoriaAndMode(conv, 'matriz')" title="Evaluar Pendientes"
-                  />
-                  <q-btn
-                    flat rounded dense icon="download" size="sm" color="green-8"
-                    @click="exportConvocatoriaReport(conv)" title="Exportar Reporte"
-                  />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-if="convocatorias.length === 0 && !loading" class="p-20 text-center text-gray-300">
-        <q-icon name="folder_open" size="64px" class="mb-4 opacity-30" />
-        <div class="text-sm font-black uppercase tracking-wider text-gray-400">Sin convocatorias disponibles</div>
-        <p class="text-xs text-gray-400 mt-2">No se cargaron registros en el sistema</p>
-      </div>
-    </div>
+    <ConvocatoriasAtsTable
+      v-if="!selectedConvocatoria"
+      :convocatorias="convocatorias"
+      :loading="loading"
+      @select="selectConvocatoria"
+      @select-mode="({ conv, mode }) => selectConvocatoriaAndMode(conv, mode)"
+      @export="exportConvocatoriaReport"
+    />
 
     <!-- ========================================== -->
     <!-- FASE 3 & 4: DENSE RECRUITMENT ATS WORKSPACE -->
@@ -333,109 +199,13 @@
       <div v-if="filterSede && filterCargo" class="animate-fade-in">
         
         <!-- Cargo-Specific Detailed KPIs -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          <div
-            @click="filterEstado = null"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              filterEstado === null ? 'bg-indigo-50/70 border-indigo-300 ring-2 ring-indigo-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Mostrar todos los postulantes del cargo"
-          >
-            <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black">
-              👥
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Postulantes</div>
-              <div class="text-base font-black text-gray-800 mt-1">{{ kpiCargo.total }}</div>
-            </div>
-          </div>
-
-          <div
-            @click="setFilterEstado('evaluados')"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              filterEstado === 'evaluados' ? 'bg-teal-50/70 border-teal-300 ring-2 ring-teal-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Filtrar evaluados con score"
-          >
-            <div class="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center font-black">
-              ✓
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Evaluados</div>
-              <div class="text-base font-black text-gray-800 mt-1">{{ kpiCargo.evaluados }}</div>
-            </div>
-          </div>
-
-          <div
-            @click="setFilterEstado('sin_evaluar')"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              filterEstado === 'sin_evaluar' ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Filtrar pendientes sin evaluar"
-          >
-            <div class="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-black">
-              ⏳
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Sin Evaluar</div>
-              <div class="text-base font-black text-amber-700 mt-1">{{ kpiCargo.sinEvaluar }}</div>
-            </div>
-          </div>
-
-          <div
-            @click="setFilterEstado('validada')"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              filterEstado === 'validada' || filterEstado === 'seleccionado' ? 'bg-green-50/70 border-green-300 ring-2 ring-green-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Filtrar preseleccionados"
-          >
-            <div class="w-8 h-8 rounded-xl bg-green-50 text-green-700 flex items-center justify-center font-black">
-              ★
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Preseleccionados</div>
-              <div class="text-base font-black text-green-700 mt-1">{{ kpiCargo.preseleccionados }}</div>
-            </div>
-          </div>
-
-          <div
-            @click="viewMode = 'auditoria'"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              viewMode === 'auditoria' ? 'bg-orange-50/70 border-orange-300 ring-2 ring-orange-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Ver casos observados en auditoría"
-          >
-            <div class="w-8 h-8 rounded-xl bg-orange-50 text-orange-700 flex items-center justify-center font-black">
-              🔍
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Auditoría</div>
-              <div class="text-base font-black text-orange-700 mt-1">{{ kpiCargo.auditoria }}</div>
-            </div>
-          </div>
-
-          <div
-            @click="setFilterEstado('riesgo')"
-            :class="[
-              'p-3 rounded-2xl shadow-sm border transition-all cursor-pointer select-none flex items-center gap-3 hover:scale-[1.02]',
-              filterEstado === 'riesgo' ? 'bg-red-50/70 border-red-300 ring-2 ring-red-400/30' : 'bg-white border-gray-100 hover:border-gray-200'
-            ]"
-            title="Filtrar riesgo alto o crítico"
-          >
-            <div class="w-8 h-8 rounded-xl bg-red-50 text-red-700 flex items-center justify-center font-black">
-              ⚠
-            </div>
-            <div>
-              <div class="text-xs font-bold text-gray-400 leading-none">Riesgo Alto</div>
-              <div class="text-base font-black text-red-700 mt-1">{{ kpiCargo.riesgo }}</div>
-            </div>
-          </div>
-        </div>
+        <CargoKpiBar
+          :kpi="kpiCargo"
+          :filter-estado="filterEstado"
+          :view-mode="viewMode"
+          @select-filter="setFilterEstado"
+          @select-view="(mode) => viewMode = mode"
+        />
 
         <!-- ATS MODE SELECTOR (Segmented control) -->
         <div class="bg-white p-4 rounded-3xl shadow-sm border border-gray-100 mb-6 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -536,838 +306,83 @@
         </div>
 
         <!-- ========================================== -->
+        <!-- ========================================== -->
         <!-- MODE 1: RANKING-FIRST ATS VIEW (Default)  -->
         <!-- ========================================== -->
-        <div v-if="viewMode === 'ranking'" class="animate-fade-in">
-          <div class="text-[10px] text-gray-400 mb-3 flex items-center justify-between font-bold">
-            <div class="flex items-center gap-1">
-              <q-icon name="info" size="14px" />
-              Recolutamiento Inteligente: Postulantes clasificados jerárquicamente por puntaje técnico del Score Engine.
-            </div>
-            <div v-if="selectedIds.length > 0" class="text-primary font-black uppercase">
-              {{ selectedIds.length }} seleccionados masivamente.
-            </div>
-          </div>
-
-          <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <!-- Table Header for Selection -->
-            <div class="bg-gray-50/50 border-b border-gray-100 px-6 py-3 flex items-center gap-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">
-              <q-checkbox v-model="selectAllCheckbox" dense class="mr-2" @update:model-value="toggleSelectAll" />
-              <div class="w-12 text-center">Rank</div>
-              <div class="flex-1">Postulante</div>
-              <div class="w-32 text-center">Clasificación</div>
-              <div class="w-36 text-center">Estado ATS</div>
-              <div class="w-24 text-center">Riesgo</div>
-              <div class="w-28 text-center">Evaluado</div>
-              <div class="w-36 text-center">Score</div>
-              <div class="w-32 text-right">Acciones</div>
-            </div>
-
-            <div
-              v-for="(row, index) in filteredRows"
-              :key="row.id"
-              :class="[
-                'flex items-center gap-4 px-6 py-3.5 border-b border-gray-50 hover:bg-indigo-50/30 cursor-pointer transition-all duration-150',
-                row.evaluacion?.nivel_riesgo === 'critico' ? 'border-l-4 border-l-red-600 bg-red-50/20' : '',
-                selectedIds.includes(row.id) ? 'bg-indigo-50/40' : ''
-              ]"
-              @click="viewExpediente(row)"
-            >
-              <!-- Multi-select checkbox -->
-              <q-checkbox
-                :model-value="selectedIds.includes(row.id)"
-                @update:model-value="(val) => toggleSelection(row.id, val)"
-                dense
-                class="mr-2"
-                @click.stop
-              />
-
-              <!-- Medallas / Posicion -->
-              <div
-                class="w-12 h-8 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 shadow-sm border"
-                :class="[
-                  row.evaluacion?.score_total === undefined ? 'bg-gray-50 text-gray-400 border-gray-100' :
-                  index === 0 ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                  index === 1 ? 'bg-slate-50 text-slate-600 border-slate-200' :
-                  index === 2 ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                  'bg-gray-50 text-gray-500 border-gray-100'
-                ]"
-              >
-                <span v-if="row.evaluacion?.score_total === undefined" class="text-[10px] text-gray-400 font-bold">#—</span>
-                <span v-else-if="index === 0">🥇 1º</span>
-                <span v-else-if="index === 1">🥈 2º</span>
-                <span v-else-if="index === 2">🥉 3º</span>
-                <span v-else>#{{ index + 1 }}</span>
-              </div>
-
-              <!-- Avatar -->
-              <q-avatar size="36px" color="primary" text-color="white" class="font-black text-xs shadow-sm flex-shrink-0">
-                <img v-if="row.postulante?.foto_perfil_path" :src="getFileUrl(row.postulante.foto_perfil_path)" />
-                <span v-else>{{ row.postulante?.nombres?.[0] }}{{ row.postulante?.apellidos?.[0] }}</span>
-              </q-avatar>
-
-              <!-- Name & CI -->
-              <div class="flex-1 min-w-0">
-                <div class="text-xs font-black text-gray-800 uppercase truncate">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
-                <div class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">CI: {{ row.postulante?.ci }}</div>
-              </div>
-
-              <!-- Clasificación Badge (FASE 2) -->
-              <div class="w-32 text-center flex-shrink-0">
-                <span
-                  v-if="row.evaluacion?.clasificacion"
-                  :class="[
-                    'text-[9px] font-black uppercase px-2 py-0.5 rounded border tracking-wider',
-                    row.evaluacion.clasificacion === 'apto' ? 'bg-green-50 text-green-700 border-green-200' :
-                    row.evaluacion.clasificacion === 'auditoria_humana' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                    'bg-red-50 text-red-700 border-red-200'
-                  ]"
-                >
-                  {{ row.evaluacion.clasificacion === 'auditoria_humana' ? 'Auditoría' : row.evaluacion.clasificacion }}
-                </span>
-                <span v-else class="text-[9px] font-black text-gray-400 bg-gray-50 border border-gray-200 px-2 py-0.5 rounded tracking-wider">
-                  Sin Calificar
-                </span>
-              </div>
-
-              <!-- Estado de la postulación -->
-              <div class="w-36 text-center flex-shrink-0" @click.stop>
-                <q-select
-                  v-model="row.estado"
-                  :options="statusOptions"
-                  dense
-                  borderless
-                  emit-value
-                  map-options
-                  @update:model-value="updateStatus(row)"
-                  class="status-select-modern inline-block"
-                  :bg-color="getStatusColor(row.estado)"
-                  dark
-                  rounded
-                  standout
-                >
-                  <template v-slot:selected>
-                     <div class="text-[9px] font-black uppercase text-white px-2">
-                       {{ statusLabels[row.estado] || row.estado }}
-                     </div>
-                  </template>
-                </q-select>
-              </div>
-
-              <!-- Nivel de Riesgo Badge -->
-              <div class="w-24 text-center flex-shrink-0">
-                <span
-                  v-if="row.evaluacion?.nivel_riesgo"
-                  :class="[
-                    'text-[9px] font-black uppercase px-2 py-0.5 rounded border',
-                    row.evaluacion.nivel_riesgo === 'critico' ? 'bg-red-600 text-white border-red-700 animate-pulse' :
-                    row.evaluacion.nivel_riesgo === 'alto' ? 'bg-red-50 text-red-700 border-red-200' :
-                    'bg-green-50 text-green-700 border-green-200'
-                  ]"
-                >
-                  {{ row.evaluacion.nivel_riesgo }}
-                </span>
-                <span v-else class="text-xs text-gray-300">—</span>
-              </div>
-
-              <!-- Estado Evaluacion -->
-              <div class="w-28 text-center flex-shrink-0">
-                <span
-                  :class="[
-                    'text-[9px] font-black uppercase px-2 py-0.5 rounded border',
-                    row.evaluacion?.score_total !== undefined ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-gray-100 text-gray-500 border-gray-200'
-                  ]"
-                >
-                  {{ row.evaluacion?.score_total !== undefined ? '✓ Evaluado' : '⏳ Pendiente' }}
-                </span>
-              </div>
-
-              <!-- Score Badge / Progress Bar -->
-              <div class="w-36 flex flex-col justify-center flex-shrink-0">
-                <div v-if="row.evaluacion?.score_total !== undefined" class="w-full flex flex-col justify-center">
-                  <div class="flex justify-between items-center text-[10px] font-black text-gray-700 uppercase mb-1">
-                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-black">
-                      {{ Number(row.evaluacion.score_total).toFixed(1) }}%
-                    </span>
-                    <span class="text-[9px] text-gray-400 font-medium">{{ getClassificationLabel(row.evaluacion.clasificacion_ia || row.evaluacion.clasificacion) }}</span>
-                  </div>
-                  <q-linear-progress
-                    :value="Number(row.evaluacion.score_total) / 100"
-                    :color="getScoreColor(row.evaluacion.score_total)"
-                    rounded
-                    style="height: 5px;"
-                  />
-                </div>
-                 <div v-else class="flex flex-col items-center justify-center gap-1 w-full" @click.stop>
-                  <q-chip color="grey-3" text-color="grey-6" class="font-black px-2 text-[9px] uppercase tracking-wide inline-block q-ma-none" size="sm">
-                    SIN EVALUAR
-                  </q-chip>
-                  <q-btn
-                    label="⚡ Evaluar"
-                    size="xs"
-                    color="primary"
-                    unelevated
-                    rounded
-                    class="font-black text-[9px] px-2 py-0.5"
-                    @click.stop="quickEvaluateRow(row)"
-                  />
-                </div>
-              </div>
-
-              <!-- Actions -->
-              <div class="w-32 text-right flex-shrink-0" @click.stop>
-                <q-btn
-                  label="Expediente"
-                  icon="account_circle"
-                  size="xs"
-                  color="primary"
-                  unelevated
-                  rounded
-                  class="font-black px-2.5 py-1"
-                  @click="viewExpediente(row)"
-                />
-              </div>
-            </div>
-
-            <div v-if="filteredRows.length === 0" class="p-12 text-center text-gray-300 text-xs">
-              Sin postulantes disponibles para este cargo/sede.
-            </div>
-          </div>
-        </div>
+        <PostulacionesRankingTable
+          v-if="viewMode === 'ranking'"
+          :rows="filteredRows"
+          :selected-ids="selectedIds"
+          :select-all="selectAllCheckbox"
+          :status-options="statusOptions"
+          :status-labels="statusLabels"
+          @toggle-select-all="toggleSelectAll"
+          @toggle-selection="({ id, val }) => toggleSelection(id, val)"
+          @view-expediente="viewExpediente"
+          @update-status="updateStatus"
+          @quick-evaluate="quickEvaluateRow"
+        />
 
         <!-- ========================================== -->
         <!-- MODE 2: AUDITORÍA HUMANA RISK QUEUE        -->
         <!-- ========================================== -->
-        <div v-else-if="viewMode === 'auditoria'" class="animate-fade-in">
-          <div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl mb-6 flex items-start gap-3">
-            <q-icon name="warning" color="warning" size="24px" class="flex-shrink-0" />
-            <div>
-              <div class="text-sm font-black text-amber-900 uppercase">⚠ Cola de Auditoría Humana</div>
-              <p class="text-xs text-amber-700 q-ma-none leading-relaxed mt-1">
-                Mostrando únicamente perfiles con riesgo crítico, alto, clasificados en Auditoría Humana, con duplicados severos o con documentación faltante crítica.
-              </p>
-            </div>
-          </div>
+        <PostulacionesAuditoriaView
+          v-else-if="viewMode === 'auditoria'"
+          :rows="auditoriaRows"
+          @view-expediente="viewExpediente"
+        />
 
-          <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-            <div
-              v-for="row in auditoriaRows"
-              :key="row.id"
-              class="flex items-center gap-4 px-6 py-4 border-b border-gray-50 hover:bg-amber-50/20 cursor-pointer transition-all duration-150"
-              @click="viewExpediente(row)"
-            >
-              <!-- Alert Dot -->
-              <div class="w-3 h-3 rounded-full bg-red-600 animate-ping flex-shrink-0" />
-
-              <!-- Avatar -->
-              <q-avatar size="36px" color="orange" text-color="white" class="font-black text-xs shadow-sm flex-shrink-0">
-                {{ row.postulante?.nombres?.[0] }}{{ row.postulante?.apellidos?.[0] }}
-              </q-avatar>
-
-              <!-- Name & CI -->
-              <div class="flex-1 min-w-0">
-                <div class="text-xs font-black text-gray-800 uppercase truncate">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</div>
-                <div class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">CI: {{ row.postulante?.ci }}</div>
-              </div>
-
-              <!-- Risk Indicator Detail -->
-              <div class="flex items-center gap-2 flex-shrink-0">
-                <span class="text-[9px] font-black uppercase bg-red-100 text-red-900 border border-red-200 px-2 py-0.5 rounded">
-                  Riesgo: {{ row.evaluacion?.nivel_riesgo || 'alto' }}
-                </span>
-                <span v-if="row.evaluacion?.requires_human_review" class="text-[9px] font-black uppercase bg-orange-100 text-orange-900 border border-orange-200 px-2 py-0.5 rounded">
-                  Falta Firma/Firma
-                </span>
-                <span v-if="row.evaluacion?.missing_required_document" class="text-[9px] font-black uppercase bg-red-100 text-red-900 border border-red-200 px-2 py-0.5 rounded">
-                  Doc. Faltante
-                </span>
-              </div>
-
-              <!-- Score Badge -->
-              <div class="text-right flex-shrink-0 w-28">
-                <div v-if="row.evaluacion?.score_total !== undefined" class="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-1 inline-block">
-                  {{ Number(row.evaluacion.score_total).toFixed(1) }} pts
-                </div>
-                <div v-else class="text-[10px] text-gray-300 font-bold uppercase">Sin Evaluar</div>
-              </div>
-
-              <!-- Actions -->
-              <q-btn
-                label="Auditar"
-                icon="gavel"
-                size="xs"
-                color="orange-9"
-                unelevated
-                rounded
-                class="font-black px-3 py-1"
-                @click="viewExpediente(row)"
-              />
-            </div>
-
-            <div v-if="auditoriaRows.length === 0" class="p-16 text-center text-gray-400 text-xs">
-              🎉 ¡Excelente! No hay candidatos pendientes en la Cola de Auditoría Humana.
-            </div>
-          </div>
-        </div>
-
+        <!-- ========================================== -->
         <!-- ========================================== -->
         <!-- MODE 3: KANBAN PIPELINE VIEW (Fase 6)       -->
         <!-- ========================================== -->
-        <div v-else-if="viewMode === 'pipeline'" class="animate-fade-in overflow-x-auto">
-          <div class="flex gap-4 pb-4 min-w-[1200px]">
-            <!-- Column Builder -->
-            <div
-              v-for="col in pipelineColumns"
-              :key="col.estado"
-              class="flex-1 bg-gray-100/60 p-4 rounded-2xl border border-gray-200/50 min-h-[500px]"
-            >
-              <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
-                <span class="text-xs font-black text-gray-700 uppercase tracking-wider">{{ col.label }}</span>
-                <q-badge color="indigo-7" class="rounded-full font-black">{{ col.items.length }}</q-badge>
-              </div>
-
-              <div class="flex flex-col gap-3">
-                <div
-                  v-for="row in col.items"
-                  :key="row.id"
-                  class="bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
-                  @click="viewExpediente(row)"
-                >
-                  <div class="text-[9px] font-black text-primary uppercase">CI: {{ row.postulante?.ci }}</div>
-                  <div class="text-xs font-black text-gray-800 uppercase mt-1 leading-snug">
-                    {{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}
-                  </div>
-
-                  <!-- Score badge inside card -->
-                  <div class="flex items-center justify-between mt-3">
-                    <span class="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-100/50 rounded px-1.5 py-0.5">
-                      {{ row.evaluacion?.score_total !== undefined ? Number(row.evaluacion.score_total).toFixed(1) + ' pts' : 'SIN EVALUAR' }}
-                    </span>
-
-                    <!-- Move Controls -->
-                    <div class="flex gap-1" @click.stop>
-                      <q-btn
-                        icon="arrow_back"
-                        size="xs"
-                        flat
-                        round
-                        dense
-                        color="grey-6"
-                        @click="moveCandidatePipeline(row, -1)"
-                        title="Mover atrás"
-                      />
-                      <q-btn
-                        icon="arrow_forward"
-                        size="xs"
-                        flat
-                        round
-                        dense
-                        color="grey-6"
-                        @click="moveCandidatePipeline(row, 1)"
-                        title="Mover adelante"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div v-if="col.items.length === 0" class="text-center py-12 text-gray-300 text-[10px] font-bold uppercase">
-                  Valla Vacía
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <PostulacionesKanbanView
+          v-else-if="viewMode === 'pipeline'"
+          :pipeline-columns="pipelineColumns"
+          @view-expediente="viewExpediente"
+          @move-pipeline="({ row, direction }) => moveCandidatePipeline(row, direction)"
+        />
 
         <!-- ========================================== -->
         <!-- MODE 4: CANDIDATES LIST VIEW (Traditional) -->
         <!-- ========================================== -->
-        <div v-else-if="viewMode === 'tradicional'" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
-          <q-table
-            :rows="filteredRows"
-            :columns="columns"
-            row-key="id"
-            :loading="loading"
-            flat
-            bordered
-            class="border-none bg-white"
-            :pagination="{ rowsPerPage: 15 }"
-          >
-            <template v-slot:body-cell-postulante="props">
-              <q-td :props="props">
-                <div class="flex items-center gap-3">
-                  <q-avatar size="34px" color="primary" text-color="white" class="font-black text-xs shadow-sm">
-                    <img v-if="props.row.postulante?.foto_perfil_path" :src="getFileUrl(props.row.postulante.foto_perfil_path)" />
-                    <span v-else>{{ props.row.postulante?.nombres?.[0] }}{{ props.row.postulante?.apellidos?.[0] }}</span>
-                  </q-avatar>
-                  <div>
-                    <div class="font-black text-gray-800 uppercase text-xs">
-                      {{ props.row.postulante?.nombres }} {{ props.row.postulante?.apellidos }}
-                    </div>
-                    <div class="text-[10px] text-gray-400 font-bold uppercase mt-0.5">
-                      CI: {{ props.row.postulante?.ci }}
-                    </div>
-                  </div>
-                </div>
-              </q-td>
-            </template>
+        <PostulacionesTradicionalTable
+          v-else-if="viewMode === 'tradicional'"
+          :rows="filteredRows"
+          :columns="columns"
+          :loading="loading"
+          :status-options="statusOptions"
+          :status-labels="statusLabels"
+          :can-manage-all="canManageAll"
+          @view-expediente="viewExpediente"
+          @delete="deletePostulante"
+          @update-status="updateStatus"
+        />
 
-            <template v-slot:body-cell-fecha_postulacion="props">
-              <q-td :props="props">
-                <span class="text-xs font-bold text-gray-600 bg-gray-100 px-2.5 py-1 rounded-lg inline-block">
-                  {{ formatDate(props.row.fecha_postulacion) }}
-                </span>
-              </q-td>
-            </template>
-
-            <template v-slot:body-cell-pretension_salarial="props">
-              <q-td :props="props" class="text-center">
-                <span class="text-xs font-bold text-teal-800 bg-teal-50 border border-teal-100 px-3 py-1 rounded-lg inline-block">
-                  {{
-                    props.row.pretension_salarial
-                      ? 'Bs. ' + Math.round(Number(props.row.pretension_salarial)).toLocaleString('de-DE')
-                      : '-'
-                  }}
-                </span>
-              </q-td>
-            </template>
-
-            <template v-slot:body-cell-puntaje_tecnico="props">
-              <q-td :props="props">
-                <div v-if="props.row.evaluacion?.score_total !== undefined" class="w-full min-w-[120px] flex flex-col justify-center">
-                  <div class="flex justify-between items-center text-[10px] font-black text-gray-700 uppercase mb-1">
-                    <span class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-black">
-                      {{ Number(props.row.evaluacion.score_total).toFixed(1) }}%
-                    </span>
-                    <span class="text-[9px] text-gray-400 font-medium">{{ getClassificationLabel(props.row.evaluacion.clasificacion_ia) }}</span>
-                  </div>
-                  <q-linear-progress
-                    :value="Number(props.row.evaluacion.score_total) / 100"
-                    :color="getScoreColor(props.row.evaluacion.score_total)"
-                    rounded
-                    style="height: 5px;"
-                  />
-                </div>
-                <div v-else class="text-center">
-                  <q-chip color="grey-3" text-color="grey-6" class="font-black px-2.5 text-[9px] uppercase tracking-wide" size="sm">
-                    SIN EVALUAR
-                  </q-chip>
-                </div>
-              </q-td>
-            </template>
-
-            <template v-slot:body-cell-estado="props">
-              <q-td :props="props" class="text-center">
-                <q-select
-                  v-model="props.row.estado"
-                  :options="statusOptions"
-                  dense
-                  borderless
-                  emit-value
-                  map-options
-                  @update:model-value="updateStatus(props.row)"
-                  class="status-select-modern inline-block"
-                  :bg-color="getStatusColor(props.row.estado)"
-                  dark
-                  rounded
-                  standout
-                >
-                  <template v-slot:selected>
-                    <div class="text-[9px] font-black uppercase text-white px-2">
-                      {{ statusLabels[props.row.estado] || props.row.estado }}
-                    </div>
-                  </template>
-                </q-select>
-              </q-td>
-            </template>
-
-            <template v-slot:body-cell-acciones="props">
-              <q-td :props="props" class="py-4">
-                <div class="flex items-center justify-end gap-1">
-                  <q-btn
-                    label="Expediente"
-                    icon="account_circle"
-                    size="sm"
-                    color="primary"
-                    unelevated
-                    rounded
-                    class="font-black text-[10px] px-3"
-                    @click="viewExpediente(props.row)"
-                  />
-                  <q-btn
-                    v-if="canManageAll"
-                    icon="delete"
-                    size="sm"
-                    color="red-5"
-                    flat
-                    round
-                    dense
-                    @click="deletePostulante(props.row)"
-                  />
-                </div>
-              </q-td>
-            </template>
-          </q-table>
-        </div>
-
+        <!-- ========================================== -->
         <!-- ========================================== -->
         <!-- MODE 5: INTERACTIVE MERITS MATRIX VIEW     -->
         <!-- ========================================== -->
-        <div v-else-if="viewMode === 'matriz'" class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-fade-in">
-          <div class="bg-primary text-white p-4 flex flex-wrap items-center justify-between gap-3">
-            <div class="text-xs font-black uppercase tracking-wider flex items-center gap-2">
-              📝 Matriz de Evaluación de Méritos • {{ filterCargo }}
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <!-- ORDENADOR FLEXIBLE DE CANDIDATOS EN MATRIZ -->
-              <div class="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl text-xs font-bold border border-white/20">
-                <span class="text-[10px] text-white/80 uppercase">Ordenar:</span>
-                <q-btn-toggle
-                  v-model="matrixSortBy"
-                  dense
-                  rounded
-                  toggle-color="white"
-                  toggle-text-color="primary"
-                  color="transparent"
-                  text-color="white"
-                  size="xs"
-                  unelevated
-                  class="font-black"
-                  :options="[
-                    { label: '🔤 Alfabético (A-Z)', value: 'alfabetico' },
-                    { label: '🎯 Por Puntaje', value: 'puntaje' },
-                    { label: '🤖 Ranking ATS', value: 'ats' },
-                    { label: '⏱️ Registro', value: 'registro' }
-                  ]"
-                />
-                <q-btn
-                  flat
-                  round
-                  dense
-                  size="xs"
-                  :icon="matrixSortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'"
-                  :color="matrixSortDirection === 'asc' ? 'amber-4' : 'white'"
-                  @click="toggleSortDirection"
-                >
-                  <q-tooltip>{{ matrixSortDirection === 'asc' ? 'Ascendente (A-Z / Menor a Mayor)' : 'Descendente (Z-A / Mayor a Menor)' }}</q-tooltip>
-                </q-btn>
-              </div>
-
-              <!-- DESCARGAS OFICIALES: PDF, EXCEL, WORD -->
-              <q-btn
-                color="red-7"
-                icon="picture_as_pdf"
-                label="PDF"
-                unelevated
-                rounded
-                size="sm"
-                class="font-black shadow-sm"
-                @click="exportMatrixPDF"
-              >
-                <q-tooltip>Descargar Acta Oficial PDF (Oficio con el orden actual)</q-tooltip>
-              </q-btn>
-              <q-btn
-                color="green-8"
-                icon="table_view"
-                label="Excel"
-                unelevated
-                rounded
-                size="sm"
-                class="font-black shadow-sm"
-                @click="exportMatrixExcel"
-              >
-                <q-tooltip>Descargar Matriz Excel (con el orden actual)</q-tooltip>
-              </q-btn>
-              <q-btn
-                color="blue-8"
-                icon="description"
-                label="Word"
-                unelevated
-                rounded
-                size="sm"
-                class="font-black shadow-sm"
-                @click="exportMatrixWord"
-              >
-                <q-tooltip>Descargar Acta Oficial en Word (.doc horizontal con el orden actual)</q-tooltip>
-              </q-btn>
-              <q-btn
-                color="white"
-                text-color="primary"
-                icon="save"
-                label="Guardar Todo"
-                unelevated
-                rounded
-                size="sm"
-                class="font-black shadow-sm"
-                :loading="saving"
-                @click="saveAll"
-              />
-            </div>
-          </div>
-
-          <div class="scroll-container overflow-auto">
-            <table class="matrix-table uppercase">
-              <thead>
-                <tr class="main-headers">
-                  <th rowspan="2" class="sticky-col first-col header-cell text-center">No.</th>
-                  <th rowspan="2" class="sticky-col second-col header-cell text-left">Nombres y Apellidos</th>
-                  <th rowspan="2" class="header-v bg-grey-2 text-center">Área Formación</th>
-                  <th rowspan="2" class="header-v bg-grey-2 text-center">Año Título</th>
-                  <th rowspan="2" class="header-v bg-grey-2 text-center">Pretensión Salarial</th>
-
-                  <!-- SCHEMA RECOGNIZER -->
-                  <template v-if="currentMatriz">
-                    <th
-                      v-for="(sec, sIdx) in currentMatriz"
-                      :key="'sec'+sIdx"
-                      :colspan="sec.criterios.length"
-                      class="text-white area-title text-center"
-                      :class="sIdx % 2 === 0 ? 'bg-primary' : 'bg-secondary'"
-                    >
-                      {{ sec.seccion }} ({{ sec.criterios.reduce((acc, c) => acc + (Number(c.puntaje)||0), 0) }} pts)
-                    </th>
-                  </template>
-                  <template v-else>
-                    <th colspan="4" class="bg-primary text-white area-title text-center">FORMACIÓN PROFESIONAL (20 pts)</th>
-                    <th colspan="4" class="bg-secondary text-white area-title text-center">PERFECCIONAMIENTO PROFESIONAL (20 pts)</th>
-                    <th colspan="5" class="bg-primary text-white area-title text-center">EXPERIENCIA ACADÉMICA (50 pts)</th>
-                    <th colspan="3" class="bg-secondary text-white area-title text-center">OTROS MÉRITOS (10 pts)</th>
-                  </template>
-
-                  <th rowspan="2" class="bg-primary text-white final-score-header text-center w-24">PUNTAJE FINAL</th>
-                  <th rowspan="2" class="header-cell text-left" style="min-width: 200px;">OBSERVACIONES</th>
-                </tr>
-                <tr class="sub-headers">
-                  <template v-if="currentMatriz">
-                    <th v-for="col in dynamicColumns" :key="'col'+col.id" class="sub-h cursor-help text-center">
-                      {{ col.nombre }} ({{ col.puntaje }} pts)
-                      <q-tooltip class="bg-primary text-white text-subtitle2" anchor="top middle" self="bottom middle">
-                        {{ col.nombre }} (Máx: {{ col.puntaje }} pts)
-                      </q-tooltip>
-                    </th>
-                  </template>
-                  <template v-else>
-                    <th class="sub-h cursor-help text-center">Diplomado (3 pts)</th>
-                    <th class="sub-h cursor-help text-center">Especialización (4 pts)</th>
-                    <th class="sub-h cursor-help text-center">Maestría (6 pts)</th>
-                    <th class="sub-h cursor-help text-center">Doctorado (7 pts)</th>
-                    <th class="sub-h cursor-help text-center">Cursos area > 120 hrs (Max 9)</th>
-                    <th class="sub-h cursor-help text-center">Cursillos/Semin. > 20 hrs (Max 5)</th>
-                    <th class="sub-h cursor-help text-center">Disertante congresos (Max 3)</th>
-                    <th class="sub-h cursor-help text-center">Formación Pedagóg. (Max 3)</th>
-                    <th class="sub-h cursor-help text-center">Ejercicio Profesional (Max 15)</th>
-                    <th class="sub-h cursor-help text-center">Docencia Ejercida (Max 10)</th>
-                    <th class="sub-h cursor-help text-center">Tutoría de Tesis (Max 5)</th>
-                    <th class="sub-h cursor-help text-center">Docente Postgrado (Max 5)</th>
-                    <th class="sub-h cursor-help text-center">Cargos Similares (Max 15)</th>
-                    <th class="sub-h cursor-help text-center">Revistas Indexadas (Max 3)</th>
-                    <th class="sub-h cursor-help text-center">Libros/Textos (Max 3)</th>
-                    <th class="sub-h cursor-help text-center">Distinciones Honoríf. (Max 4)</th>
-                  </template>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="(row, index) in matrizRows" :key="row.id" class="data-row">
-                  <td class="text-center font-bold sticky-col first-col bg-grey-1">{{ index + 1 }}</td>
-                  <td class="font-bold sticky-col second-col bg-white">
-                    <span class="text-primary text-xs font-black cursor-pointer hover:underline" @click="viewExpediente(row)">
-                      {{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}
-                    </span>
-                  </td>
-
-                  <td class="text-center bg-grey-1 font-bold px-2 py-1" style="min-width: 140px; max-width: 190px; font-size: 10px; line-height: 1.25; white-space: normal; word-break: normal;">
-                    {{ row.extraInfo?.area || '-' }}
-                    <q-tooltip v-if="row.extraInfo?.area && row.extraInfo?.area !== '-'">{{ row.extraInfo.area }}</q-tooltip>
-                  </td>
-                  <td class="text-center bg-grey-1 font-bold" style="min-width: 60px;">{{ row.extraInfo?.anio || '-' }}</td>
-                  <td class="text-center bg-teal-1 font-bold text-secondary cursor-pointer">
-                    Bs. {{ Math.round(row.pretension_salarial || 0) }}
-                    <q-popup-edit v-model="row.pretension_salarial" auto-save v-slot="scope" @save="saveRow(row)">
-                      <q-input
-                        v-model.number="scope.value"
-                        dense
-                        autofocus
-                        counter
-                        prefix="Bs."
-                        type="number"
-                        @keyup.enter="scope.set"
-                      />
-                    </q-popup-edit>
-                  </td>
-
-                  <template v-if="currentMatriz">
-                    <td v-for="col in dynamicColumns" :key="col.id" class="score-cell text-center">
-                      <div class="cell-val" :class="col.sectionIndex % 2 === 0 ? 'text-primary' : 'text-secondary'">
-                        {{ row.evalData[col.id] || 0 }}
-                      </div>
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" style="min-width: 290px; max-width: 360px">
-                          <!-- Header del Criterio -->
-                          <div class="bg-gray-900 text-white p-3">
-                            <div class="flex items-center justify-between gap-2 mb-1">
-                              <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                                {{ col.seccion || 'Criterio de Evaluación' }}
-                              </span>
-                              <q-badge color="primary" class="font-black text-[10px] px-2 py-0.5 rounded-md">
-                                Máx: {{ col.puntaje }} pts
-                              </q-badge>
-                            </div>
-                            <div class="text-xs font-black leading-snug text-white">
-                              {{ col.nombre }}
-                            </div>
-                            <div class="text-[10px] text-gray-300 mt-1 truncate">
-                              Postulante: <strong class="text-white">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</strong>
-                            </div>
-                          </div>
-
-                          <!-- Descripción o Rúbrica del Criterio -->
-                          <div class="p-3 bg-amber-50/60 border-b border-amber-100">
-                            <div class="flex items-start gap-1.5 text-amber-900">
-                              <q-icon name="info" size="15px" class="mt-0.5 text-amber-700 flex-shrink-0" />
-                              <div class="text-[11px] leading-relaxed">
-                                <span class="font-bold text-amber-950 block">Descripción del Criterio:</span>
-                                <div class="mt-0.5 text-gray-700 font-medium whitespace-pre-line">
-                                  {{ col.descripcion || getCriterionDefaultHelp(col) }}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Méritos cargados por el postulante (si aplica) -->
-                          <div v-if="getCandidateMeritsForCriterion(row, col)" class="p-2.5 bg-indigo-50/40 border-b border-indigo-100/60">
-                            <div class="text-[10px] font-black uppercase text-indigo-900 flex items-center gap-1 mb-1">
-                              <q-icon name="verified" size="13px" class="text-indigo-600" />
-                              {{ getCandidateMeritsForCriterion(row, col).tipo }}:
-                            </div>
-                            <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
-                              <div
-                                v-for="(item, iIdx) in getCandidateMeritsForCriterion(row, col).items"
-                                :key="iIdx"
-                                class="text-[10px] text-gray-700 bg-white p-1.5 rounded-md border border-gray-200/60 leading-tight"
-                              >
-                                {{ item }}
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Selector de Puntuación -->
-                          <div class="p-3 bg-white">
-                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 text-center">
-                              Asignar Puntuación:
-                            </div>
-                            <div class="flex flex-wrap justify-center gap-1.5">
-                              <q-btn
-                                v-for="v in getDynamicOptions(col.puntaje)"
-                                :key="v"
-                                dense
-                                unelevated
-                                :label="v"
-                                :color="row.evalData[col.id] === v ? 'primary' : 'grey-2'"
-                                :text-color="row.evalData[col.id] === v ? 'white' : 'black'"
-                                class="w-9 h-9 font-black text-xs rounded-xl transition-transform hover:scale-105"
-                                @click="updateFieldAndSave(row, col.id, v)"
-                                v-close-popup
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </q-popup-proxy>
-                    </td>
-                  </template>
-                  <template v-else>
-                    <td v-for="field in meritFields" :key="field" class="score-cell text-center">
-                      <div class="cell-val" :class="getFieldColorClass(field)">{{ row.evalData[field] || 0 }}</div>
-                      <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                        <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden" style="min-width: 290px; max-width: 360px">
-                          <!-- Header del Criterio -->
-                          <div class="bg-gray-900 text-white p-3">
-                            <div class="flex items-center justify-between gap-2 mb-1">
-                              <span class="text-[10px] font-black uppercase tracking-wider text-amber-400">
-                                Criterio Institucional
-                              </span>
-                              <q-badge color="primary" class="font-black text-[10px] px-2 py-0.5 rounded-md">
-                                Baremo Estándar
-                              </q-badge>
-                            </div>
-                            <div class="text-xs font-black leading-snug text-white">
-                              {{ getFieldLabel(field) }}
-                            </div>
-                            <div class="text-[10px] text-gray-300 mt-1 truncate">
-                              Postulante: <strong class="text-white">{{ row.postulante?.nombres }} {{ row.postulante?.apellidos }}</strong>
-                            </div>
-                          </div>
-
-                          <!-- Descripción o Rúbrica del Criterio -->
-                          <div class="p-3 bg-amber-50/60 border-b border-amber-100">
-                            <div class="flex items-start gap-1.5 text-amber-900">
-                              <q-icon name="info" size="15px" class="mt-0.5 text-amber-700 flex-shrink-0" />
-                              <div class="text-[11px] leading-relaxed">
-                                <span class="font-bold text-amber-950 block">Descripción del Criterio:</span>
-                                <div class="mt-0.5 text-gray-700 font-medium">
-                                  {{ FIELD_DESCRIPTIONS[field] || 'Asigne el puntaje correspondiente según los documentos de respaldo.' }}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Méritos cargados por el postulante (si aplica) -->
-                          <div v-if="getCandidateMeritsForCriterion(row, field)" class="p-2.5 bg-indigo-50/40 border-b border-indigo-100/60">
-                            <div class="text-[10px] font-black uppercase text-indigo-900 flex items-center gap-1 mb-1">
-                              <q-icon name="verified" size="13px" class="text-indigo-600" />
-                              {{ getCandidateMeritsForCriterion(row, field).tipo }}:
-                            </div>
-                            <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
-                              <div
-                                v-for="(item, iIdx) in getCandidateMeritsForCriterion(row, field).items"
-                                :key="iIdx"
-                                class="text-[10px] text-gray-700 bg-white p-1.5 rounded-md border border-gray-200/60 leading-tight"
-                              >
-                                {{ item }}
-                              </div>
-                            </div>
-                          </div>
-
-                          <!-- Selector de Puntuación -->
-                          <div class="p-3 bg-white">
-                            <div class="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-2 text-center">
-                              Asignar Puntuación:
-                            </div>
-                            <div class="flex flex-wrap justify-center gap-1.5">
-                              <q-btn
-                                v-for="v in getOptionsForField(field)"
-                                :key="v"
-                                dense
-                                unelevated
-                                :label="v"
-                                :color="row.evalData[field] === v ? 'primary' : 'grey-2'"
-                                :text-color="row.evalData[field] === v ? 'white' : 'black'"
-                                class="w-9 h-9 font-black text-xs rounded-xl transition-transform hover:scale-105"
-                                @click="updateFieldAndSave(row, field, v)"
-                                v-close-popup
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </q-popup-proxy>
-                    </td>
-                  </template>
-
-                  <td class="text-center font-bolder text-sm bg-grey-2" :class="calculateTotal(row) < 51 ? 'text-red' : 'text-indigo-700'">
-                    {{ calculateTotal(row) }} pts
-                  </td>
-                  <td class="bg-white">
-                    <textarea
-                      v-model="row.evalData.observaciones"
-                      class="cell-textarea"
-                      rows="1"
-                      placeholder="Sin observaciones..."
-                      @input="debouncedSaveRow(row)"
-                    ></textarea>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PostulacionesMatrizView
+          v-else-if="viewMode === 'matriz'"
+          v-model:matrix-sort-by="matrixSortBy"
+          :matrix-sort-direction="matrixSortDirection"
+          :filter-cargo="filterCargo"
+          :current-matriz="currentMatriz"
+          :dynamic-columns="dynamicColumns"
+          :matriz-rows="matrizRows"
+          :merit-fields="meritFields"
+          :saving="saving"
+          @toggle-sort-direction="toggleSortDirection"
+          @export-pdf="exportMatrixPDF"
+          @export-excel="exportMatrixExcel"
+          @export-word="exportMatrixWord"
+          @save-all="saveAll"
+          @save-row="saveRow"
+          @debounced-save-row="debouncedSaveRow"
+          @update-field-and-save="({ row, field, v }) => updateFieldAndSave(row, field, v)"
+          @view-expediente="viewExpediente"
+        />
 
       </div>
 
@@ -1430,52 +445,10 @@
     />
 
     <!-- Import Dialog -->
-    <q-card v-model="showImportDialog" persistent style="width: 500px; max-width: 90vw; border-radius: 2rem" class="overflow-hidden" v-if="showImportDialog">
-      <q-card-section class="bg-gradient-to-r from-deep-purple-8 to-indigo-9 text-white p-8">
-        <div class="text-2xl font-black">Importar Excel</div>
-        <div class="text-white/70 text-sm mt-1">Sincronización masiva de postulantes</div>
-      </q-card-section>
-
-      <q-card-section class="q-pa-xl">
-        <div class="bg-indigo-50 p-5 rounded-2xl mb-6 border border-indigo-100">
-           <div class="text-sm font-black text-indigo-900 uppercase tracking-wider mb-2 flex items-center gap-2">
-             <q-icon name="help" size="18px" /> Recomendaciones
-           </div>
-           <p class="text-xs text-indigo-700/80 leading-relaxed q-ma-none">
-             Asegúrese de que el archivo tenga el formato correcto para ser procesado por el motor de migración de la institución.
-           </p>
-        </div>
-
-        <q-file
-          v-model="importFile"
-          label="Archivo de Postulantes (.xlsx, .csv)"
-          outlined
-          bg-color="white"
-          icon="attach_file"
-          rounded
-          use-chips
-          accept=".xlsx, .xls, .csv"
-        >
-          <template v-slot:prepend>
-            <q-icon name="upload_file" color="primary" />
-          </template>
-        </q-file>
-      </q-card-section>
-
-      <q-card-actions align="center" class="q-pb-xl px-12">
-        <q-btn label="Cancelar" flat color="grey-7" v-close-popup rounded class="q-px-lg" @click="showImportDialog = false" />
-        <q-btn
-          label="Procesar Archivo"
-          color="primary"
-          unelevated
-          rounded
-          :loading="importing"
-          :disable="!importFile"
-          @click="processImport"
-          class="q-px-xl font-black shadow-lg"
-        />
-      </q-card-actions>
-    </q-card>
+    <PostulacionesImportDialog
+      v-model="showImportDialog"
+      @imported="loadConvocatorias"
+    />
   </q-page>
 </template>
 
@@ -1490,6 +463,15 @@ import { exportInstitutionalMatrixWord } from 'src/utils/institutionalWordEngine
 
 import { useAuthStore } from 'src/stores/auth-store'
 import PostulanteExpedienteDialog from 'src/components/postulaciones/PostulanteExpedienteDialog.vue'
+import PostulacionesKpis from 'src/components/postulaciones/PostulacionesKpis.vue'
+import ConvocatoriasAtsTable from 'src/components/postulaciones/ConvocatoriasAtsTable.vue'
+import CargoKpiBar from 'src/components/postulaciones/CargoKpiBar.vue'
+import PostulacionesImportDialog from 'src/components/postulaciones/PostulacionesImportDialog.vue'
+import PostulacionesRankingTable from 'src/components/postulaciones/PostulacionesRankingTable.vue'
+import PostulacionesKanbanView from 'src/components/postulaciones/PostulacionesKanbanView.vue'
+import PostulacionesMatrizView from 'src/components/postulaciones/PostulacionesMatrizView.vue'
+import PostulacionesAuditoriaView from 'src/components/postulaciones/PostulacionesAuditoriaView.vue'
+import PostulacionesTradicionalTable from 'src/components/postulaciones/PostulacionesTradicionalTable.vue'
 
 const $q = useQuasar()
 const authStore = useAuthStore()
@@ -1591,7 +573,6 @@ const loading = ref(false)
 const saving = ref(false)
 
 const viewMode = ref('ranking') // FASE 1: DEFAULT SET TO RANKING
-const globalSearch = ref('')
 
 const canManageAll = computed(() => authStore.can('usuarios') || authStore.can('roles'))
 
@@ -1609,19 +590,9 @@ const totalPendientesGlobal = computed(() => {
   return Math.round(totalPostulantes.value * 0.35)
 })
 
-const getConvStatus = (conv) => {
-  const hoy = new Date().toISOString().split('T')[0]
-  const inicio = (conv.fecha_inicio || '').split('T')[0]
-  const cierre = (conv.fecha_cierre || '').split('T')[0]
-  if (hoy < inicio) return { label: 'PROGRAMADA', color: 'blue' }
-  if (hoy > cierre) return { label: 'CERRADA', color: 'red' }
-  return { label: 'ABIERTA', color: 'positive' }
-}
 
 // Import state
 const showImportDialog = ref(false)
-const importFile = ref(null)
-const importing = ref(false)
 
 const statusLabels = {
   enviada: 'Postulado',
@@ -1726,28 +697,7 @@ const selectConvocatoriaAndMode = async (conv, mode) => {
   viewMode.value = mode
 }
 
-const getFileUrl = (path) => {
-  if (!path) return ''
-  const baseUrl = api.defaults.baseURL.replace(/\/api$/, '')
-  return `${baseUrl}/storage/${path}`
-}
 
-const getScoreColor = (score) => {
-  const s = Number(score)
-  if (s >= 70) return 'positive'
-  if (s >= 50) return 'warning'
-  return 'negative'
-}
-
-const getClassificationLabel = (val) => {
-  if (!val) return ''
-  const dict = {
-    apto: 'Apto',
-    observado: 'Observado',
-    no_apto: 'No Apto'
-  }
-  return dict[val.toLowerCase()] || val
-}
 
 const quickEvaluateRow = (row) => {
   handleQuickEvaluate(row.id)
@@ -1772,15 +722,6 @@ const availableCargos = computed(() => {
     nombre,
     count
   })).sort((a, b) => a.nombre.localeCompare(b.nombre))
-})
-
-const filteredConvocatoriasList = computed(() => {
-  if (!globalSearch.value) return convocatorias.value
-  const term = globalSearch.value.toLowerCase()
-  return convocatorias.value.filter(c =>
-    c.titulo?.toLowerCase().includes(term) ||
-    c.codigo_interno?.toLowerCase().includes(term)
-  )
 })
 
 const filteredRows = computed(() => {
@@ -2429,195 +1370,6 @@ const meritFields = [
   'a4_revistas', 'a4_libros', 'a4_distinciones'
 ]
 
-const FIELD_LABELS = {
-  a1_diplomado: "Diplomado (3 pts)",
-  a1_especialidad: "Especialización (4 pts)",
-  a1_maestria: "Maestría (6 pts)",
-  a1_doctorado: "Doctorado (7 pts)",
-  a2_cursos_120: "Cursos area > 120 hrs (Max 9)",
-  a2_cursos_20: "Cursillos/Semin. > 20 hrs (Max 5)",
-  a2_disertante: "Disertante congresos (Max 3)",
-  a2_pedagogico: "Formación Pedagóg. (Max 3)",
-  a3_ejercicio_prof: "Ejercicio Profesional (Max 15)",
-  a3_docencia: "Docencia Ejercida (Max 10)",
-  a3_tutorias: "Tutoría de Tesis (Max 5)",
-  a3_docente_post: "Docente Postgrado (Max 5)",
-  a3_cargos_sim: "Cargos Similares (Max 15)",
-  a4_revistas: "Revistas Indexadas (Max 3)",
-  a4_libros: "Libros/Textos (Max 3)",
-  a4_distinciones: "Distinciones Honoríf. (Max 4)",
-}
-
-const getFieldLabel = (field) => FIELD_LABELS[field] || "Puntuación"
-
-const getFieldColorClass = (field) => {
-  if (field.startsWith('a1')) return 'text-primary'
-  if (field.startsWith('a2')) return 'text-secondary'
-  if (field.startsWith('a3')) return 'text-primary'
-  return 'text-secondary'
-}
-
-const getOptionsForField = (field) => {
-  const options = {
-    a1_diplomado: [0, 3],
-    a1_especialidad: [0, 4],
-    a1_maestria: [0, 6],
-    a1_doctorado: [0, 7],
-    a2_cursos_120: [0, 3, 6, 9],
-    a2_cursos_20: [0, 1, 2, 3, 4, 5],
-    a2_disertante: [0, 1, 2, 3],
-    a2_pedagogico: [0, 1, 2, 3],
-    a3_ejercicio_prof: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    a3_docencia: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-    a3_tutorias: [0, 1, 2, 3, 4, 5],
-    a3_docente_post: [0, 1, 2, 3, 4, 5],
-    a3_cargos_sim: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    a4_revistas: [0, 1, 2, 3],
-    a4_libros: [0, 1, 2, 3],
-    a4_distinciones: [0, 1, 2, 3, 4],
-  }
-  return options[field] || [0]
-}
-
-const getDynamicOptions = (maxPuntaje) => {
-   let opts = []
-   for(let i=0; i<=maxPuntaje; i++) {
-     opts.push(i)
-   }
-   return opts
-}
-
-const FIELD_DESCRIPTIONS = {
-  a1_diplomado: 'Diplomado en Educación Superior o área afín (3 pts por título).',
-  a1_especialidad: 'Especialidad médica, clínica o profesional reconocida (4 pts).',
-  a1_maestria: 'Grado de Maestría concluida con título o diploma oficial (6 pts).',
-  a1_doctorado: 'Grado de Doctorado (Ph.D. / Dr.) con título en provisión nacional (7 pts).',
-  a2_cursos_120: 'Cursos de actualización y especialización mayores a 120 horas académicas (3 pts c/u, máx. 9 pts).',
-  a2_cursos_20: 'Cursillos, seminarios y talleres mayores a 20 horas académicas (1 pt c/u, máx. 5 pts).',
-  a2_disertante: 'Participación en calidad de disertante o expositor en congresos o seminarios (1 pt c/u, máx. 3 pts).',
-  a2_pedagogico: 'Cursos de formación pedagógica, didáctica universitaria o competencias docentes (1 pt c/u, máx. 3 pts).',
-  a3_ejercicio_prof: 'Años de ejercicio profesional certificado en el área específica (1 pt por año, máx. 15 pts).',
-  a3_docencia: 'Años de docencia universitaria certificada de pregrado (1 pt por año/materia, máx. 10 pts).',
-  a3_tutorias: 'Tutoría o asesoría de tesis de grado y proyectos de titulación aprobados (1 pt c/u, máx. 5 pts).',
-  a3_docente_post: 'Docencia universitaria ejercida en programas de postgrado (1 pt c/u, máx. 5 pts).',
-  a3_cargos_sim: 'Desempeño en cargos de jefatura, dirección académica o similar (máx. 15 pts).',
-  a4_revistas: 'Artículos científicos publicados en revistas indexadas (1 pt c/u, máx. 3 pts).',
-  a4_libros: 'Autoría o coautoría de libros, textos guía o manuales con ISBN/Depósito legal (máx. 3 pts).',
-  a4_distinciones: 'Distinciones académicas, premios o reconocimientos honoríficos institucionales (máx. 4 pts).'
-}
-
-const getCriterionDefaultHelp = (col) => {
-  if (col.descripcion) return col.descripcion
-  const n = (col.nombre || '').toUpperCase()
-  if (n.includes('EXPERIENCIA') || n.includes('LABORAL')) {
-    return `Evaluación de la trayectoria y experiencia laboral demostrable (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  if (n.includes('DOCENCIA')) {
-    return `Evaluación de la experiencia docente universitaria y ejercicio de cátedra (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  if (n.includes('FORMACIÓN') || n.includes('TÍTULO') || n.includes('LICENCIATURA')) {
-    return `Verificación del título profesional y formación académica habilitante (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  if (n.includes('POSTGRADO') || n.includes('DIPLOMADO') || n.includes('MAESTR') || n.includes('DOCTOR')) {
-    return `Cursos y programas de postgrado certificados en el área requerida (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  if (n.includes('CAPACITA') || n.includes('CURSO')) {
-    return `Horas académicas y certificados de actualización o formación continua (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  if (n.includes('PRODUCCI') || n.includes('LIBRO') || n.includes('ARTÍCULO')) {
-    return `Publicaciones científicas, libros y producción intelectual acreditada (Puntaje máximo: ${col.puntaje} pts).`
-  }
-  return `Asigne la puntuación correspondiente de acuerdo al baremo establecido (Puntaje máximo: ${col.puntaje} pts).`
-}
-
-const getCandidateMeritsForCriterion = (row, colOrField) => {
-  const p = row.postulante
-  if (!p) return null
-
-  const name = typeof colOrField === 'string'
-    ? (getFieldLabel(colOrField) + ' ' + (FIELD_DESCRIPTIONS[colOrField] || '')).toUpperCase()
-    : ((colOrField.nombre || '') + ' ' + (colOrField.descripcion || '') + ' ' + (colOrField.seccion || '')).toUpperCase()
-
-  // 1. Docencia
-  if (name.includes('DOCEN') || name.includes('CÁTEDRA') || name.includes('ASIGNATURA')) {
-    const list = p.experiencias_docencia || p.experienciasDocencia || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Docencia Registrada',
-        items: list.map(d => `${d.asignatura || 'Docencia'} (${d.universidad || '-'}) - ${d.tipo_docencia || ''}`)
-      }
-    }
-  }
-
-  // 2. Experiencia Laboral / Profesional
-  if (name.includes('LABORAL') || name.includes('EJERCICIO') || name.includes('PROFESIONAL') || name.includes('CARGO') || name.includes('TRABAJO')) {
-    const list = p.experiencias_profesionales || p.experienciasProfesionales || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Experiencia Laboral Registrada',
-        items: list.map(e => `${e.cargo_desempenado || 'Cargo'} en ${e.institucion_empresa || '-'} (${e.fecha_inicio ? String(e.fecha_inicio).substring(0,4) : ''} - ${e.fecha_fin ? String(e.fecha_fin).substring(0,4) : 'Actualidad'})`)
-      }
-    }
-  }
-
-  // 3. Postgrado / Diplomado / Maestría / Doctorado
-  if (name.includes('POSTGRADO') || name.includes('POSGRADO') || name.includes('DIPLOMADO') || name.includes('MAESTR') || name.includes('DOCTOR') || name.includes('ESPECIAL')) {
-    const list = p.formaciones_postgrado || p.formacionesPostgrado || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Postgrados Registrados',
-        items: list.map(pos => `${pos.tipo_postgrado || 'Postgrado'}: ${pos.titulo_postgrado || '-'} (${pos.universidad || '-'})`)
-      }
-    }
-  }
-
-  // 4. Cursos / Capacitaciones / Talleres
-  if (name.includes('CURSO') || name.includes('CAPACITA') || name.includes('TALLER') || name.includes('SEMINARIO')) {
-    const list = p.capacitaciones || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Cursos y Capacitaciones Registrados',
-        items: list.map(c => `${c.nombre_curso || c.nombre || 'Curso'} - ${c.institucion || '-'} ${c.horas_academicas ? '(' + c.horas_academicas + ' hrs)' : ''}`)
-      }
-    }
-  }
-
-  // 5. Producción / Libros / Revistas / Artículos
-  if (name.includes('PRODUCCI') || name.includes('LIBRO') || name.includes('REVISTA') || name.includes('ARTÍCULO') || name.includes('PUBLICAC')) {
-    const list = p.producciones || p.producciones_intelectuales || p.produccionesIntelectuales || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Producción Intelectual Registrada',
-        items: list.map(pr => `${pr.tipo_produccion || 'Obra'}: ${pr.titulo_obra || pr.titulo || '-'} (${pr.editorial_revista || '-'})`)
-      }
-    }
-  }
-
-  // 6. Reconocimientos / Distinciones
-  if (name.includes('RECONOCIMIENTO') || name.includes('DISTINCI') || name.includes('PREMIO') || name.includes('HONOR')) {
-    const list = p.reconocimientos || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Reconocimientos Registrados',
-        items: list.map(r => `${r.descripcion_reconocimiento || r.titulo || 'Distinción'} - ${r.institucion_otorgante || '-'}`)
-      }
-    }
-  }
-
-  // 7. Formación / Licenciatura / Título
-  if (name.includes('FORMACI') || name.includes('LICENCIATURA') || name.includes('TÍTULO') || name.includes('ACADÉMIC')) {
-    const list = p.formaciones_academicas || p.formacionesAcademicas || []
-    if (list.length > 0) {
-      return {
-        tipo: 'Formación Pregrado Registrada',
-        items: list.map(f => `${f.academicLevel?.name || f.nivel_academico_raw || 'Licenciatura'}: ${f.career?.name || f.carrera_raw || '-'} (${f.universidad || '-'})`)
-      }
-    }
-  }
-
-  return null
-}
-
 const columns = [
   {
     name: 'postulante',
@@ -2656,24 +1408,6 @@ const formatDate = (val) => {
   return date.formatDate(val, 'DD-MM-YYYY')
 }
 
-const getStatusColor = (status) => {
-  switch (status) {
-    case 'enviada':
-      return 'indigo-7'
-    case 'en_revision':
-      return 'orange-7'
-    case 'validada':
-      return 'teal-7'
-    case 'observada':
-      return 'deep-orange-7'
-    case 'rechazada':
-      return 'red-7'
-    case 'seleccionado':
-      return 'positive'
-    default:
-      return 'grey-7'
-  }
-}
 
 const loadConvocatorias = async () => {
   loading.value = true
@@ -2696,9 +1430,10 @@ const selectConvocatoria = async (convocatoria) => {
   loading.value = true
   try {
     const { data } = await api.get(`/postulaciones?convocatoria_id=${convocatoria.id}`)
-    
+    const items = Array.isArray(data) ? data : (data?.data && Array.isArray(data.data) ? data.data : [])
+
     // Map with interactive merit variables and consolidate scores from Score Engine & AI
-    rows.value = data.map((postulacion) => {
+    rows.value = items.map((postulacion) => {
       const existing = {
         ...(postulacion.evaluacion?.detalle_evaluacion || {}),
         observaciones: postulacion.evaluacion?.observaciones || ''
@@ -2742,7 +1477,7 @@ const selectConvocatoria = async (convocatoria) => {
     })
 
     // Restore sede and cargo from query
-    const sedes = [...new Set(data.map(r => r.oferta?.sede?.nombre).filter(Boolean))]
+    const sedes = [...new Set(items.map(r => r.oferta?.sede?.nombre).filter(Boolean))]
     const querySede = route.query.sede
     if (querySede && sedes.includes(querySede)) {
       filterSede.value = querySede
@@ -2926,35 +1661,6 @@ const exportConvocatoriaReport = async (conv) => {
     $q.notify({ type: 'negative', message: 'Error al descargar reporte' })
   } finally {
     $q.loading.hide()
-  }
-}
-
-
-const processImport = async () => {
-  if (!importFile.value) return
-  importing.value = true
-  const formData = new FormData()
-  formData.append('file', importFile.value)
-
-  try {
-    const { data } = await api.post('/importar-excel', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-    $q.notify({
-      type: 'positive',
-      message: `Importación completada: ${data.imported} registros procesados.`,
-      position: 'top',
-    })
-    showImportDialog.value = false
-    importFile.value = null
-    loadConvocatorias()
-  } catch (error) {
-    console.error(error)
-    $q.notify({ type: 'negative', message: error.response?.data?.message || 'Error al importar los datos' })
-  } finally {
-    importing.value = false
   }
 }
 

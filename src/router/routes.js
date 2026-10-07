@@ -35,6 +35,11 @@ const routes = [
         component: () => import('pages/ConvocatoriaDetallePage.vue'),
       },
       {
+        path: 'solicitar-convocatoria',
+        name: 'solicitar_convocatoria',
+        component: () => import('pages/SolicitarConvocatoriaPage.vue'),
+      },
+      {
         path: 'login',
         name: 'login',
         component: () => import('pages/LoginPage.vue'),

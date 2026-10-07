@@ -28,7 +28,9 @@
                         <div class="text-[10px] opacity-70 tracking-widest uppercase">Sistema de Talento Humano</div>
                     </div>
                 </div>
-                <div>
+                <div class="flex items-center gap-2">
+                    <q-btn flat rounded color="white" label="Solicitar Convocatoria" to="/solicitar-convocatoria" no-caps
+                        icon="assignment" class="px-4 text-xs hover:bg-white/10 hidden sm:inline-flex" />
                     <q-btn outline rounded color="white" label="Iniciar Sesión" to="/login" no-caps
                         class="px-6 border-white/30 hover:bg-white/10" />
                 </div>

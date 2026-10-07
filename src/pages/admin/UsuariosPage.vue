@@ -1,9 +1,21 @@
 <template>
   <q-page class="p-6 bg-gray-50/50">
-    <div class="flex justify-between items-center mb-10">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
       <div>
         <h1 class="text-3xl font-black text-gray-900 tracking-tight">Usuarios con Acceso a SISPO</h1>
         <p class="text-gray-500 font-medium">Aquí solo gestionas a qué convocatorias específicas puede entrar cada usuario del sistema.</p>
+      </div>
+      <div>
+        <q-btn
+          :href="ssoUsersUrl"
+          target="_blank"
+          color="indigo-8"
+          icon="open_in_new"
+          label="Gestionar en SIGETH SSO"
+          unelevated
+          rounded
+          class="font-bold shadow-sm px-4 py-2"
+        />
       </div>
     </div>
 
@@ -135,10 +147,11 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { api } from 'boot/axios'
+import { api, SSO_FRONT_URL } from 'boot/axios'
 import { useQuasar } from 'quasar'
 
 const $q = useQuasar()
+const ssoUsersUrl = computed(() => `${SSO_FRONT_URL}/admin/usuarios`)
 const SHARED_ASSET_URL = String(import.meta.env.VITE_SHARED_ASSET_URL || '').replace(/\/+$/, '')
 const rows = ref([])
 const convocatoriasOptions = ref([])

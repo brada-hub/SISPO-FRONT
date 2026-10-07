@@ -1,5 +1,5 @@
 {
-  "name": "sispo-frfont",
+  "name": "sispo-front",
   "version": "0.0.1",
   "description": "A Quasar Project",
   "productName": "Postulaciones UNITEPC",
@@ -19,7 +19,6 @@
     "apexcharts": "^5.3.6",
     "axios": "^1.2.1",
     "d3-geo": "^3.1.1",
-    "dom-to-image-more": "^3.7.2",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
